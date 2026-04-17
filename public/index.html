@@ -4,534 +4,589 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Grape & Grain — Store Manager</title>
-<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600&family=DM+Sans:wght@300;400;500&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
-*{box-sizing:border-box;margin:0;padding:0;}
+*{box-sizing:border-box;margin:0;padding:0}
 :root{
-  --bg:#faf9f7;--surface:#ffffff;--surface2:#f4f2ee;--border:#e8e4dc;--border2:#d4cfc5;
+  --bg:#faf9f7;--surface:#fff;--surface2:#f5f3ef;--border:#e8e4dc;--border2:#d4cfc5;
   --text:#1a1714;--muted:#7a7570;--faint:#b8b4ae;
   --gold:#8b6914;--gold-bg:#fdf6e3;--gold-border:#e8d5a0;
   --green:#2d6a4f;--green-bg:#f0f7f4;--green-border:#a8d5c2;
   --red:#8b2020;--red-bg:#fdf0f0;--red-border:#f0b8b8;
   --blue:#1a3a5c;--blue-bg:#f0f4f8;--blue-border:#a8c4e0;
   --wine:#6b1f3a;--beer:#8b5e1a;
+  --sidebar-w:220px;
   --font-display:'Playfair Display',serif;
   --font-body:'DM Sans',sans-serif;
   --font-mono:'DM Mono',monospace;
-  --r:8px;--r-lg:12px;
 }
-body{font-family:var(--font-body);background:var(--bg);color:var(--text);font-size:14px;line-height:1.6;min-height:100vh;}
+body{font-family:var(--font-body);background:var(--bg);color:var(--text);font-size:14px;line-height:1.6;min-height:100vh}
 
-/* ── LAYOUT ── */
-.app{display:grid;grid-template-columns:220px 1fr;grid-template-rows:auto 1fr;min-height:100vh;}
-.topbar{grid-column:1/-1;background:var(--text);padding:0 24px;display:flex;align-items:center;justify-content:space-between;height:52px;border-bottom:1px solid #2d2a26;}
-.logo{font-family:var(--font-display);font-size:18px;color:#faf9f7;letter-spacing:0.02em;}
-.logo span{color:#c8a96e;font-size:11px;font-family:var(--font-mono);font-weight:400;margin-left:10px;letter-spacing:0.08em;}
-.topbar-right{display:flex;align-items:center;gap:12px;}
-.sync-badge{font-size:11px;font-family:var(--font-mono);color:#888;padding:4px 10px;border:1px solid #333;border-radius:4px;}
-.sync-badge.ok{color:#6abf8a;border-color:#3a6b4a;}
-.sync-badge.loading{color:#c8a96e;border-color:#6b5420;}
+/* LAYOUT */
+.layout{display:grid;grid-template-rows:52px 1fr;grid-template-columns:var(--sidebar-w) 1fr;min-height:100vh}
+.topbar{grid-column:1/-1;background:var(--text);display:flex;align-items:center;justify-content:space-between;padding:0 24px;border-bottom:1px solid #2d2a26}
+.logo{font-family:var(--font-display);font-size:19px;color:#faf9f7;letter-spacing:.02em}
+.logo em{color:#c8a96e;font-style:normal;font-size:11px;font-family:var(--font-mono);margin-left:10px;letter-spacing:.08em}
+.topbar-right{display:flex;align-items:center;gap:12px}
+.sync-dot{width:8px;height:8px;border-radius:50%;background:#555}
+.sync-dot.ok{background:#6abf8a}
+.sync-dot.err{background:#e05555}
+.sync-label{font-size:11px;font-family:var(--font-mono);color:#888}
+.sidebar{background:var(--surface);border-right:1px solid var(--border);padding:16px 0;overflow-y:auto}
+.nav-group{padding:0 12px;margin-bottom:4px}
+.nav-label{font-size:10px;font-family:var(--font-mono);color:var(--faint);letter-spacing:.1em;text-transform:uppercase;padding:10px 8px 4px}
+.nav-item{display:flex;align-items:center;gap:9px;padding:8px 12px;border-radius:6px;cursor:pointer;color:var(--muted);font-size:13px;margin-bottom:1px;transition:all .15s}
+.nav-item:hover{background:var(--surface2);color:var(--text)}
+.nav-item.active{background:var(--gold-bg);color:var(--gold);font-weight:500}
+.nav-icon{width:15px;height:15px;flex-shrink:0;opacity:.6}
+.nav-item.active .nav-icon{opacity:1}
+hr.nav-hr{border:none;border-top:1px solid var(--border);margin:10px 12px}
+.main{overflow-y:auto;padding:28px 32px;height:calc(100vh - 52px)}
+.page{display:none}
+.page.active{display:block}
+.page-header{margin-bottom:24px}
+.page-title{font-family:var(--font-display);font-size:26px;font-weight:600;margin-bottom:3px}
+.page-sub{font-size:13px;color:var(--muted)}
 
-/* ── SIDEBAR ── */
-.sidebar{background:var(--surface);border-right:1px solid var(--border);padding:20px 0;position:sticky;top:0;height:calc(100vh - 52px);overflow-y:auto;}
-.nav-section{padding:0 16px;margin-bottom:6px;}
-.nav-label{font-size:10px;font-family:var(--font-mono);color:var(--faint);letter-spacing:0.1em;text-transform:uppercase;padding:8px 8px 4px;}
-.nav-item{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:var(--r);cursor:pointer;transition:all 0.15s;color:var(--muted);font-size:13px;font-weight:400;margin-bottom:2px;}
-.nav-item:hover{background:var(--surface2);color:var(--text);}
-.nav-item.active{background:var(--gold-bg);color:var(--gold);border:1px solid var(--gold-border);}
-.nav-icon{width:16px;height:16px;flex-shrink:0;opacity:0.7;}
-.nav-item.active .nav-icon{opacity:1;}
-.nav-divider{border:none;border-top:1px solid var(--border);margin:12px 16px;}
+/* METRICS */
+.metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:24px}
+.metric{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:18px 20px}
+.metric-val{font-family:var(--font-display);font-size:28px;font-weight:600;margin-bottom:2px;color:var(--text)}
+.metric-val.gold{color:var(--gold)}
+.metric-val.green{color:var(--green)}
+.metric-val.red{color:var(--red)}
+.metric-val.blue{color:var(--blue)}
+.metric-label{font-size:11px;font-family:var(--font-mono);color:var(--muted)}
+.metric-sub{font-size:11px;color:var(--faint);margin-top:3px}
 
-/* ── MAIN ── */
-.main{padding:28px 32px;overflow-y:auto;height:calc(100vh - 52px);}
-.page{display:none;}
-.page.active{display:block;}
-.page-header{margin-bottom:24px;}
-.page-title{font-family:var(--font-display);font-size:26px;font-weight:600;color:var(--text);margin-bottom:4px;}
-.page-sub{font-size:13px;color:var(--muted);}
+/* CARDS */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px 24px;margin-bottom:16px}
+.card-title{font-size:11px;font-family:var(--font-mono);color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:14px}
 
-/* ── CARDS ── */
-.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);padding:20px 24px;margin-bottom:16px;}
-.card-title{font-size:12px;font-family:var(--font-mono);color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:12px;}
+/* BUTTONS */
+.btn{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border:1px solid var(--border2);border-radius:7px;background:var(--surface);color:var(--text);font-family:var(--font-body);font-size:13px;cursor:pointer;transition:all .15s;font-weight:400}
+.btn:hover{background:var(--surface2)}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+.btn-primary{background:var(--text);color:var(--bg);border-color:var(--text)}
+.btn-primary:hover{background:#2d2a26}
+.btn-gold{background:var(--gold-bg);color:var(--gold);border-color:var(--gold-border)}
+.btn-gold:hover{background:#faeec5}
+.btn-green{background:var(--green-bg);color:var(--green);border-color:var(--green-border)}
+.btn-red{background:var(--red-bg);color:var(--red);border-color:var(--red-border)}
+.btn-sm{padding:5px 10px;font-size:12px}
 
-/* ── METRICS ── */
-.metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:24px;}
-.metric{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);padding:18px 20px;}
-.metric-val{font-family:var(--font-display);font-size:28px;font-weight:600;margin-bottom:2px;}
-.metric-label{font-size:11px;color:var(--muted);font-family:var(--font-mono);}
-.metric-sub{font-size:11px;color:var(--faint);margin-top:4px;}
-.metric.gold .metric-val{color:var(--gold);}
-.metric.green .metric-val{color:var(--green);}
-.metric.red .metric-val{color:var(--red);}
-.metric.blue .metric-val{color:var(--blue);}
+/* TABLE */
+.tbl-wrap{border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:16px}
+table{width:100%;border-collapse:collapse;font-size:13px}
+thead th{background:var(--surface2);padding:10px 14px;text-align:left;font-family:var(--font-mono);font-size:11px;color:var(--muted);border-bottom:1px solid var(--border);font-weight:500;white-space:nowrap;cursor:pointer;user-select:none}
+thead th:hover{color:var(--text)}
+tbody tr{border-bottom:1px solid var(--border);transition:background .1s}
+tbody tr:last-child{border-bottom:none}
+tbody tr:hover{background:var(--surface2)}
+td{padding:9px 14px;vertical-align:middle}
+.mono{font-family:var(--font-mono);font-size:12px}
+.muted{color:var(--muted)}
+.pagination{display:flex;align-items:center;justify-content:space-between;padding:10px 16px;border-top:1px solid var(--border);font-size:12px;color:var(--muted)}
 
-/* ── BUTTONS ── */
-.btn{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border:1px solid var(--border2);border-radius:var(--r);background:var(--surface);color:var(--text);font-family:var(--font-body);font-size:13px;cursor:pointer;transition:all 0.15s;font-weight:400;}
-.btn:hover{background:var(--surface2);border-color:var(--border2);}
-.btn:disabled{opacity:0.4;cursor:not-allowed;}
-.btn-primary{background:var(--text);color:var(--bg);border-color:var(--text);}
-.btn-primary:hover{background:#2d2a26;border-color:#2d2a26;}
-.btn-gold{background:var(--gold-bg);color:var(--gold);border-color:var(--gold-border);}
-.btn-gold:hover{background:#faeec5;}
-.btn-green{background:var(--green-bg);color:var(--green);border-color:var(--green-border);}
-.btn-red{background:var(--red-bg);color:var(--red);border-color:var(--red-border);}
-.btn-sm{padding:5px 10px;font-size:12px;}
+/* BADGES */
+.badge{display:inline-block;font-size:11px;padding:2px 8px;border-radius:4px;font-family:var(--font-mono);font-weight:500;white-space:nowrap}
+.badge-beer{background:#fef3e2;color:var(--beer);border:1px solid #f0d5a0}
+.badge-wine{background:#fdf0f4;color:var(--wine);border:1px solid #e8b8cc}
+.badge-green{background:var(--green-bg);color:var(--green);border:1px solid var(--green-border)}
+.badge-gold{background:var(--gold-bg);color:var(--gold);border:1px solid var(--gold-border)}
+.badge-gray{background:var(--surface2);color:var(--muted);border:1px solid var(--border)}
+.badge-red{background:var(--red-bg);color:var(--red);border:1px solid var(--red-border)}
+.badge-blue{background:var(--blue-bg);color:var(--blue);border:1px solid var(--blue-border)}
 
-/* ── SEARCH + FILTER ── */
-.filter-row{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:16px;}
-.search-box{position:relative;flex:1;min-width:200px;}
-.search-box input{width:100%;padding:9px 12px 9px 36px;border:1px solid var(--border2);border-radius:var(--r);background:var(--surface);color:var(--text);font-family:var(--font-body);font-size:13px;}
-.search-box input:focus{outline:none;border-color:var(--gold);}
-.search-icon{position:absolute;left:11px;top:50%;transform:translateY(-50%);color:var(--faint);font-size:14px;}
-select{padding:8px 12px;border:1px solid var(--border2);border-radius:var(--r);background:var(--surface);color:var(--text);font-family:var(--font-body);font-size:13px;cursor:pointer;}
-select:focus{outline:none;border-color:var(--gold);}
+/* FORMS */
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.form-grid.cols3{grid-template-columns:1fr 1fr 1fr}
+.form-grid.cols1{grid-template-columns:1fr}
+.field{display:flex;flex-direction:column;gap:5px}
+.field label{font-size:11px;font-family:var(--font-mono);color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+.field input,.field select,.field textarea{padding:8px 11px;border:1px solid var(--border2);border-radius:6px;background:var(--bg);color:var(--text);font-family:var(--font-body);font-size:13px;transition:border-color .15s}
+.field input:focus,.field select:focus,.field textarea:focus{outline:none;border-color:var(--gold)}
+.field textarea{height:80px;resize:vertical}
+.field input[readonly]{background:var(--surface2);color:var(--muted)}
+.form-section{font-size:11px;font-family:var(--font-mono);color:var(--faint);text-transform:uppercase;letter-spacing:.08em;padding:14px 0 8px;border-top:1px solid var(--border);margin-top:4px}
+.form-section:first-child{border-top:none;padding-top:0}
+.filter-row{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:14px}
+.filter-row input[type=text]{padding:8px 12px;border:1px solid var(--border2);border-radius:6px;background:var(--surface);color:var(--text);font-size:13px;min-width:200px}
+.filter-row input[type=text]:focus{outline:none;border-color:var(--gold)}
+.filter-row select{padding:8px 11px;border:1px solid var(--border2);border-radius:6px;background:var(--surface);color:var(--text);font-size:13px}
 
-/* ── TABLE ── */
-.table-wrap{border:1px solid var(--border);border-radius:var(--r-lg);overflow:hidden;}
-table{width:100%;border-collapse:collapse;font-size:13px;}
-thead th{background:var(--surface2);padding:10px 14px;text-align:left;font-family:var(--font-mono);font-size:11px;color:var(--muted);border-bottom:1px solid var(--border);font-weight:500;white-space:nowrap;cursor:pointer;user-select:none;}
-thead th:hover{color:var(--text);}
-tbody tr{border-bottom:1px solid var(--border);transition:background 0.1s;}
-tbody tr:last-child{border-bottom:none;}
-tbody tr:hover{background:var(--surface2);}
-td{padding:10px 14px;vertical-align:middle;}
-.mono{font-family:var(--font-mono);font-size:12px;}
-.muted{color:var(--muted);}
-.pagination{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-top:1px solid var(--border);font-size:12px;color:var(--muted);}
+/* ALERTS */
+.alert{padding:12px 16px;border-radius:7px;font-size:13px;margin-bottom:14px;display:flex;align-items:flex-start;gap:10px}
+.alert-gold{background:var(--gold-bg);border:1px solid var(--gold-border);color:var(--gold)}
+.alert-green{background:var(--green-bg);border:1px solid var(--green-border);color:var(--green)}
+.alert-red{background:var(--red-bg);border:1px solid var(--red-border);color:var(--red)}
+.alert-blue{background:var(--blue-bg);border:1px solid var(--blue-border);color:var(--blue)}
 
-/* ── BADGES ── */
-.badge{display:inline-block;font-size:11px;padding:2px 8px;border-radius:4px;font-family:var(--font-mono);font-weight:500;}
-.badge-beer{background:#fef3e2;color:var(--beer);border:1px solid #f0d5a0;}
-.badge-wine{background:#fdf0f4;color:var(--wine);border:1px solid #e8b8cc;}
-.badge-green{background:var(--green-bg);color:var(--green);border:1px solid var(--green-border);}
-.badge-gold{background:var(--gold-bg);color:var(--gold);border:1px solid var(--gold-border);}
-.badge-gray{background:var(--surface2);color:var(--muted);border:1px solid var(--border);}
-.badge-red{background:var(--red-bg);color:var(--red);border:1px solid var(--red-border);}
-.badge-blue{background:var(--blue-bg);color:var(--blue);border:1px solid var(--blue-border);}
+/* CHARTS */
+.charts-grid{display:grid;grid-template-columns:2fr 1fr;gap:16px;margin-bottom:16px}
+.bar-chart{display:flex;flex-direction:column;gap:8px}
+.bar-row{display:flex;align-items:center;gap:10px;font-size:12px}
+.bar-label{width:90px;color:var(--muted);text-align:right;font-family:var(--font-mono);font-size:11px;flex-shrink:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bar-track{flex:1;background:var(--surface2);border-radius:2px;height:18px;overflow:hidden}
+.bar-fill{height:100%;border-radius:2px;transition:width .6s ease;display:flex;align-items:center;padding-left:8px;font-size:11px;font-family:var(--font-mono);color:#fff;font-weight:500}
+.bar-val{width:55px;text-align:right;font-family:var(--font-mono);font-size:11px;color:var(--muted)}
+.stat-rows{display:flex;flex-direction:column;gap:0}
+.stat-row{display:flex;align-items:center;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--border)}
+.stat-row:last-child{border-bottom:none}
+.stat-dot{width:9px;height:9px;border-radius:50%;margin-right:8px;flex-shrink:0}
+.stat-name{flex:1;font-size:12px;display:flex;align-items:center}
+.stat-val{font-family:var(--font-mono);font-size:12px;color:var(--muted)}
 
-/* ── MODAL ── */
-.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:200;align-items:center;justify-content:center;backdrop-filter:blur(2px);}
-.modal-overlay.open{display:flex;}
-.modal{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);width:580px;max-width:95vw;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.15);}
-.modal-header{padding:20px 24px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;background:var(--surface);z-index:1;}
-.modal-title{font-family:var(--font-display);font-size:18px;}
-.modal-close{background:none;border:none;color:var(--muted);font-size:22px;cursor:pointer;padding:0 4px;line-height:1;}
-.modal-body{padding:22px 24px;}
-.modal-footer{padding:16px 24px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:10px;}
+/* MODAL */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:200;align-items:center;justify-content:center;backdrop-filter:blur(2px)}
+.modal-overlay.open{display:flex}
+.modal{background:var(--surface);border:1px solid var(--border);border-radius:12px;width:600px;max-width:95vw;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.15)}
+.modal-header{padding:18px 22px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;background:var(--surface);z-index:1}
+.modal-title{font-family:var(--font-display);font-size:18px}
+.modal-close{background:none;border:none;color:var(--muted);font-size:22px;cursor:pointer;line-height:1}
+.modal-body{padding:20px 22px}
+.modal-footer{padding:14px 22px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:10px}
 
-/* ── FORM ── */
-.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
-.form-grid.full{grid-template-columns:1fr;}
-.field{margin-bottom:0;}
-.field label{display:block;font-size:11px;font-family:var(--font-mono);color:var(--muted);margin-bottom:5px;text-transform:uppercase;letter-spacing:0.05em;}
-.field input,.field select,.field textarea{width:100%;padding:9px 12px;border:1px solid var(--border2);border-radius:var(--r);background:var(--bg);color:var(--text);font-family:var(--font-body);font-size:13px;transition:border-color 0.15s;}
-.field input:focus,.field select:focus,.field textarea:focus{outline:none;border-color:var(--gold);}
-.field textarea{height:80px;resize:vertical;}
-.field-row{display:flex;gap:8px;align-items:flex-end;}
-.form-section{font-size:11px;font-family:var(--font-mono);color:var(--faint);text-transform:uppercase;letter-spacing:0.08em;padding:16px 0 8px;border-top:1px solid var(--border);margin-top:8px;}
-.form-section:first-child{border-top:none;padding-top:0;}
+/* ORDER BUILDER */
+.upload-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:20px}
+.upload-box{border:1px dashed var(--border2);border-radius:10px;padding:18px 16px;cursor:pointer;transition:all .15s;text-align:center}
+.upload-box:hover{border-color:var(--gold);background:var(--gold-bg)}
+.upload-box.loaded{border-color:var(--green);border-style:solid;background:var(--green-bg)}
+.upload-box-title{font-size:13px;font-weight:500;margin-bottom:4px}
+.upload-box-sub{font-size:11px;color:var(--muted)}
+.upload-box-status{font-size:11px;margin-top:8px;color:var(--faint)}
+.upload-box.loaded .upload-box-status{color:var(--green)}
+.order-cfg{display:flex;gap:14px;flex-wrap:wrap;align-items:flex-end;padding:16px;background:var(--surface2);border-radius:8px;margin-bottom:20px}
+.order-cfg .field label{font-size:11px;color:var(--muted);margin-bottom:4px}
+.order-cfg input,.order-cfg select{padding:7px 10px;border:1px solid var(--border2);border-radius:6px;background:var(--surface);color:var(--text);font-size:13px;width:110px}
 
-/* ── ORDER BUILDER ── */
-.upload-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px;}
-.upload-box{border:1px dashed var(--border2);border-radius:var(--r-lg);padding:20px;cursor:pointer;transition:all 0.15s;text-align:center;}
-.upload-box:hover{border-color:var(--gold);background:var(--gold-bg);}
-.upload-box.loaded{border-color:var(--green);border-style:solid;background:var(--green-bg);}
-.upload-box-title{font-size:13px;font-weight:500;margin-bottom:4px;}
-.upload-box-sub{font-size:11px;color:var(--muted);}
-.upload-box-status{font-size:11px;margin-top:8px;color:var(--faint);}
-.upload-box.loaded .upload-box-status{color:var(--green);}
-.order-settings{display:flex;gap:16px;flex-wrap:wrap;align-items:flex-end;padding:16px;background:var(--surface2);border-radius:var(--r);margin-bottom:20px;}
-.order-settings .field{margin-bottom:0;}
-.order-settings label{display:block;font-size:11px;color:var(--muted);margin-bottom:4px;}
-.order-settings input,.order-settings select{padding:7px 10px;border:1px solid var(--border2);border-radius:var(--r);background:var(--surface);color:var(--text);font-size:13px;width:100px;}
+/* EMPTY + LOADING */
+.empty{text-align:center;padding:48px;color:var(--faint)}
+.empty-title{font-family:var(--font-display);font-size:20px;color:var(--muted);margin-bottom:6px}
+.loading{text-align:center;padding:32px;color:var(--muted);font-family:var(--font-mono);font-size:12px}
 
-/* ── DASHBOARD CHARTS ── */
-.charts-grid{display:grid;grid-template-columns:2fr 1fr;gap:16px;margin-bottom:16px;}
-.chart-box{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);padding:20px;}
-.chart-title{font-size:12px;font-family:var(--font-mono);color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:16px;}
-.bar-chart{display:flex;flex-direction:column;gap:8px;}
-.bar-row{display:flex;align-items:center;gap:10px;font-size:12px;}
-.bar-label{width:100px;color:var(--muted);text-align:right;font-family:var(--font-mono);font-size:11px;flex-shrink:0;}
-.bar-track{flex:1;background:var(--surface2);border-radius:2px;height:18px;overflow:hidden;}
-.bar-fill{height:100%;border-radius:2px;transition:width 0.6s ease;display:flex;align-items:center;padding-left:8px;font-size:11px;font-family:var(--font-mono);color:white;font-weight:500;}
-.bar-val{width:60px;text-align:right;font-family:var(--font-mono);font-size:11px;color:var(--muted);}
-.donut-wrap{display:flex;flex-direction:column;gap:8px;}
-.donut-row{display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);}
-.donut-row:last-child{border-bottom:none;}
-.donut-dot{width:10px;height:10px;border-radius:50%;margin-right:8px;flex-shrink:0;}
-.donut-name{flex:1;font-size:12px;}
-.donut-val{font-family:var(--font-mono);font-size:12px;color:var(--muted);}
-
-/* ── ALERTS ── */
-.alert{padding:12px 16px;border-radius:var(--r);font-size:13px;margin-bottom:14px;display:flex;align-items:flex-start;gap:10px;}
-.alert-icon{flex-shrink:0;margin-top:1px;}
-.alert-gold{background:var(--gold-bg);border:1px solid var(--gold-border);color:var(--gold);}
-.alert-green{background:var(--green-bg);border:1px solid var(--green-border);color:var(--green);}
-.alert-red{background:var(--red-bg);border:1px solid var(--red-border);color:var(--red);}
-.alert-blue{background:var(--blue-bg);border:1px solid var(--blue-border);color:var(--blue);}
-
-/* ── EMPTY STATE ── */
-.empty{text-align:center;padding:48px;color:var(--faint);}
-.empty-title{font-family:var(--font-display);font-size:20px;color:var(--muted);margin-bottom:8px;}
-.empty-sub{font-size:13px;}
-
-/* ── LOADING ── */
-.loading{text-align:center;padding:32px;color:var(--muted);font-family:var(--font-mono);font-size:13px;}
-
-/* ── RESPONSIVE ── */
+/* RESPONSIVE */
 @media(max-width:768px){
-  .app{grid-template-columns:1fr;}
-  .sidebar{display:none;}
-  .metrics{grid-template-columns:1fr 1fr;}
-  .charts-grid{grid-template-columns:1fr;}
-  .upload-grid{grid-template-columns:1fr;}
-  .form-grid{grid-template-columns:1fr;}
+  .layout{grid-template-columns:1fr}
+  .sidebar{display:none}
+  .metrics{grid-template-columns:1fr 1fr}
+  .charts-grid{grid-template-columns:1fr}
+  .form-grid{grid-template-columns:1fr}
+  .main{padding:16px}
 }
 </style>
 </head>
 <body>
-<div class="app">
+<div class="layout">
 
 <!-- TOPBAR -->
 <div class="topbar">
-  <div class="logo">Grape & Grain <span>STORE MANAGER</span></div>
+  <div class="logo" id="store-logo">Grape & Grain <em>STORE MANAGER</em></div>
   <div class="topbar-right">
-    <div class="sync-badge" id="sync-status">connecting...</div>
+    <div class="sync-dot" id="sync-dot"></div>
+    <div class="sync-label" id="sync-label">connecting...</div>
   </div>
 </div>
 
 <!-- SIDEBAR -->
 <div class="sidebar">
-  <div class="nav-section">
+  <div class="nav-group">
     <div class="nav-label">Overview</div>
-    <div class="nav-item active" onclick="nav('dashboard')" id="nav-dashboard">
+    <div class="nav-item active" data-page="dashboard" onclick="nav('dashboard')">
       <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1" y="1" width="6" height="6" rx="1"/><rect x="9" y="1" width="6" height="6" rx="1"/><rect x="1" y="9" width="6" height="6" rx="1"/><rect x="9" y="9" width="6" height="6" rx="1"/></svg>
       Dashboard
     </div>
   </div>
-  <div class="nav-section">
+  <div class="nav-group">
     <div class="nav-label">Inventory</div>
-    <div class="nav-item" onclick="nav('items')" id="nav-items">
+    <div class="nav-item" data-page="items" onclick="nav('items')">
       <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 4h12M2 8h12M2 12h8"/></svg>
       Item Manager
     </div>
-    <div class="nav-item" onclick="nav('add-item')" id="nav-add-item">
+    <div class="nav-item" data-page="add-item" onclick="nav('add-item')">
       <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="6"/><path d="M8 5v6M5 8h6"/></svg>
       Add New Item
     </div>
+    <div class="nav-item" data-page="price-history" onclick="nav('price-history')">
+      <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 12L6 8l3 3 5-6"/></svg>
+      Price History
+    </div>
   </div>
-  <div class="nav-section">
+  <div class="nav-group">
     <div class="nav-label">Ordering</div>
-    <div class="nav-item" onclick="nav('order')" id="nav-order">
+    <div class="nav-item" data-page="order-builder" onclick="nav('order-builder')">
       <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 2h10l1 4H2L3 2z"/><path d="M2 6l1 8h10l1-8"/><path d="M6 10h4"/></svg>
       Order Builder
     </div>
-    <div class="nav-item" onclick="nav('orders-history')" id="nav-orders-history">
+    <div class="nav-item" data-page="order-history" onclick="nav('order-history')">
       <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="6"/><path d="M8 5v3l2 2"/></svg>
       Order History
     </div>
   </div>
-  <hr class="nav-divider">
-  <div class="nav-section">
-    <div class="nav-label">Settings</div>
-    <div class="nav-item" onclick="nav('settings')" id="nav-settings">
+  <div class="nav-group">
+    <div class="nav-label">Reports</div>
+    <div class="nav-item" data-page="daily-report" onclick="nav('daily-report')">
+      <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="2" width="12" height="12" rx="1"/><path d="M5 8h6M5 5h6M5 11h4"/></svg>
+      Daily Report
+    </div>
+  </div>
+  <hr class="nav-hr">
+  <div class="nav-group">
+    <div class="nav-item" data-page="settings" onclick="nav('settings')">
       <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="2"/><path d="M8 2v1M8 13v1M2 8h1M13 8h1M3.5 3.5l.7.7M11.8 11.8l.7.7M3.5 12.5l.7-.7M11.8 4.2l.7-.7"/></svg>
       Settings
     </div>
   </div>
 </div>
 
-<!-- MAIN CONTENT -->
+<!-- MAIN -->
 <div class="main">
 
-  <!-- ── DASHBOARD ── -->
-  <div class="page active" id="page-dashboard">
-    <div class="page-header">
+<!-- DASHBOARD -->
+<div class="page active" id="page-dashboard">
+  <div class="page-header" style="display:flex;justify-content:space-between;align-items:flex-start">
+    <div>
       <div class="page-title">Dashboard</div>
-      <div class="page-sub" id="dash-date">Loading...</div>
+      <div class="page-sub" id="dash-date">—</div>
     </div>
-    <div class="metrics" id="dash-metrics">
-      <div class="metric gold"><div class="metric-val" id="m-total">—</div><div class="metric-label">Total Items</div><div class="metric-sub">active in database</div></div>
-      <div class="metric beer"><div class="metric-val" id="m-beer">—</div><div class="metric-label">Beer Items</div><div class="metric-sub">beer + single beer</div></div>
-      <div class="metric green"><div class="metric-val" id="m-wine">—</div><div class="metric-label">Wine Items</div><div class="metric-sub">wine + NA-wine</div></div>
-      <div class="metric blue"><div class="metric-val" id="m-other">—</div><div class="metric-label">Other Items</div><div class="metric-sub">cigar, tobacco, etc.</div></div>
-    </div>
-    <div class="charts-grid">
-      <div class="chart-box">
-        <div class="chart-title">Inventory by category</div>
-        <div class="bar-chart" id="cat-bars"><div class="loading">Loading...</div></div>
-      </div>
-      <div class="chart-box">
-        <div class="chart-title">Margin overview</div>
-        <div class="donut-wrap" id="margin-rows"><div class="loading">Loading...</div></div>
-      </div>
+    <button class="btn btn-sm" onclick="loadDashboard()">↻ Refresh</button>
+  </div>
+  <div class="metrics" id="dash-metrics">
+    <div class="metric"><div class="metric-val gold" id="m-total">—</div><div class="metric-label">Total Items</div><div class="metric-sub">in database</div></div>
+    <div class="metric"><div class="metric-val blue" id="m-beer">—</div><div class="metric-label">Beer Items</div><div class="metric-sub">active</div></div>
+    <div class="metric"><div class="metric-val" style="color:var(--wine)" id="m-wine">—</div><div class="metric-label">Wine Items</div><div class="metric-sub">active</div></div>
+    <div class="metric"><div class="metric-val green" id="m-active">—</div><div class="metric-label">Active Items</div><div class="metric-sub">orderable</div></div>
+  </div>
+  <div class="charts-grid">
+    <div class="card">
+      <div class="card-title">Inventory by category</div>
+      <div class="bar-chart" id="cat-bars"><div class="loading">Loading...</div></div>
     </div>
     <div class="card">
-      <div class="card-title">Low inventory alerts</div>
-      <div id="low-inv-list"><div class="loading">Loading...</div></div>
+      <div class="card-title">Avg margin by category</div>
+      <div class="stat-rows" id="margin-rows"><div class="loading">Loading...</div></div>
     </div>
   </div>
+  <div class="card">
+    <div class="card-title">Low inventory alerts <span id="low-inv-count" style="color:var(--red)"></span></div>
+    <div id="low-inv-list"><div class="loading">Loading...</div></div>
+  </div>
+  <div class="card">
+    <div class="card-title">Recent price changes</div>
+    <div id="price-changes-list"><div class="loading">Loading...</div></div>
+  </div>
+</div>
 
-  <!-- ── ITEM MANAGER ── -->
-  <div class="page" id="page-items">
-    <div class="page-header" style="display:flex;justify-content:space-between;align-items:flex-start;">
-      <div>
-        <div class="page-title">Item Manager</div>
-        <div class="page-sub" id="items-count">Loading items...</div>
-      </div>
-      <button class="btn btn-primary" onclick="nav('add-item')">+ Add new item</button>
+<!-- ITEM MANAGER -->
+<div class="page" id="page-items">
+  <div class="page-header" style="display:flex;justify-content:space-between;align-items:flex-start">
+    <div>
+      <div class="page-title">Item Manager</div>
+      <div class="page-sub" id="items-count">Loading...</div>
     </div>
-    <div class="filter-row">
-      <div class="search-box">
-        <span class="search-icon">⌕</span>
-        <input type="text" id="item-search" placeholder="Search by name, ABS code, UPC..." oninput="filterItems()">
-      </div>
-      <select id="item-cat" onchange="filterItems()">
-        <option value="">All categories</option>
-        <option value="Beer">Beer</option>
-        <option value="Wine">Wine</option>
-        <option value="Single Beer">Single Beer</option>
-        <option value="Custom Beer">Custom Beer</option>
-        <option value="Cigar">Cigar</option>
-        <option value="Tobacco">Tobacco</option>
-      </select>
-      <select id="item-status" onchange="filterItems()">
-        <option value="">All statuses</option>
-        <option value="Active">Active</option>
-        <option value="On Hold">On Hold</option>
-      </select>
-      <select id="item-vendor" onchange="filterItems()">
-        <option value="">All vendors</option>
-      </select>
-    </div>
-    <div class="table-wrap">
-      <table>
-        <thead>
-          <tr>
-            <th onclick="sortItems('GG Name')">Item name ↕</th>
-            <th onclick="sortItems('ABS Code')">ABS code ↕</th>
-            <th>Category</th>
-            <th onclick="sortItems('Sell Price')">Sell price ↕</th>
-            <th onclick="sortItems('Cost')">Cost ↕</th>
-            <th>Margin</th>
-            <th onclick="sortItems('Inventory')">Inventory ↕</th>
-            <th>Vendor</th>
-            <th>Status</th>
-            <th></th>
-          </tr>
-        </thead>
-        <tbody id="items-tbody"></tbody>
-      </table>
-      <div class="pagination">
-        <span id="pagination-info">—</span>
-        <div style="display:flex;gap:8px;">
-          <button class="btn btn-sm" onclick="prevPage()" id="btn-prev">← Prev</button>
-          <button class="btn btn-sm" onclick="nextPage()" id="btn-next">Next →</button>
-        </div>
+    <button class="btn btn-primary" onclick="nav('add-item')">+ Add new item</button>
+  </div>
+  <div class="filter-row">
+    <input type="text" id="item-search" placeholder="Search name, ABS code, UPC..." oninput="debounceSearch()">
+    <select id="item-cat" onchange="loadItems()">
+      <option value="">All categories</option>
+      <option value="Beer">Beer</option>
+      <option value="Wine">Wine</option>
+      <option value="Single Beer">Single Beer</option>
+      <option value="Custom Beer">Custom Beer</option>
+      <option value="Cigar">Cigar</option>
+      <option value="Tobacco">Tobacco</option>
+      <option value="Snacks">Snacks</option>
+      <option value="Drinks">Drinks</option>
+      <option value="On Hold">On Hold</option>
+    </select>
+    <select id="item-status" onchange="loadItems()">
+      <option value="">All statuses</option>
+      <option value="Active">Active</option>
+      <option value="On Hold">On Hold</option>
+    </select>
+  </div>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr>
+        <th onclick="sortItems('gg_name')">Item name</th>
+        <th onclick="sortItems('abs_code')">ABS code</th>
+        <th>Category</th>
+        <th onclick="sortItems('sell_price')">Sell price</th>
+        <th onclick="sortItems('cost')">Cost</th>
+        <th onclick="sortItems('margin_pct')">Margin</th>
+        <th onclick="sortItems('inventory')">Inventory</th>
+        <th>Vendor</th>
+        <th>Status</th>
+        <th></th>
+      </tr></thead>
+      <tbody id="items-tbody"><tr><td colspan="10"><div class="loading">Loading items...</div></td></tr></tbody>
+    </table>
+    <div class="pagination">
+      <span id="items-pagination-info">—</span>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-sm" id="btn-prev" onclick="itemsPage(-1)">← Prev</button>
+        <button class="btn btn-sm" id="btn-next" onclick="itemsPage(1)">Next →</button>
       </div>
     </div>
   </div>
+</div>
 
-  <!-- ── ADD ITEM ── -->
-  <div class="page" id="page-add-item">
-    <div class="page-header">
-      <div class="page-title">Add New Item</div>
-      <div class="page-sub">Add a new product from the county catalog</div>
-    </div>
-    <div class="card">
-      <div class="form-section">County information</div>
-      <div class="form-grid" style="margin-bottom:16px;">
-        <div class="field"><label>ABS Code *</label><input id="new-abs" placeholder="e.g. 12345"></div>
-        <div class="field"><label>Item Name (County) *</label><input id="new-county-name" placeholder="As shown in county catalog"></div>
-        <div class="field"><label>BPC (Bottles/Units per case)</label><input id="new-bpc" type="number" placeholder="e.g. 12"></div>
-        <div class="field"><label>Manufacturer / Supplier</label><input id="new-supplier" placeholder="e.g. ANHEUSER BUSCH"></div>
-        <div class="field"><label>Cost (per case)</label><input id="new-cost" type="number" step="0.01" placeholder="0.00" oninput="calcNewMargin()"></div>
-        <div class="field"><label>Low Discount</label><input id="new-low-dis" type="number" step="0.01" placeholder="0.00"></div>
-        <div class="field"><label>High Discount</label><input id="new-high-dis" type="number" step="0.01" placeholder="0.00"></div>
-        <div class="field"><label>Vendor</label>
-          <select id="new-vendor">
-            <option value="ABS"> ABS</option>
-            <option value="MD Lottery"> MD Lottery</option>
-            <option value="UTZ"> UTZ</option>
-            <option value="Falter"> Falter</option>
-            <option value="Other">Other</option>
-          </select>
-        </div>
-      </div>
-      <div class="form-section">Your store information (Square POS)</div>
-      <div class="form-grid" style="margin-bottom:16px;">
-        <div class="field"><label>GG Name (your name) *</label><input id="new-gg-name" placeholder="e.g. Bud Light 30pk Can" oninput="syncName()"></div>
-        <div class="field"><label>UPC / Barcode</label><input id="new-upc" placeholder="Scan or enter barcode"></div>
-        <div class="field"><label>Category *</label>
-          <select id="new-category">
-            <option value="Beer">Beer</option>
-            <option value="Wine">Wine</option>
-            <option value="Single Beer">Single Beer</option>
-            <option value="Custom Beer">Custom Beer</option>
-            <option value="Cigar">Cigar</option>
-            <option value="Tobacco">Tobacco</option>
-            <option value="Snacks">Snacks</option>
-            <option value="Drinks">Drinks</option>
-            <option value="NA-Beer">NA-Beer</option>
-            <option value="NA-Wine">NA-Wine</option>
-          </select>
-        </div>
-        <div class="field"><label>Sell Size</label><input id="new-sell-size" placeholder="e.g. 1, 6pk, 12pk, 750ml"></div>
-        <div class="field"><label>Sell Price</label><input id="new-sp" type="number" step="0.01" placeholder="0.00" oninput="calcNewMargin()"></div>
-        <div class="field"><label>Margin % (auto)</label><input id="new-margin" readonly style="background:var(--surface2);color:var(--muted);" placeholder="—"></div>
-        <div class="field"><label>Splitted</label>
-          <select id="new-splitted">
-            <option value="Original Item">Original Item</option>
-            <option value="Always Custom">Always Custom</option>
-            <option value="Also made to custom">Also made to custom</option>
-            <option value="Made From 4">Made From 4</option>
-            <option value="Made From 6">Made From 6</option>
-            <option value="Made From 12">Made From 12</option>
-            <option value="Made From 24">Made From 24</option>
-            <option value="Made From 30">Made From 30</option>
-          </select>
-        </div>
-        <div class="field"><label>Made From ABS (if split)</label><input id="new-made-from" placeholder="Parent ABS code"></div>
-      </div>
-      <div class="form-section">Notes</div>
-      <div class="field" style="margin-bottom:20px;"><label>Notes</label><textarea id="new-notes" placeholder="Any additional notes..."></textarea></div>
-      <div style="display:flex;gap:10px;justify-content:flex-end;">
-        <button class="btn" onclick="clearNewItem()">Clear</button>
-        <button class="btn btn-primary" onclick="saveNewItem()" id="btn-save-item">Save to database</button>
-      </div>
-      <div id="save-feedback" style="margin-top:12px;"></div>
-    </div>
-  </div>
-
-  <!-- ── ORDER BUILDER ── -->
-  <div class="page" id="page-order">
-    <div class="page-header">
-      <div class="page-title">Order Builder</div>
-      <div class="page-sub">Upload Square exports to auto-generate your county order</div>
-    </div>
-    <div class="alert alert-gold"><span class="alert-icon">⚠</span><span>Beer deadline: <strong>Wednesday 11am</strong> &nbsp;|&nbsp; Wine deadline: <strong>Friday 11am</strong> &nbsp;|&nbsp; Beer delivery: Thursday &nbsp;|&nbsp; Wine delivery: Monday</span></div>
-
-    <div class="card">
-      <div class="card-title">Upload Square exports</div>
-      <div class="upload-grid">
-        <div class="upload-box" id="ob-inv-box" onclick="document.getElementById('ob-inv').click()">
-          <div class="upload-box-title">Current inventory</div>
-          <div class="upload-box-sub">Square → Reports → Inventory</div>
-          <div class="upload-box-status" id="ob-inv-st">Click to upload CSV</div>
-          <input type="file" id="ob-inv" accept=".csv" style="display:none" onchange="loadOrderFile('inv',this)">
-        </div>
-        <div class="upload-box" id="ob-mtd-box" onclick="document.getElementById('ob-mtd').click()">
-          <div class="upload-box-title">Month-to-date sales</div>
-          <div class="upload-box-sub">Square → Reports → Sales</div>
-          <div class="upload-box-status" id="ob-mtd-st">Click to upload CSV</div>
-          <input type="file" id="ob-mtd" accept=".csv" style="display:none" onchange="loadOrderFile('mtd',this)">
-        </div>
-        <div class="upload-box" id="ob-week-box" onclick="document.getElementById('ob-week').click()">
-          <div class="upload-box-title">Last 7 days sales</div>
-          <div class="upload-box-sub">Square → Reports → Sales (7 days)</div>
-          <div class="upload-box-status" id="ob-week-st">Click to upload CSV</div>
-          <input type="file" id="ob-week" accept=".csv" style="display:none" onchange="loadOrderFile('week',this)">
-        </div>
-        <div class="upload-box" id="ob-ly-box" onclick="document.getElementById('ob-ly').click()">
-          <div class="upload-box-title">Last year same month</div>
-          <div class="upload-box-sub">Square → Reports → Sales (last year)</div>
-          <div class="upload-box-status" id="ob-ly-st">Click to upload CSV</div>
-          <input type="file" id="ob-ly" accept=".csv" style="display:none" onchange="loadOrderFile('ly',this)">
-        </div>
-        <div class="upload-box" id="ob-hol-box" onclick="document.getElementById('ob-hol').click()">
-          <div class="upload-box-title">Holiday sales <span style="font-size:10px;opacity:0.6">optional</span></div>
-          <div class="upload-box-sub">Square → Reports → Sales (holiday week)</div>
-          <div class="upload-box-status" id="ob-hol-st">Click to upload CSV</div>
-          <input type="file" id="ob-hol" accept=".csv" style="display:none" onchange="loadOrderFile('hol',this)">
-        </div>
-      </div>
-    </div>
-
-    <div class="order-settings">
-      <div class="field"><label>Order type</label>
-        <select id="ob-type" onchange="updateDaysCover()">
-          <option value="beer">Beer (Thu delivery)</option>
-          <option value="wine">Wine (Mon delivery)</option>
+<!-- ADD ITEM -->
+<div class="page" id="page-add-item">
+  <div class="page-header"><div class="page-title">Add New Item</div><div class="page-sub">Add a new product from the county catalog</div></div>
+  <div class="card">
+    <div class="form-section">County information</div>
+    <div class="form-grid" style="margin-bottom:16px">
+      <div class="field"><label>ABS Code *</label><input id="new-abs" placeholder="e.g. 12345"></div>
+      <div class="field"><label>Item Name (County) *</label><input id="new-county-name" placeholder="As shown in county catalog"></div>
+      <div class="field"><label>BPC (units per case)</label><input id="new-bpc" type="number" placeholder="12" oninput="calcNewMargin()"></div>
+      <div class="field"><label>Manufacturer / Supplier</label><input id="new-supplier" placeholder="e.g. ANHEUSER BUSCH INC"></div>
+      <div class="field"><label>Cost (per case $)</label><input id="new-cost" type="number" step="0.01" placeholder="0.00" oninput="calcNewMargin()"></div>
+      <div class="field"><label>Low Discount ($)</label><input id="new-low-dis" type="number" step="0.01" placeholder="0.00"></div>
+      <div class="field"><label>High Discount ($)</label><input id="new-high-dis" type="number" step="0.01" placeholder="0.00"></div>
+      <div class="field"><label>Vendor</label>
+        <select id="new-vendor">
+          <option value="ABS"> ABS</option>
+          <option value="MD Lottery"> MD Lottery</option>
+          <option value="UTZ"> UTZ</option>
+          <option value="Falter"> Falter</option>
+          <option value="Other">Other</option>
         </select>
       </div>
-      <div class="field"><label>Days to cover</label><input type="number" id="ob-days" value="8" min="1" max="30"></div>
-      <div class="field"><label>Buffer %</label><input type="number" id="ob-buffer" value="20" min="0" max="100"></div>
-      <div class="field"><label>MTD days elapsed</label><input type="number" id="ob-mtd-days" value="12" min="1" max="31"></div>
-      <div class="field"><label>LY month days</label><input type="number" id="ob-ly-days" value="30" min="1" max="31"></div>
-      <div style="display:flex;align-items:center;gap:8px;padding-bottom:2px;">
-        <input type="checkbox" id="ob-holiday" style="width:14px;height:14px;">
-        <label for="ob-holiday" style="font-size:13px;color:var(--muted);">Use holiday data</label>
-      </div>
-      <button class="btn btn-primary" onclick="buildOrder()" id="btn-build-order">Build order →</button>
     </div>
+    <div class="form-section">Your store info (Square POS)</div>
+    <div class="form-grid" style="margin-bottom:16px">
+      <div class="field"><label>GG Name (your name) *</label><input id="new-gg-name" placeholder="e.g. Bud Light 30pk Can"></div>
+      <div class="field"><label>UPC / Barcode</label><input id="new-upc" placeholder="Scan or enter barcode"></div>
+      <div class="field"><label>Category *</label>
+        <select id="new-category">
+          <option value="Beer">Beer</option><option value="Wine">Wine</option>
+          <option value="Single Beer">Single Beer</option><option value="Custom Beer">Custom Beer</option>
+          <option value="Cigar">Cigar</option><option value="Tobacco">Tobacco</option>
+          <option value="Snacks">Snacks</option><option value="Drinks">Drinks</option>
+          <option value="NA-Beer">NA-Beer</option><option value="NA-Wine">NA-Wine</option>
+        </select>
+      </div>
+      <div class="field"><label>Sell Size</label><input id="new-sell-size" placeholder="e.g. 1, 6pk, 750ml"></div>
+      <div class="field"><label>Sell Price ($)</label><input id="new-sp" type="number" step="0.01" placeholder="0.00" oninput="calcNewMargin()"></div>
+      <div class="field"><label>Margin % (auto)</label><input id="new-margin" readonly placeholder="—"></div>
+      <div class="field"><label>Splitted</label>
+        <select id="new-splitted">
+          <option value="Original Item">Original Item</option>
+          <option value="Always Custom">Always Custom</option>
+          <option value="Also made to custom">Also made to custom</option>
+          <option value="Made From 4">Made From 4</option>
+          <option value="Made From 6">Made From 6</option>
+          <option value="Made From 12">Made From 12</option>
+          <option value="Made From 24">Made From 24</option>
+          <option value="Made From 30">Made From 30</option>
+        </select>
+      </div>
+      <div class="field"><label>Made From ABS (if split)</label><input id="new-made-from" placeholder="Parent ABS code"></div>
+    </div>
+    <div class="field form-grid cols1" style="margin-bottom:20px"><label>Notes</label><textarea id="new-notes" placeholder="Any additional notes..."></textarea></div>
+    <div style="display:flex;gap:10px;justify-content:flex-end">
+      <button class="btn" onclick="clearNewItem()">Clear</button>
+      <button class="btn btn-primary" onclick="saveNewItem()" id="btn-save-item">Save to database</button>
+    </div>
+    <div id="save-feedback" style="margin-top:12px"></div>
+  </div>
+</div>
 
-    <div id="order-results" style="display:none;">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
-        <div>
-          <div style="font-family:var(--font-display);font-size:18px;" id="order-result-title">Order ready</div>
-          <div style="font-size:12px;color:var(--muted);" id="order-result-sub"></div>
-        </div>
-        <div style="display:flex;gap:10px;">
-          <button class="btn btn-gold" onclick="saveOrderToAirtable()">Save to history</button>
-          <button class="btn btn-green" onclick="exportOrderCSV()">Export county CSV</button>
-        </div>
+<!-- PRICE HISTORY -->
+<div class="page" id="page-price-history">
+  <div class="page-header"><div class="page-title">Price History</div><div class="page-sub">All cost and price changes — auto-logged when items are edited</div></div>
+  <div class="filter-row">
+    <input type="text" id="ph-search" placeholder="Search by item name or ABS code..." oninput="loadPriceHistory()">
+    <select id="ph-field" onchange="loadPriceHistory()">
+      <option value="">All changes</option>
+      <option value="Cost">Cost changes</option>
+      <option value="Sell Price">Sell price changes</option>
+    </select>
+  </div>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>Date</th><th>Item</th><th>ABS Code</th><th>Field</th><th>Old value</th><th>New value</th><th>Change %</th></tr></thead>
+      <tbody id="ph-tbody"><tr><td colspan="7"><div class="loading">Loading...</div></td></tr></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ORDER BUILDER -->
+<div class="page" id="page-order-builder">
+  <div class="page-header"><div class="page-title">Order Builder</div><div class="page-sub">Upload Square exports to auto-generate your county order</div></div>
+  <div class="alert alert-gold">Beer deadline: <strong>Wednesday 11am</strong> &nbsp;|&nbsp; Wine deadline: <strong>Friday 11am</strong> &nbsp;|&nbsp; Beer delivery: Thursday &nbsp;|&nbsp; Wine delivery: Monday</div>
+  <div class="card">
+    <div class="card-title">Upload Square exports</div>
+    <div class="upload-grid">
+      <div class="upload-box" id="ob-inv-box" onclick="document.getElementById('ob-inv').click()">
+        <div class="upload-box-title">Current inventory</div>
+        <div class="upload-box-sub">Square → Reports → Inventory</div>
+        <div class="upload-box-status" id="ob-inv-st">Click to upload CSV</div>
+        <input type="file" id="ob-inv" accept=".csv" style="display:none" onchange="loadOrderFile('inv',this)">
       </div>
-      <div class="metrics" style="grid-template-columns:repeat(4,1fr);margin-bottom:16px;" id="order-metrics"></div>
-      <div class="filter-row">
-        <select id="ob-filter-cat" onchange="renderOrderTable()"><option value="">All categories</option><option value="Beer">Beer</option><option value="Wine">Wine</option><option value="Single Beer">Single Beer</option><option value="Custom Beer">Custom Beer</option></select>
-        <select id="ob-filter-conf" onchange="renderOrderTable()"><option value="">All confidence</option><option value="High">High</option><option value="Medium">Medium</option><option value="Low">Low — review</option></select>
+      <div class="upload-box" id="ob-mtd-box" onclick="document.getElementById('ob-mtd').click()">
+        <div class="upload-box-title">Month-to-date sales</div>
+        <div class="upload-box-sub">Square → Reports → Sales</div>
+        <div class="upload-box-status" id="ob-mtd-st">Click to upload CSV</div>
+        <input type="file" id="ob-mtd" accept=".csv" style="display:none" onchange="loadOrderFile('mtd',this)">
       </div>
-      <div class="table-wrap">
-        <table>
-          <thead><tr><th>ABS Code</th><th>Item Name</th><th>Category</th><th>On Hand</th><th>Daily Rate</th><th>Suggested</th><th>Your Qty</th><th>Confidence</th></tr></thead>
-          <tbody id="order-tbody"></tbody>
-        </table>
+      <div class="upload-box" id="ob-week-box" onclick="document.getElementById('ob-week').click()">
+        <div class="upload-box-title">Last 7 days sales</div>
+        <div class="upload-box-sub">Square → Reports → Sales (7d)</div>
+        <div class="upload-box-status" id="ob-week-st">Click to upload CSV</div>
+        <input type="file" id="ob-week" accept=".csv" style="display:none" onchange="loadOrderFile('week',this)">
       </div>
-      <div id="oos-section" style="margin-top:20px;display:none;">
-        <div class="card-title" style="margin-bottom:10px;">Not orderable / out of stock at county</div>
-        <div class="table-wrap"><table><thead><tr><th>ABS Code</th><th>Item</th><th>Daily rate</th></tr></thead><tbody id="oos-tbody"></tbody></table></div>
+      <div class="upload-box" id="ob-ly-box" onclick="document.getElementById('ob-ly').click()">
+        <div class="upload-box-title">Last year same month</div>
+        <div class="upload-box-sub">Square → Reports → Sales (LY)</div>
+        <div class="upload-box-status" id="ob-ly-st">Click to upload CSV</div>
+        <input type="file" id="ob-ly" accept=".csv" style="display:none" onchange="loadOrderFile('ly',this)">
+      </div>
+      <div class="upload-box" id="ob-hol-box" onclick="document.getElementById('ob-hol').click()">
+        <div class="upload-box-title">Holiday sales <span style="font-size:10px;opacity:.6">optional</span></div>
+        <div class="upload-box-sub">Last year holiday week</div>
+        <div class="upload-box-status" id="ob-hol-st">Click to upload CSV</div>
+        <input type="file" id="ob-hol" accept=".csv" style="display:none" onchange="loadOrderFile('hol',this)">
       </div>
     </div>
   </div>
-
-  <!-- ── ORDER HISTORY ── -->
-  <div class="page" id="page-orders-history">
-    <div class="page-header"><div class="page-title">Order History</div><div class="page-sub">All submitted orders</div></div>
-    <div class="table-wrap">
+  <div class="order-cfg">
+    <div class="field"><label>Order type</label>
+      <select id="ob-type" onchange="document.getElementById('ob-days').value=this.value==='Beer'?8:10">
+        <option value="Beer">Beer (Thu delivery)</option>
+        <option value="Wine">Wine (Mon delivery)</option>
+      </select>
+    </div>
+    <div class="field"><label>Days to cover</label><input type="number" id="ob-days" value="8" min="1" max="30"></div>
+    <div class="field"><label>Buffer %</label><input type="number" id="ob-buffer" value="20" min="0" max="100"></div>
+    <div class="field"><label>MTD days elapsed</label><input type="number" id="ob-mtd-days" value="12" min="1" max="31"></div>
+    <div class="field"><label>LY month days</label><input type="number" id="ob-ly-days" value="30" min="1" max="31"></div>
+    <div style="display:flex;align-items:center;gap:8px;padding-bottom:2px">
+      <input type="checkbox" id="ob-holiday" style="width:14px;height:14px">
+      <label for="ob-holiday" style="font-size:13px;color:var(--muted)">Use holiday data</label>
+    </div>
+    <button class="btn btn-primary" onclick="buildOrder()" id="btn-build">Build order →</button>
+  </div>
+  <div id="order-results" style="display:none">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+      <div><div style="font-family:var(--font-display);font-size:20px" id="order-result-title">Order ready</div><div style="font-size:12px;color:var(--muted)" id="order-result-sub"></div></div>
+      <div style="display:flex;gap:10px">
+        <button class="btn btn-gold" onclick="saveOrder()">Save to history</button>
+        <button class="btn btn-green" onclick="exportOrderCSV()">Export county CSV</button>
+      </div>
+    </div>
+    <div class="metrics" style="grid-template-columns:repeat(4,1fr);margin-bottom:14px" id="order-metrics"></div>
+    <div class="filter-row">
+      <select id="ob-filter-cat" onchange="renderOrderTable()"><option value="">All categories</option><option value="Beer">Beer</option><option value="Wine">Wine</option><option value="Single Beer">Single Beer</option></select>
+      <select id="ob-filter-conf" onchange="renderOrderTable()"><option value="">All confidence</option><option value="High">High</option><option value="Medium">Medium</option><option value="Low">Low — review</option></select>
+    </div>
+    <div class="tbl-wrap">
       <table>
-        <thead><tr><th>Order Name</th><th>Type</th><th>Date</th><th>Delivery</th><th>Status</th><th>Items</th><th>Est. Cost</th></tr></thead>
-        <tbody id="orders-tbody"><tr><td colspan="7"><div class="loading">Loading orders...</div></td></tr></tbody>
+        <thead><tr><th>ABS Code</th><th>Item</th><th>Category</th><th>On hand</th><th>Daily rate</th><th>Suggested</th><th>Your qty</th><th>Confidence</th></tr></thead>
+        <tbody id="order-tbody"></tbody>
       </table>
     </div>
+    <div id="oos-section" style="display:none;margin-top:16px">
+      <div class="card-title" style="margin-bottom:10px">Not orderable at county</div>
+      <div class="tbl-wrap"><table><thead><tr><th>ABS Code</th><th>Item</th><th>Daily rate</th></tr></thead><tbody id="oos-tbody"></tbody></table></div>
+    </div>
   </div>
+</div>
 
-  <!-- ── SETTINGS ── -->
-  <div class="page" id="page-settings">
-    <div class="page-header"><div class="page-title">Settings</div><div class="page-sub">Configure your connection and preferences</div></div>
-    <div class="card">
-      <div class="card-title">Airtable connection</div>
-      <div class="form-grid" style="margin-bottom:16px;">
-        <div class="field"><label>Base ID</label><input id="cfg-base" value="appR4ApRZpAXGwoGv"></div>
-        <div class="field"><label>API Token</label><input id="cfg-token" type="password" value="patGH2obuZSf3hANL.75dc36ef4334bcc28ba7e4b6939622f07eb075246e61918395f5608c38979a41"></div>
-      </div>
-      <button class="btn btn-primary" onclick="testConnection()">Test connection</button>
-      <div id="conn-result" style="margin-top:12px;font-size:13px;"></div>
+<!-- ORDER HISTORY -->
+<div class="page" id="page-order-history">
+  <div class="page-header"><div class="page-title">Order History</div><div class="page-sub">All submitted orders</div></div>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>Order</th><th>Type</th><th>Date</th><th>Delivery</th><th>Status</th><th>Items</th><th>Est. Cost</th><th></th></tr></thead>
+      <tbody id="orders-tbody"><tr><td colspan="8"><div class="loading">Loading...</div></td></tr></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- DAILY REPORT -->
+<div class="page" id="page-daily-report">
+  <div class="page-header"><div class="page-title">Daily Report</div><div class="page-sub">Enter today's sales and income figures</div></div>
+  <div class="card">
+    <div class="form-section">Report date</div>
+    <div class="form-grid" style="margin-bottom:16px">
+      <div class="field"><label>Date *</label><input type="date" id="dr-date" value=""></div>
+      <div class="field"><label>Entered by</label><input id="dr-by" placeholder="Your name"></div>
     </div>
-    <div class="card">
-      <div class="card-title">Margin targets by category</div>
-      <div class="form-grid">
-        <div class="field"><label>Beer target %</label><input id="mt-beer" type="number" value="25"></div>
-        <div class="field"><label>Wine target %</label><input id="mt-wine" type="number" value="35"></div>
-        <div class="field"><label>Cigar target %</label><input id="mt-cigar" type="number" value="40"></div>
-        <div class="field"><label>Tobacco target %</label><input id="mt-tobacco" type="number" value="30"></div>
-      </div>
-      <button class="btn btn-primary" style="margin-top:12px;" onclick="saveSettings()">Save settings</button>
+    <div class="form-section">Sales</div>
+    <div class="form-grid cols3" style="margin-bottom:16px">
+      <div class="field"><label>Net Sales ($)</label><input type="number" step="0.01" id="dr-net" placeholder="0.00" oninput="calcDR()"></div>
+      <div class="field"><label>Cash Sales ($)</label><input type="number" step="0.01" id="dr-cash" placeholder="0.00" oninput="calcDR()"></div>
+      <div class="field"><label>Card Sales ($)</label><input type="number" step="0.01" id="dr-card" placeholder="0.00" oninput="calcDR()"></div>
+      <div class="field"><label>Refunds ($)</label><input type="number" step="0.01" id="dr-refunds" placeholder="0.00"></div>
+      <div class="field"><label>Tax Collected ($)</label><input type="number" step="0.01" id="dr-tax" placeholder="0.00"></div>
+    </div>
+    <div class="form-section">Other income</div>
+    <div class="form-grid cols3" style="margin-bottom:16px">
+      <div class="field"><label>Machine Income ($)</label><input type="number" step="0.01" id="dr-machine" placeholder="0.00"></div>
+      <div class="field"><label>Lottery Sales ($)</label><input type="number" step="0.01" id="dr-lottery" placeholder="0.00"></div>
+      <div class="field"><label>Lottery Payout ($)</label><input type="number" step="0.01" id="dr-lottery-payout" placeholder="0.00"></div>
+    </div>
+    <div class="field form-grid cols1" style="margin-bottom:20px"><label>Notes</label><textarea id="dr-notes" placeholder="Any notes about today..."></textarea></div>
+    <div style="background:var(--surface2);border-radius:8px;padding:14px;margin-bottom:16px;font-family:var(--font-mono);font-size:13px">
+      Cash + Card = <span id="dr-check">$0.00</span> &nbsp;|&nbsp; Net Sales = <span id="dr-net-display">$0.00</span>
+      <span id="dr-check-status" style="margin-left:12px"></span>
+    </div>
+    <div style="display:flex;gap:10px;justify-content:flex-end">
+      <button class="btn btn-primary" onclick="saveDailyReport()" id="btn-save-dr">Save report</button>
+    </div>
+    <div id="dr-feedback" style="margin-top:12px"></div>
+  </div>
+  <div class="card" style="margin-top:16px">
+    <div class="card-title">Recent reports</div>
+    <div class="tbl-wrap"><table>
+      <thead><tr><th>Date</th><th>Net Sales</th><th>Cash</th><th>Card</th><th>Machine</th><th>Lottery Net</th><th>By</th></tr></thead>
+      <tbody id="dr-history"><tr><td colspan="7"><div class="loading">Loading...</div></td></tr></tbody>
+    </table></div>
+  </div>
+</div>
+
+<!-- SETTINGS -->
+<div class="page" id="page-settings">
+  <div class="page-header"><div class="page-title">Settings</div><div class="page-sub">Store configuration and connection settings</div></div>
+  <div class="card">
+    <div class="card-title">Store info</div>
+    <div class="form-grid" id="store-info-form" style="margin-bottom:16px">
+      <div class="field"><label>Store name</label><input id="cfg-name" readonly></div>
+      <div class="field"><label>Store type</label><input id="cfg-type" readonly></div>
+      <div class="field"><label>City</label><input id="cfg-city" readonly></div>
+      <div class="field"><label>State</label><input id="cfg-state" readonly></div>
+      <div class="field"><label>County system</label><input id="cfg-county" readonly></div>
+      <div class="field"><label>Plan</label><input id="cfg-plan" readonly></div>
+    </div>
+    <button class="btn btn-primary" onclick="testConnection()">Test connection</button>
+    <div id="conn-result" style="margin-top:12px"></div>
+  </div>
+  <div class="card">
+    <div class="card-title">Order deadlines</div>
+    <div class="form-grid" id="order-deadlines">
+      <div class="field"><label>Beer order deadline</label><input id="cfg-beer-dl" readonly></div>
+      <div class="field"><label>Beer delivery day</label><input id="cfg-beer-del" readonly></div>
+      <div class="field"><label>Wine order deadline</label><input id="cfg-wine-dl" readonly></div>
+      <div class="field"><label>Wine delivery day</label><input id="cfg-wine-del" readonly></div>
     </div>
   </div>
+  <div class="card">
+    <div class="card-title">Margin targets</div>
+    <div class="form-grid cols3">
+      <div class="field"><label>Beer target %</label><input id="cfg-mt-beer" readonly></div>
+      <div class="field"><label>Wine target %</label><input id="cfg-mt-wine" readonly></div>
+      <div class="field"><label>Cigar target %</label><input id="cfg-mt-cigar" readonly></div>
+      <div class="field"><label>Tobacco target %</label><input id="cfg-mt-tobacco" readonly></div>
+      <div class="field"><label>Default target %</label><input id="cfg-mt-default" readonly></div>
+    </div>
+  </div>
+</div>
 
 </div><!-- /main -->
-</div><!-- /app -->
+</div><!-- /layout -->
 
 <!-- EDIT ITEM MODAL -->
 <div class="modal-overlay" id="edit-modal">
@@ -541,18 +596,18 @@ td{padding:10px 14px;vertical-align:middle;}
       <button class="modal-close" onclick="closeModal('edit-modal')">×</button>
     </div>
     <div class="modal-body">
-      <input type="hidden" id="edit-record-id">
+      <input type="hidden" id="edit-id">
       <div class="form-section">County information</div>
-      <div class="form-grid" style="margin-bottom:12px;">
-        <div class="field"><label>ABS Code</label><input id="edit-abs" readonly style="opacity:0.5;"></div>
+      <div class="form-grid" style="margin-bottom:12px">
+        <div class="field"><label>ABS Code</label><input id="edit-abs" readonly style="opacity:.5"></div>
         <div class="field"><label>Item Name (County)</label><input id="edit-county-name"></div>
-        <div class="field"><label>BPC</label><input id="edit-bpc" type="number"></div>
-        <div class="field"><label>Cost</label><input id="edit-cost" type="number" step="0.01" oninput="calcEditMargin()"></div>
-        <div class="field"><label>Low Discount</label><input id="edit-low-dis" type="number" step="0.01"></div>
-        <div class="field"><label>High Discount</label><input id="edit-high-dis" type="number" step="0.01"></div>
+        <div class="field"><label>BPC</label><input id="edit-bpc" type="number" oninput="calcEditMargin()"></div>
+        <div class="field"><label>Cost ($)</label><input id="edit-cost" type="number" step="0.01" oninput="calcEditMargin()"></div>
+        <div class="field"><label>Low Discount ($)</label><input id="edit-low-dis" type="number" step="0.01"></div>
+        <div class="field"><label>High Discount ($)</label><input id="edit-high-dis" type="number" step="0.01"></div>
       </div>
       <div class="form-section">Store information</div>
-      <div class="form-grid" style="margin-bottom:12px;">
+      <div class="form-grid" style="margin-bottom:12px">
         <div class="field"><label>GG Name</label><input id="edit-gg-name"></div>
         <div class="field"><label>UPC</label><input id="edit-upc"></div>
         <div class="field"><label>Category</label>
@@ -562,8 +617,8 @@ td{padding:10px 14px;vertical-align:middle;}
             <option>Snacks</option><option>Drinks</option><option>On Hold</option>
           </select>
         </div>
-        <div class="field"><label>Sell Price</label><input id="edit-sp" type="number" step="0.01" oninput="calcEditMargin()"></div>
-        <div class="field"><label>Margin %</label><input id="edit-margin" readonly style="opacity:0.5;"></div>
+        <div class="field"><label>Sell Price ($)</label><input id="edit-sp" type="number" step="0.01" oninput="calcEditMargin()"></div>
+        <div class="field"><label>Margin % (auto)</label><input id="edit-margin" readonly></div>
         <div class="field"><label>Status</label>
           <select id="edit-status"><option>Active</option><option>On Hold</option><option>Discontinued</option></select>
         </div>
@@ -574,84 +629,43 @@ td{padding:10px 14px;vertical-align:middle;}
     </div>
     <div class="modal-footer">
       <button class="btn" onclick="closeModal('edit-modal')">Cancel</button>
-      <button class="btn btn-primary" onclick="saveEdit()">Save changes</button>
+      <button class="btn btn-primary" onclick="saveEdit()" id="btn-save-edit">Save changes</button>
     </div>
   </div>
 </div>
 
 <script>
-// ── CONFIG ────────────────────────────────────────────────────────────────────
-const CFG = {
-  baseId: 'appR4ApRZpAXGwoGv',
-  token:  'patGH2obuZSf3hANL.75dc36ef4334bcc28ba7e4b6939622f07eb075246e61918395f5608c38979a41',
-  tables: {
-    items:     'tbla9aVf6ykKt4FF0',
-    orders:    'tbltPbonYjrfzJ60O',
-    orderLines:'tblxQ1dQR9aVwFnSP',
-    snapshots: 'tblcsFS0AybrfAaku',
-    priceHist: 'tblUpmDFXrgJvFPnf',
-  }
-};
-
 // ── STATE ─────────────────────────────────────────────────────────────────────
 const ST = {
-  items: [], filtered: [], page: 0, pageSize: 50,
-  sortField: 'GG Name', sortDir: 1,
+  store: {}, items: [], itemsTotal: 0, itemsOffset: 0, itemsLimit: 50,
+  itemsSort: 'gg_name', itemsSortDir: 'asc',
   orderFiles: {}, orderRows: [], oosRows: [],
+  searchTimer: null,
 };
+const API = '';  // relative — same origin
 
-// ── AIRTABLE API ──────────────────────────────────────────────────────────────
-async function atFetch(table, opts = {}) {
-  const params = new URLSearchParams();
-  if (opts.filter) params.set('filterByFormula', opts.filter);
-  if (opts.sort) params.set('sort[0][field]', opts.sort), params.set('sort[0][direction]', opts.sortDir || 'asc');
-  if (opts.max) params.set('maxRecords', opts.max);
-  let allRecords = [], offset = null;
-  do {
-    if (offset) params.set('offset', offset);
-    const url = `https://api.airtable.com/v0/${CFG.baseId}/${table}?${params}`;
-    const r = await fetch(url, { headers: { Authorization: `Bearer ${CFG.token}` } });
-    if (!r.ok) throw new Error(await r.text());
-    const data = await r.json();
-    allRecords = allRecords.concat(data.records || []);
-    offset = data.offset;
-  } while (offset);
-  return allRecords;
+// ── API HELPERS ───────────────────────────────────────────────────────────────
+async function apiGet(path) {
+  const r = await fetch(API + path);
+  if (!r.ok) throw new Error(await r.text());
+  return r.json();
 }
-
-async function atCreate(table, fields) {
-  const r = await fetch(`https://api.airtable.com/v0/${CFG.baseId}/${table}`, {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${CFG.token}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ records: [{ fields }] })
-  });
+async function apiPost(path, body) {
+  const r = await fetch(API + path, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
+  if (!r.ok) throw new Error(await r.text());
+  return r.json();
+}
+async function apiPatch(path, body) {
+  const r = await fetch(API + path, { method:'PATCH', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
   if (!r.ok) throw new Error(await r.text());
   return r.json();
 }
 
-async function atUpdate(table, id, fields) {
-  const r = await fetch(`https://api.airtable.com/v0/${CFG.baseId}/${table}/${id}`, {
-    method: 'PATCH',
-    headers: { Authorization: `Bearer ${CFG.token}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ fields })
-  });
-  if (!r.ok) throw new Error(await r.text());
-  return r.json();
-}
-
-async function atCreateBatch(table, recordsFields) {
-  const results = [];
-  for (let i = 0; i < recordsFields.length; i += 10) {
-    const batch = recordsFields.slice(i, i + 10);
-    const r = await fetch(`https://api.airtable.com/v0/${CFG.baseId}/${table}`, {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${CFG.token}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ records: batch.map(f => ({ fields: f })) })
-    });
-    if (r.ok) { const d = await r.json(); results.push(...(d.records || [])); }
-    await new Promise(res => setTimeout(res, 250));
-  }
-  return results;
+// ── SYNC STATUS ───────────────────────────────────────────────────────────────
+function setSync(state, label) {
+  const dot = document.getElementById('sync-dot');
+  document.getElementById('sync-label').textContent = label;
+  dot.className = 'sync-dot' + (state === 'ok' ? ' ok' : state === 'err' ? ' err' : '');
 }
 
 // ── NAV ───────────────────────────────────────────────────────────────────────
@@ -659,261 +673,208 @@ function nav(page) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
   document.getElementById('page-' + page).classList.add('active');
-  const navEl = document.getElementById('nav-' + page);
+  const navEl = document.querySelector(`[data-page="${page}"]`);
   if (navEl) navEl.classList.add('active');
   if (page === 'dashboard') loadDashboard();
-  if (page === 'items') renderItemsTable();
-  if (page === 'orders-history') loadOrderHistory();
+  if (page === 'items') { ST.itemsOffset = 0; loadItems(); }
+  if (page === 'price-history') loadPriceHistory();
+  if (page === 'order-history') loadOrderHistory();
+  if (page === 'daily-report') { loadDailyHistory(); setTodayDate(); }
+  if (page === 'settings') loadSettings();
 }
 
 // ── DASHBOARD ─────────────────────────────────────────────────────────────────
 async function loadDashboard() {
   document.getElementById('dash-date').textContent = new Date().toLocaleDateString('en-US', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
-  if (!ST.items.length) await loadAllItems();
-
-  const items = ST.items;
-  const beer = items.filter(i => ['Beer','Single Beer','Custom Beer'].includes(i.fields.Category));
-  const wine = items.filter(i => ['Wine','NA-Wine'].includes(i.fields.Category));
-  const other = items.filter(i => !['Beer','Single Beer','Custom Beer','Wine','NA-Wine'].includes(i.fields.Category));
-
-  document.getElementById('m-total').textContent = items.length;
-  document.getElementById('m-beer').textContent = beer.length;
-  document.getElementById('m-wine').textContent = wine.length;
-  document.getElementById('m-other').textContent = other.length;
-
-  // Category bars
-  const cats = {};
-  for (const item of items) {
-    const cat = item.fields.Category || 'Unknown';
-    const inv = parseFloat(item.fields.Inventory || 0);
-    cats[cat] = (cats[cat] || 0) + Math.max(0, inv);
-  }
-  const catsSorted = Object.entries(cats).sort((a, b) => b[1] - a[1]).slice(0, 7);
-  const maxVal = catsSorted[0]?.[1] || 1;
-  const colors = { Beer:'#8b5e1a', Wine:'#6b1f3a', 'Single Beer':'#1a3a5c', 'Custom Beer':'#2d6a4f', Cigar:'#5c3a1a', Tobacco:'#4a4a2a', Snacks:'#6a8b1a' };
-  document.getElementById('cat-bars').innerHTML = catsSorted.map(([cat, val]) => `
-    <div class="bar-row">
-      <div class="bar-label">${cat}</div>
-      <div class="bar-track"><div class="bar-fill" style="width:${(val/maxVal*100).toFixed(1)}%;background:${colors[cat]||'#888'}">${val > 50 ? Math.round(val) : ''}</div></div>
-      <div class="bar-val">${Math.round(val)}</div>
-    </div>`).join('');
-
-  // Margin overview
-  const marginCats = ['Beer', 'Wine', 'Single Beer', 'Cigar', 'Tobacco'];
-  const catColors = {'Beer':'#8b5e1a','Wine':'#6b1f3a','Single Beer':'#1a3a5c','Cigar':'#5c3a1a','Tobacco':'#4a4a2a'};
-  document.getElementById('margin-rows').innerHTML = marginCats.map(cat => {
-    const catItems = items.filter(i => i.fields.Category === cat && i.fields['Margin %']);
-    const avg = catItems.length ? catItems.reduce((s, i) => s + parseFloat(i.fields['Margin %'] || 0), 0) / catItems.length : 0;
-    return `<div class="donut-row">
-      <div class="donut-dot" style="background:${catColors[cat]||'#888'}"></div>
-      <div class="donut-name">${cat}</div>
-      <div class="donut-val">${(avg * 100).toFixed(1)}% avg</div>
-    </div>`;
-  }).join('');
-
-  // Low inventory
-  const lowItems = items.filter(i => {
-    const inv = parseFloat(i.fields.Inventory || 0);
-    return inv <= 2 && inv >= 0 && i.fields.Status === 'Active';
-  }).slice(0, 10);
-  document.getElementById('low-inv-list').innerHTML = lowItems.length
-    ? `<div class="table-wrap"><table><thead><tr><th>Item</th><th>Category</th><th>Inventory</th><th>ABS Code</th></tr></thead><tbody>${
-      lowItems.map(i => `<tr><td>${i.fields['GG Name']||i.fields.Name||'—'}</td><td>${catBadge(i.fields.Category)}</td><td style="color:${parseFloat(i.fields.Inventory||0)===0?'var(--red)':'var(--gold)'};font-family:var(--font-mono)">${i.fields.Inventory||0}</td><td class="mono muted">${i.fields['ABS Code']||'—'}</td></tr>`).join('')
-    }</tbody></table></div>`
-    : '<div class="empty"><div class="empty-title">All good</div><div class="empty-sub">No low inventory alerts</div></div>';
-}
-
-// ── ITEMS ─────────────────────────────────────────────────────────────────────
-async function loadAllItems() {
-  setSyncStatus('loading', 'loading...');
+  setSync('', 'loading...');
   try {
-    ST.items = await atFetch(CFG.tables.items);
-    ST.filtered = [...ST.items];
-    // Build vendor list
-    const vendors = [...new Set(ST.items.map(i => (i.fields.Vendor||'').trim()).filter(Boolean))].sort();
-    const vsel = document.getElementById('item-vendor');
-    if (vsel) vsel.innerHTML = '<option value="">All vendors</option>' + vendors.map(v => `<option value="${v}">${v}</option>`).join('');
-    setSyncStatus('ok', `${ST.items.length} items loaded`);
+    const [dash, cats] = await Promise.all([apiGet('/api/dashboard'), apiGet('/api/stats/categories')]);
+    document.getElementById('m-total').textContent = dash.totalItems.toLocaleString();
+    document.getElementById('m-beer').textContent = dash.beerItems.toLocaleString();
+    document.getElementById('m-wine').textContent = dash.wineItems.toLocaleString();
+    document.getElementById('m-active').textContent = dash.activeItems.toLocaleString();
+
+    // Category bars
+    const catOrder = ['Beer','Wine','Single Beer','Cigar','Tobacco','Custom Beer','Snacks','Drinks','NA-Beer','NA-Wine'];
+    const catColors = { Beer:'#8b5e1a', Wine:'#6b1f3a', 'Single Beer':'#1a3a5c', 'Custom Beer':'#2d6a4f', Cigar:'#5c3a1a', Tobacco:'#4a4a2a', Snacks:'#6a8b1a', Drinks:'#1a5c5a', 'NA-Beer':'#555', 'NA-Wine':'#7a3a5a' };
+    const catsSorted = catOrder.filter(c => cats[c]).map(c => [c, cats[c]]);
+    const maxInv = Math.max(...catsSorted.map(([,v]) => v.totalInventory), 1);
+    document.getElementById('cat-bars').innerHTML = catsSorted.map(([cat, data]) => `
+      <div class="bar-row">
+        <div class="bar-label" title="${cat}">${cat}</div>
+        <div class="bar-track"><div class="bar-fill" style="width:${(data.totalInventory/maxInv*100).toFixed(1)}%;background:${catColors[cat]||'#888'}">${data.totalInventory > 50 ? Math.round(data.totalInventory) : ''}</div></div>
+        <div class="bar-val">${Math.round(data.totalInventory)}</div>
+      </div>`).join('');
+
+    // Margin rows
+    document.getElementById('margin-rows').innerHTML = catsSorted.map(([cat, data]) => `
+      <div class="stat-row">
+        <div class="stat-name"><div class="stat-dot" style="background:${catColors[cat]||'#888'}"></div>${cat}</div>
+        <div class="stat-val">${data.avg_margin !== null ? data.avg_margin + '%' : '—'}</div>
+      </div>`).join('');
+
+    // Low inventory
+    const low = dash.lowInv || [];
+    document.getElementById('low-inv-count').textContent = low.length ? `(${low.length})` : '';
+    document.getElementById('low-inv-list').innerHTML = low.length
+      ? `<div class="tbl-wrap"><table><thead><tr><th>Item</th><th>Category</th><th>Inventory</th><th>ABS Code</th></tr></thead><tbody>${
+          low.map(i => `<tr><td style="font-weight:500">${i.gg_name||'—'}</td><td>${catBadge(i.category)}</td><td style="font-family:var(--font-mono);color:${parseFloat(i.inventory||0)===0?'var(--red)':'var(--gold)'}">${i.inventory}</td><td class="mono muted">${i.abs_code||'—'}</td></tr>`).join('')
+        }</tbody></table></div>`
+      : '<div style="color:var(--faint);font-size:13px;padding:12px 0">No low inventory alerts</div>';
+
+    // Price changes
+    const pc = dash.priceChanges || [];
+    document.getElementById('price-changes-list').innerHTML = pc.length
+      ? `<div class="tbl-wrap"><table><thead><tr><th>Date</th><th>Item</th><th>Field</th><th>Old</th><th>New</th><th>Change</th></tr></thead><tbody>${
+          pc.map(p => {
+            const pct = parseFloat(p.change_pct || 0);
+            const color = pct > 0 ? 'var(--red)' : 'var(--green)';
+            return `<tr><td class="mono muted">${p.change_date||'—'}</td><td>${p.gg_name||'—'}</td><td>${p.field_changed}</td><td class="mono">$${parseFloat(p.old_value||0).toFixed(2)}</td><td class="mono">$${parseFloat(p.new_value||0).toFixed(2)}</td><td class="mono" style="color:${color}">${pct > 0 ? '+' : ''}${(pct*100).toFixed(1)}%</td></tr>`;
+          }).join('')
+        }</tbody></table></div>`
+      : '<div style="color:var(--faint);font-size:13px;padding:12px 0">No recent price changes</div>';
+
+    setSync('ok', `${dash.totalItems.toLocaleString()} items`);
   } catch(e) {
-    setSyncStatus('error', 'connection error');
+    setSync('err', 'error');
     console.error(e);
   }
 }
 
-function filterItems() {
-  const search = (document.getElementById('item-search')?.value || '').toLowerCase();
-  const cat = document.getElementById('item-cat')?.value || '';
-  const status = document.getElementById('item-status')?.value || '';
-  const vendor = document.getElementById('item-vendor')?.value || '';
-  ST.filtered = ST.items.filter(i => {
-    const f = i.fields;
-    if (search && !((f['GG Name']||f.Name||'').toLowerCase().includes(search) || (f['ABS Code']||'').toLowerCase().includes(search) || (f.UPC||'').toLowerCase().includes(search))) return false;
-    if (cat && f.Category !== cat) return false;
-    if (status && f.Status !== status) return false;
-    if (vendor && (f.Vendor||'').trim() !== vendor) return false;
-    return true;
-  });
-  ST.page = 0;
-  renderItemsTable();
+// ── ITEMS ─────────────────────────────────────────────────────────────────────
+let searchTimeout;
+function debounceSearch() {
+  clearTimeout(searchTimeout);
+  searchTimeout = setTimeout(() => { ST.itemsOffset = 0; loadItems(); }, 350);
+}
+
+async function loadItems() {
+  setSync('', 'loading...');
+  const search = document.getElementById('item-search').value.trim();
+  const category = document.getElementById('item-cat').value;
+  const status = document.getElementById('item-status').value;
+  const params = new URLSearchParams({ limit: ST.itemsLimit, offset: ST.itemsOffset, sort: ST.itemsSort, dir: ST.itemsSortDir });
+  if (search) params.set('search', search);
+  if (category) params.set('category', category);
+  if (status) params.set('status', status);
+  try {
+    const data = await apiGet('/api/items?' + params);
+    ST.items = data.items || [];
+    ST.itemsTotal = data.total || 0;
+    renderItemsTable();
+    setSync('ok', ST.itemsTotal.toLocaleString() + ' items');
+    document.getElementById('items-count').textContent = ST.itemsTotal.toLocaleString() + ' items' + (search || category || status ? ' (filtered)' : '');
+  } catch(e) { setSync('err', 'error'); console.error(e); }
 }
 
 function sortItems(field) {
-  if (ST.sortField === field) ST.sortDir *= -1; else { ST.sortField = field; ST.sortDir = 1; }
-  ST.filtered.sort((a, b) => {
-    const av = a.fields[field] || '', bv = b.fields[field] || '';
-    return typeof av === 'number' ? (av - bv) * ST.sortDir : String(av).localeCompare(String(bv)) * ST.sortDir;
-  });
-  renderItemsTable();
+  if (ST.itemsSort === field) ST.itemsSortDir = ST.itemsSortDir === 'asc' ? 'desc' : 'asc';
+  else { ST.itemsSort = field; ST.itemsSortDir = 'asc'; }
+  ST.itemsOffset = 0;
+  loadItems();
+}
+
+function itemsPage(dir) {
+  ST.itemsOffset = Math.max(0, ST.itemsOffset + dir * ST.itemsLimit);
+  loadItems();
 }
 
 function renderItemsTable() {
-  if (!ST.items.length) { loadAllItems().then(() => { ST.filtered = [...ST.items]; renderItemsTable(); }); return; }
-  const start = ST.page * ST.pageSize;
-  const page = ST.filtered.slice(start, start + ST.pageSize);
   const tbody = document.getElementById('items-tbody');
-  if (!page.length) { tbody.innerHTML = '<tr><td colspan="10"><div class="empty"><div class="empty-title">No items found</div></div></td></tr>'; return; }
-  tbody.innerHTML = page.map(item => {
-    const f = item.fields;
-    const name = f['GG Name'] || f.Name || '—';
-    const margin = f['Margin %'] ? (parseFloat(f['Margin %']) * 100).toFixed(1) + '%' : '—';
-    const marginColor = parseFloat(f['Margin %'] || 0) < 0.2 ? 'var(--red)' : parseFloat(f['Margin %'] || 0) > 0.35 ? 'var(--green)' : 'var(--gold)';
+  if (!ST.items.length) { tbody.innerHTML = '<tr><td colspan="10"><div class="empty"><div class="empty-title">No items found</div></div></td></tr>'; return; }
+  tbody.innerHTML = ST.items.map(item => {
+    const margin = item.margin_pct ? (parseFloat(item.margin_pct)*100).toFixed(1)+'%' : '—';
+    const mColor = !item.margin_pct ? 'var(--muted)' : parseFloat(item.margin_pct) < 0.2 ? 'var(--red)' : parseFloat(item.margin_pct) > 0.35 ? 'var(--green)' : 'var(--gold)';
+    const invColor = parseFloat(item.inventory||0) <= 0 ? 'var(--red)' : parseFloat(item.inventory||0) <= 2 ? 'var(--gold)' : 'var(--text)';
     return `<tr>
-      <td style="font-weight:500;">${name}</td>
-      <td class="mono muted">${f['ABS Code']||'—'}</td>
-      <td>${catBadge(f.Category)}</td>
-      <td class="mono">${f['Sell Price'] ? '$' + parseFloat(f['Sell Price']).toFixed(2) : '—'}</td>
-      <td class="mono muted">${f.Cost ? '$' + parseFloat(f.Cost).toFixed(2) : '—'}</td>
-      <td class="mono" style="color:${marginColor}">${margin}</td>
-      <td class="mono" style="color:${parseFloat(f.Inventory||0) <= 2 ? 'var(--red)' : parseFloat(f.Inventory||0) <= 5 ? 'var(--gold)' : 'var(--text)'}">${f.Inventory ?? '—'}</td>
-      <td class="muted" style="font-size:12px;">${(f.Vendor||'').trim()||'—'}</td>
-      <td>${statusBadge(f.Status)}</td>
-      <td><button class="btn btn-sm" onclick="openEdit('${item.id}')">edit</button></td>
+      <td style="font-weight:500">${item.gg_name||'—'}</td>
+      <td class="mono muted">${item.abs_code||'—'}</td>
+      <td>${catBadge(item.category)}</td>
+      <td class="mono">${item.sell_price ? '$'+parseFloat(item.sell_price).toFixed(2) : '—'}</td>
+      <td class="mono muted">${item.cost ? '$'+parseFloat(item.cost).toFixed(2) : '—'}</td>
+      <td class="mono" style="color:${mColor}">${margin}</td>
+      <td class="mono" style="color:${invColor}">${item.inventory ?? '—'}</td>
+      <td class="muted" style="font-size:12px">${(item.vendor||'').trim()||'—'}</td>
+      <td>${statusBadge(item.status)}</td>
+      <td><button class="btn btn-sm" onclick="openEdit(${item.id})">edit</button></td>
     </tr>`;
   }).join('');
-  const total = ST.filtered.length;
-  document.getElementById('items-count').textContent = `${total} items${ST.items.length !== total ? ' (filtered from ' + ST.items.length + ')' : ''}`;
-  document.getElementById('pagination-info').textContent = `Showing ${start + 1}–${Math.min(start + ST.pageSize, total)} of ${total}`;
-  document.getElementById('btn-prev').disabled = ST.page === 0;
-  document.getElementById('btn-next').disabled = start + ST.pageSize >= total;
+  const start = ST.itemsOffset + 1, end = Math.min(ST.itemsOffset + ST.itemsLimit, ST.itemsTotal);
+  document.getElementById('items-pagination-info').textContent = `${start}–${end} of ${ST.itemsTotal}`;
+  document.getElementById('btn-prev').disabled = ST.itemsOffset === 0;
+  document.getElementById('btn-next').disabled = end >= ST.itemsTotal;
 }
 
-function prevPage() { if (ST.page > 0) { ST.page--; renderItemsTable(); } }
-function nextPage() { if ((ST.page + 1) * ST.pageSize < ST.filtered.length) { ST.page++; renderItemsTable(); } }
-
 // ── EDIT ITEM ─────────────────────────────────────────────────────────────────
-function openEdit(id) {
-  const item = ST.items.find(i => i.id === id);
-  if (!item) return;
-  const f = item.fields;
-  document.getElementById('edit-record-id').value = id;
-  document.getElementById('edit-modal-title').textContent = f['GG Name'] || f.Name || 'Edit item';
-  document.getElementById('edit-abs').value = f['ABS Code'] || '';
-  document.getElementById('edit-county-name').value = f['Item Name (County)'] || '';
-  document.getElementById('edit-bpc').value = f.BPC || '';
-  document.getElementById('edit-cost').value = f.Cost || '';
-  document.getElementById('edit-low-dis').value = f['Low Discount'] || '';
-  document.getElementById('edit-high-dis').value = f['High Discount'] || '';
-  document.getElementById('edit-gg-name').value = f['GG Name'] || f.Name || '';
-  document.getElementById('edit-upc').value = f.UPC || '';
-  document.getElementById('edit-category').value = f.Category || 'Beer';
-  document.getElementById('edit-sp').value = f['Sell Price'] || '';
-  document.getElementById('edit-margin').value = f['Margin %'] ? (parseFloat(f['Margin %']) * 100).toFixed(2) + '%' : '';
-  document.getElementById('edit-status').value = f.Status || 'Active';
-  document.getElementById('edit-inv').value = f.Inventory || '';
-  document.getElementById('edit-vendor').value = (f.Vendor || '').trim();
-  document.getElementById('edit-notes').value = f.Notes || '';
+async function openEdit(id) {
+  let item = ST.items.find(i => i.id === id);
+  if (!item) { try { item = await apiGet('/api/items/'+id); } catch(e) { return; } }
+  document.getElementById('edit-id').value = id;
+  document.getElementById('edit-modal-title').textContent = item.gg_name || 'Edit item';
+  document.getElementById('edit-abs').value = item.abs_code || '';
+  document.getElementById('edit-county-name').value = item.county_name || '';
+  document.getElementById('edit-bpc').value = item.bpc || '';
+  document.getElementById('edit-cost').value = item.cost || '';
+  document.getElementById('edit-low-dis').value = item.low_discount || '';
+  document.getElementById('edit-high-dis').value = item.high_discount || '';
+  document.getElementById('edit-gg-name').value = item.gg_name || '';
+  document.getElementById('edit-upc').value = item.upc || '';
+  document.getElementById('edit-category').value = item.category || 'Beer';
+  document.getElementById('edit-sp').value = item.sell_price || '';
+  document.getElementById('edit-margin').value = item.margin_pct ? (parseFloat(item.margin_pct)*100).toFixed(2)+'%' : '';
+  document.getElementById('edit-status').value = item.status || 'Active';
+  document.getElementById('edit-inv').value = item.inventory ?? '';
+  document.getElementById('edit-vendor').value = (item.vendor||'').trim();
+  document.getElementById('edit-notes').value = item.notes || '';
   openModal('edit-modal');
 }
 
 function calcEditMargin() {
-  const cost = parseFloat(document.getElementById('edit-cost').value) || 0;
-  const sp = parseFloat(document.getElementById('edit-sp').value) || 0;
-  const bpc = parseFloat(document.getElementById('edit-bpc').value) || 1;
-  if (sp > 0 && cost > 0 && bpc > 0) {
-    const cpUnit = cost / bpc;
-    const margin = (sp - cpUnit) / sp;
-    document.getElementById('edit-margin').value = (margin * 100).toFixed(2) + '%';
+  const cost = parseFloat(document.getElementById('edit-cost').value)||0;
+  const sp = parseFloat(document.getElementById('edit-sp').value)||0;
+  const bpc = parseFloat(document.getElementById('edit-bpc').value)||1;
+  if (cost > 0 && sp > 0 && bpc > 0) {
+    const cpu = cost/bpc;
+    document.getElementById('edit-margin').value = ((sp-cpu)/sp*100).toFixed(2)+'%';
   }
 }
 
 async function saveEdit() {
-  const id = document.getElementById('edit-record-id').value;
-  const ggName = document.getElementById('edit-gg-name').value.trim();
-  const cost = parseFloat(document.getElementById('edit-cost').value) || null;
-  const sp = parseFloat(document.getElementById('edit-sp').value) || null;
-  const bpc = parseInt(document.getElementById('edit-bpc').value) || null;
-  const cpu = cost && bpc ? parseFloat((cost / bpc).toFixed(4)) : null;
-  let margin = null;
-  if (cost && sp && bpc) margin = parseFloat(((sp - cost/bpc) / sp).toFixed(4));
-
-  const oldItem = ST.items.find(i => i.id === id);
-  const oldCost = oldItem?.fields?.Cost;
-  const oldSP = oldItem?.fields?.['Sell Price'];
-
-  const fields = {};
-  if (ggName) { fields['Name'] = ggName; fields['GG Name'] = ggName; }
-  if (document.getElementById('edit-county-name').value) fields['Item Name (County)'] = document.getElementById('edit-county-name').value;
-  if (bpc) fields['BPC'] = bpc;
-  if (cost) fields['Cost'] = cost;
-  if (document.getElementById('edit-low-dis').value) fields['Low Discount'] = parseFloat(document.getElementById('edit-low-dis').value);
-  if (document.getElementById('edit-high-dis').value) fields['High Discount'] = parseFloat(document.getElementById('edit-high-dis').value);
-  if (cpu) fields['Cost Per Unit'] = cpu;
-  if (sp) fields['Sell Price'] = sp;
-  if (margin !== null) fields['Margin %'] = margin;
-  fields['Category'] = document.getElementById('edit-category').value;
-  fields['Status'] = document.getElementById('edit-status').value;
-  const inv = document.getElementById('edit-inv').value;
-  if (inv !== '') fields['Inventory'] = parseFloat(inv);
-  if (document.getElementById('edit-vendor').value) fields['Vendor'] = document.getElementById('edit-vendor').value;
-  if (document.getElementById('edit-notes').value) fields['Notes'] = document.getElementById('edit-notes').value;
-  fields['Last Updated'] = new Date().toLocaleDateString('en-US');
-
+  const id = document.getElementById('edit-id').value;
+  const btn = document.getElementById('btn-save-edit');
+  btn.disabled = true; btn.textContent = 'Saving...';
+  const updates = {
+    gg_name: document.getElementById('edit-gg-name').value.trim(),
+    county_name: document.getElementById('edit-county-name').value.trim() || null,
+    bpc: parseInt(document.getElementById('edit-bpc').value) || null,
+    cost: parseFloat(document.getElementById('edit-cost').value) || null,
+    low_discount: parseFloat(document.getElementById('edit-low-dis').value) || null,
+    high_discount: parseFloat(document.getElementById('edit-high-dis').value) || null,
+    sell_price: parseFloat(document.getElementById('edit-sp').value) || null,
+    upc: document.getElementById('edit-upc').value.trim() || null,
+    category: document.getElementById('edit-category').value,
+    status: document.getElementById('edit-status').value,
+    inventory: document.getElementById('edit-inv').value !== '' ? parseFloat(document.getElementById('edit-inv').value) : null,
+    vendor: document.getElementById('edit-vendor').value.trim() || null,
+    notes: document.getElementById('edit-notes').value.trim() || null,
+  };
+  Object.keys(updates).forEach(k => updates[k] === null && delete updates[k]);
   try {
-    await atUpdate(CFG.tables.items, id, fields);
-    // Log price changes
-    if (oldCost && cost && Math.abs(oldCost - cost) > 0.001) {
-      await atCreate(CFG.tables.priceHist, {
-        'ABS Code': oldItem.fields['ABS Code'], 'GG Name': ggName,
-        'Change Date': new Date().toISOString().slice(0,10),
-        'Field Changed': 'Cost', 'Old Value': oldCost, 'New Value': cost,
-        'Change %': parseFloat(((cost - oldCost) / oldCost).toFixed(4)),
-      });
-    }
-    if (oldSP && sp && Math.abs(oldSP - sp) > 0.001) {
-      await atCreate(CFG.tables.priceHist, {
-        'ABS Code': oldItem.fields['ABS Code'], 'GG Name': ggName,
-        'Change Date': new Date().toISOString().slice(0,10),
-        'Field Changed': 'Sell Price', 'Old Value': oldSP, 'New Value': sp,
-        'Change %': parseFloat(((sp - oldSP) / oldSP).toFixed(4)),
-      });
-    }
-    // Update local state
-    const idx = ST.items.findIndex(i => i.id === id);
-    if (idx >= 0) ST.items[idx].fields = { ...ST.items[idx].fields, ...fields };
-    filterItems();
+    await apiPatch('/api/items/'+id, updates);
     closeModal('edit-modal');
-    setSyncStatus('ok', 'saved');
-  } catch(e) {
-    alert('Save failed: ' + e.message);
-  }
+    loadItems();
+    setSync('ok', 'saved');
+  } catch(e) { alert('Save failed: ' + e.message); }
+  btn.disabled = false; btn.textContent = 'Save changes';
 }
 
-// ── ADD NEW ITEM ──────────────────────────────────────────────────────────────
-function syncName() {
-  const v = document.getElementById('new-gg-name').value;
-  // auto fills county name if blank
-  const cn = document.getElementById('new-county-name');
-  if (!cn.value) cn.value = v.toUpperCase();
-}
-
+// ── ADD ITEM ──────────────────────────────────────────────────────────────────
 function calcNewMargin() {
-  const cost = parseFloat(document.getElementById('new-cost').value) || 0;
-  const sp = parseFloat(document.getElementById('new-sp').value) || 0;
-  const bpc = parseFloat(document.getElementById('new-bpc').value) || 1;
-  if (sp > 0 && cost > 0 && bpc > 0) {
-    const cpu = cost / bpc;
-    const margin = (sp - cpu) / sp;
-    document.getElementById('new-margin').value = (margin * 100).toFixed(2) + '%';
+  const cost = parseFloat(document.getElementById('new-cost').value)||0;
+  const sp = parseFloat(document.getElementById('new-sp').value)||0;
+  const bpc = parseFloat(document.getElementById('new-bpc').value)||1;
+  if (cost > 0 && sp > 0 && bpc > 0) {
+    document.getElementById('new-margin').value = ((sp - cost/bpc)/sp*100).toFixed(2)+'%';
   }
 }
 
@@ -923,74 +884,86 @@ async function saveNewItem() {
   const ggName = document.getElementById('new-gg-name').value.trim();
   const absCode = document.getElementById('new-abs').value.trim();
   if (!ggName || !absCode) { fb.innerHTML = '<div class="alert alert-gold">GG Name and ABS Code are required.</div>'; return; }
-
   btn.disabled = true; btn.textContent = 'Saving...';
-  const cost = parseFloat(document.getElementById('new-cost').value) || null;
-  const sp = parseFloat(document.getElementById('new-sp').value) || null;
-  const bpc = parseInt(document.getElementById('new-bpc').value) || null;
-  const cpu = cost && bpc ? parseFloat((cost / bpc).toFixed(4)) : null;
-  const margin = cost && sp && bpc ? parseFloat(((sp - cost/bpc) / sp).toFixed(4)) : null;
-
-  const fields = {
-    'Name': ggName, 'GG Name': ggName, 'ABS Code': absCode,
-    'Item Name (County)': document.getElementById('new-county-name').value.trim() || null,
-    'Category': document.getElementById('new-category').value,
-    'Status': 'Active',
-    'Splitted': document.getElementById('new-splitted').value,
-    'BPC': bpc, 'Sell Size': document.getElementById('new-sell-size').value.trim() || null,
-    'Cost': cost, 'Sell Price': sp, 'Cost Per Unit': cpu, 'Margin %': margin,
-    'Low Discount': parseFloat(document.getElementById('new-low-dis').value) || null,
-    'High Discount': parseFloat(document.getElementById('new-high-dis').value) || null,
-    'Vendor': document.getElementById('new-vendor').value,
-    'Supplier': document.getElementById('new-supplier').value.trim() || null,
-    'UPC': document.getElementById('new-upc').value.trim() || null,
-    'Made From ABS': document.getElementById('new-made-from').value.trim() || null,
-    'Notes': document.getElementById('new-notes').value.trim() || null,
-    'Last Updated': new Date().toLocaleDateString('en-US'),
+  const item = {
+    gg_name: ggName, abs_code: absCode,
+    county_name: document.getElementById('new-county-name').value.trim() || null,
+    category: document.getElementById('new-category').value,
+    status: 'Active',
+    splitted: document.getElementById('new-splitted').value,
+    bpc: parseInt(document.getElementById('new-bpc').value) || null,
+    sell_size: document.getElementById('new-sell-size').value.trim() || null,
+    cost: parseFloat(document.getElementById('new-cost').value) || null,
+    low_discount: parseFloat(document.getElementById('new-low-dis').value) || null,
+    high_discount: parseFloat(document.getElementById('new-high-dis').value) || null,
+    sell_price: parseFloat(document.getElementById('new-sp').value) || null,
+    vendor: document.getElementById('new-vendor').value,
+    supplier: document.getElementById('new-supplier').value.trim() || null,
+    upc: document.getElementById('new-upc').value.trim() || null,
+    made_from_abs: document.getElementById('new-made-from').value.trim() || null,
+    notes: document.getElementById('new-notes').value.trim() || null,
   };
-  // Remove nulls
-  Object.keys(fields).forEach(k => fields[k] === null && delete fields[k]);
-
+  Object.keys(item).forEach(k => item[k] === null && delete item[k]);
   try {
-    const result = await atCreate(CFG.tables.items, fields);
-    ST.items.push(result.records[0]);
-    fb.innerHTML = `<div class="alert alert-green">✓ "${ggName}" saved to database successfully.</div>`;
+    await apiPost('/api/items', item);
+    fb.innerHTML = `<div class="alert alert-green">Saved "${ggName}" successfully.</div>`;
     clearNewItem();
-  } catch(e) {
-    fb.innerHTML = `<div class="alert alert-gold">Error saving: ${e.message}</div>`;
-  }
+  } catch(e) { fb.innerHTML = `<div class="alert alert-gold">Error: ${e.message}</div>`; }
   btn.disabled = false; btn.textContent = 'Save to database';
 }
 
 function clearNewItem() {
-  ['new-abs','new-county-name','new-gg-name','new-upc','new-bpc','new-cost','new-low-dis','new-high-dis','new-sp','new-margin','new-supplier','new-sell-size','new-made-from','new-notes'].forEach(id => {
-    const el = document.getElementById(id); if (el) el.value = '';
-  });
+  ['new-abs','new-county-name','new-gg-name','new-upc','new-bpc','new-cost','new-low-dis','new-high-dis','new-sp','new-margin','new-supplier','new-sell-size','new-made-from','new-notes'].forEach(id => { const el=document.getElementById(id); if(el) el.value=''; });
+}
+
+// ── PRICE HISTORY ─────────────────────────────────────────────────────────────
+async function loadPriceHistory() {
+  const search = document.getElementById('ph-search').value.trim();
+  const field = document.getElementById('ph-field').value;
+  let path = '/api/price-history?';
+  if (search) path += `abs_code=${encodeURIComponent(search)}&`;
+  try {
+    let data = await apiGet(path);
+    if (field) data = data.filter(r => r.field_changed === field);
+    if (search && data.length === 0) {
+      // try name search client-side from loaded data
+    }
+    const tbody = document.getElementById('ph-tbody');
+    if (!data.length) { tbody.innerHTML = '<tr><td colspan="7"><div class="empty"><div class="empty-title">No price changes found</div></div></td></tr>'; return; }
+    tbody.innerHTML = data.map(p => {
+      const pct = parseFloat(p.change_pct||0);
+      const color = pct > 0 ? 'var(--red)' : 'var(--green)';
+      return `<tr>
+        <td class="mono muted">${p.change_date||'—'}</td>
+        <td style="font-weight:500">${p.gg_name||'—'}</td>
+        <td class="mono">${p.abs_code||'—'}</td>
+        <td>${p.field_changed}</td>
+        <td class="mono">$${parseFloat(p.old_value||0).toFixed(2)}</td>
+        <td class="mono">$${parseFloat(p.new_value||0).toFixed(2)}</td>
+        <td class="mono" style="color:${color}">${pct>0?'+':''}${(pct*100).toFixed(1)}%</td>
+      </tr>`;
+    }).join('');
+  } catch(e) { console.error(e); }
 }
 
 // ── ORDER BUILDER ─────────────────────────────────────────────────────────────
-function updateDaysCover() {
-  const type = document.getElementById('ob-type').value;
-  document.getElementById('ob-days').value = type === 'beer' ? 8 : 10;
-}
-
 function parseCSV(text) {
   const lines = text.trim().split('\n');
   const headers = splitLine(lines[0]).map(h => h.replace(/^"|"$/g,'').trim());
   return lines.slice(1).map(l => {
     const vals = splitLine(l);
-    return Object.fromEntries(headers.map((h, i) => [h, (vals[i]||'').replace(/^"|"$/g,'').trim()]));
+    return Object.fromEntries(headers.map((h,i) => [h, (vals[i]||'').replace(/^"|"$/g,'').trim()]));
   }).filter(r => Object.values(r).some(v => v));
 }
 
 function splitLine(line) {
-  const r = []; let cur = ''; let inQ = false;
-  for (let ch of line) { if (ch === '"') inQ = !inQ; else if (ch === ',' && !inQ) { r.push(cur); cur = ''; } else cur += ch; }
+  const r=[]; let cur=''; let inQ=false;
+  for(let ch of line){ if(ch==='"') inQ=!inQ; else if(ch===','&&!inQ){r.push(cur);cur='';} else cur+=ch; }
   r.push(cur); return r;
 }
 
 function loadOrderFile(key, input) {
-  const file = input.files[0]; if (!file) return;
+  const file = input.files[0]; if(!file) return;
   const reader = new FileReader();
   reader.onload = e => {
     ST.orderFiles[key] = parseCSV(e.target.result);
@@ -1002,253 +975,291 @@ function loadOrderFile(key, input) {
 
 async function buildOrder() {
   if (!ST.orderFiles.inv || !ST.orderFiles.mtd || !ST.orderFiles.week || !ST.orderFiles.ly) {
-    alert('Please upload inventory, MTD sales, 7-day sales, and last year sales CSVs first.'); return;
+    alert('Please upload all required CSV files first.'); return;
   }
-  const btn = document.getElementById('btn-build-order');
+  const btn = document.getElementById('btn-build');
   btn.disabled = true; btn.textContent = 'Building...';
+  setSync('', 'building order...');
+  try {
+    const daysCover = parseInt(document.getElementById('ob-days').value)||8;
+    const bufferPct = parseFloat(document.getElementById('ob-buffer').value)/100||0.2;
+    const mtdDays = parseInt(document.getElementById('ob-mtd-days').value)||12;
+    const lyDays = parseInt(document.getElementById('ob-ly-days').value)||30;
+    const useHoliday = document.getElementById('ob-holiday').checked && ST.orderFiles.hol;
+    const orderType = document.getElementById('ob-type').value;
 
-  if (!ST.items.length) await loadAllItems();
+    const allItems = await apiGet('/api/items/all');
 
-  const daysCover = parseInt(document.getElementById('ob-days').value) || 8;
-  const bufferPct = parseFloat(document.getElementById('ob-buffer').value) / 100 || 0.2;
-  const mtdDays = parseInt(document.getElementById('ob-mtd-days').value) || 12;
-  const lyDays = parseInt(document.getElementById('ob-ly-days').value) || 30;
-  const useHoliday = document.getElementById('ob-holiday').checked && ST.orderFiles.hol;
-  const orderType = document.getElementById('ob-type').value;
+    const buildSalesMap = (rows, days) => {
+      const m = {};
+      for(const r of rows){
+        const sku = r['SKU']||r['Token']||Object.values(r)[1]||'';
+        const qty = parseFloat((r['Quantity']||r['Net Quantity']||r['Qty Sold']||Object.values(r)[2]||'0').replace(/[^0-9.\-]/g,''))||0;
+        if(sku) m[sku] = (m[sku]||0) + qty;
+      }
+      const d = {};
+      for(const [k,v] of Object.entries(m)) d[k] = v/days;
+      return d;
+    };
 
-  // Build sales maps from Square CSVs (keyed by SKU/Token)
-  const invMap = {};
-  for (const r of ST.orderFiles.inv) {
-    const sku = r['SKU'] || r['Token'] || Object.values(r)[1] || '';
-    const qty = parseFloat((r['Quantity'] || r['On Hand'] || '0').replace(/[^0-9.\-]/g,'')) || 0;
-    if (sku) invMap[sku] = qty;
-  }
-
-  const buildSalesMap = (rows, days) => {
-    const m = {};
-    for (const r of rows) {
-      const sku = r['SKU'] || r['Token'] || Object.values(r)[1] || '';
-      const qty = parseFloat((r['Quantity'] || r['Net Quantity'] || r['Qty Sold'] || Object.values(r)[2] || '0').replace(/[^0-9.\-]/g,'')) || 0;
-      if (sku) m[sku] = (m[sku] || 0) + qty;
+    const invMap = {};
+    for(const r of ST.orderFiles.inv){
+      const sku = r['SKU']||r['Token']||Object.values(r)[1]||'';
+      const qty = parseFloat((r['Quantity']||r['On Hand']||'0').replace(/[^0-9.\-]/g,''))||0;
+      if(sku) invMap[sku] = qty;
     }
-    const daily = {};
-    for (const [k, v] of Object.entries(m)) daily[k] = v / days;
-    return daily;
-  };
 
-  const weekDaily = buildSalesMap(ST.orderFiles.week, 7);
-  const mtdDaily = buildSalesMap(ST.orderFiles.mtd, mtdDays);
-  const lyDaily = buildSalesMap(ST.orderFiles.ly, lyDays);
-  const holDaily = useHoliday ? buildSalesMap(ST.orderFiles.hol, 7) : {};
+    const weekD = buildSalesMap(ST.orderFiles.week, 7);
+    const mtdD = buildSalesMap(ST.orderFiles.mtd, mtdDays);
+    const lyD = buildSalesMap(ST.orderFiles.ly, lyDays);
+    const holD = useHoliday ? buildSalesMap(ST.orderFiles.hol, 7) : {};
 
-  // Build custom consumption map
-  const customConsumption = {};
-  for (const item of ST.items) {
-    const f = item.fields;
-    if (f['Made From ABS'] && f.Inventory < 0) {
-      const splitNum = parseInt((f.Splitted||'').match(/\d+/)?.[0] || 1);
-      if (!customConsumption[f['Made From ABS']]) customConsumption[f['Made From ABS']] = 0;
-      customConsumption[f['Made From ABS']] += Math.abs(f.Inventory) / splitNum;
+    const customConsumption = {};
+    for(const item of allItems){
+      if(item.made_from_abs && parseFloat(item.inventory||0) < 0){
+        const splitNum = parseInt((item.splitted||'').match(/\d+/)?.[0]||1);
+        customConsumption[item.made_from_abs] = (customConsumption[item.made_from_abs]||0) + Math.abs(parseFloat(item.inventory))/splitNum;
+      }
     }
-  }
 
-  const orderRows = [];
-  const oosRows = [];
-  const catFilter = orderType === 'beer' ? ['Beer','Single Beer','Custom Beer','NA-Beer'] : ['Wine','NA-Wine'];
+    const catFilter = orderType === 'Beer' ? ['Beer','Single Beer','Custom Beer','NA-Beer'] : ['Wine','NA-Wine'];
+    ST.orderRows = [];
 
-  for (const item of ST.items) {
-    const f = item.fields;
-    if (!catFilter.includes(f.Category)) continue;
-    if (f.Status === 'On Hold' || f.Status === 'Discontinued') continue;
-    if (!f['ABS Code'] || f['ABS Code'] === 'GGCustom') continue;
+    for(const item of allItems){
+      if(!catFilter.includes(item.category)) continue;
+      if(item.status === 'On Hold' || item.status === 'Discontinued') continue;
+      if(!item.abs_code || item.abs_code === 'GGCustom') continue;
 
-    const sku = f.UPC || f['ABS Code'] || '';
-    const trueOnHand = (parseFloat(f.Inventory || 0)) - (customConsumption[f['ABS Code']] || 0);
-    const w = weekDaily[sku] || 0;
-    const m = mtdDaily[sku] || 0;
-    const ly = lyDaily[sku] || 0;
-    const h = holDaily[sku] || 0;
-    const dailyRate = useHoliday ? w*0.35+m*0.2+ly*0.15+h*0.3 : w*0.5+m*0.3+ly*0.2;
+      const sku = item.upc || item.abs_code || '';
+      const trueOnHand = parseFloat(item.inventory||0) - (customConsumption[item.abs_code]||0);
+      const w = weekD[sku]||0, m = mtdD[sku]||0, ly = lyD[sku]||0, h = holD[sku]||0;
+      const dailyRate = useHoliday ? w*.35+m*.2+ly*.15+h*.3 : w*.5+m*.3+ly*.2;
+      if(dailyRate === 0 && trueOnHand > 2) continue;
 
-    if (dailyRate === 0 && trueOnHand > 0) continue;
+      const signals=[w,m,ly];
+      const avg = signals.reduce((a,b)=>a+b,0)/3;
+      const maxDev = Math.max(...signals.map(s=>Math.abs(s-avg)));
+      let conf = avg === 0 ? 'Low' : maxDev/avg > 1.2 ? 'Low' : maxDev/avg > 0.5 ? 'Medium' : 'High';
 
-    const signals = [w, m, ly];
-    const avg = signals.reduce((a, b) => a + b, 0) / 3;
-    const maxDev = Math.max(...signals.map(s => Math.abs(s - avg)));
-    let conf = 'High';
-    if (avg > 0 && maxDev / avg > 0.5) conf = 'Medium';
-    if (avg > 0 && maxDev / avg > 1.2) conf = 'Low';
-    if (avg === 0) conf = 'Low';
-
-    const rawNeed = dailyRate * daysCover;
-    const withBuffer = rawNeed * (1 + bufferPct);
-    const orderQty = Math.max(0, Math.ceil(withBuffer - Math.max(0, trueOnHand)));
-
-    if (orderQty > 0 || conf === 'Low') {
-      orderRows.push({
-        absCode: f['ABS Code'], name: f['GG Name'] || f.Name || '—',
-        category: f.Category, onHand: parseFloat(trueOnHand.toFixed(1)),
-        dailyRate: parseFloat(dailyRate.toFixed(3)), suggested: orderQty,
-        override: '', conf, cost: f['Cost Per Unit'] || 0,
-        recordId: item.id,
-      });
+      const rawNeed = dailyRate * daysCover;
+      const orderQty = Math.max(0, Math.ceil(rawNeed*(1+bufferPct) - Math.max(0, trueOnHand)));
+      if(orderQty > 0 || conf === 'Low')
+        ST.orderRows.push({ absCode:item.abs_code, name:item.gg_name||'—', category:item.category, onHand:parseFloat(trueOnHand.toFixed(1)), dailyRate:parseFloat(dailyRate.toFixed(3)), suggested:orderQty, override:'', conf, cost:parseFloat(item.cost_per_unit||0), itemId:item.id });
     }
-  }
 
-  ST.orderRows = orderRows.sort((a, b) => a.name.localeCompare(b.name));
-  ST.oosRows = oosRows;
-
-  document.getElementById('order-results').style.display = '';
-  document.getElementById('order-result-title').textContent = orderType === 'beer' ? 'Beer order ready' : 'Wine order ready';
-  document.getElementById('order-result-sub').textContent = `${orderRows.length} items — deadline ${orderType === 'beer' ? 'Wednesday 11am' : 'Friday 11am'}`;
-  renderOrderMetrics();
-  renderOrderTable();
-  btn.disabled = false; btn.textContent = 'Build order →';
+    ST.orderRows.sort((a,b) => a.name.localeCompare(b.name));
+    document.getElementById('order-results').style.display = '';
+    document.getElementById('order-result-title').textContent = orderType + ' order ready';
+    document.getElementById('order-result-sub').textContent = ST.orderRows.length + ' items — deadline ' + (orderType==='Beer'?'Wednesday 11am':'Friday 11am');
+    renderOrderMetrics();
+    renderOrderTable();
+    setSync('ok', 'order built');
+  } catch(e) { setSync('err','error'); console.error(e); }
+  btn.disabled=false; btn.textContent='Build order →';
 }
 
 function renderOrderMetrics() {
   const rows = ST.orderRows;
-  const total = rows.reduce((a, r) => a + r.suggested, 0);
-  const cost = rows.reduce((a, r) => a + (r.suggested * (r.cost || 0)), 0);
-  const high = rows.filter(r => r.conf === 'High').length;
-  const review = rows.filter(r => r.conf === 'Low').length;
+  const total = rows.reduce((a,r)=>a+(parseInt(r.override)||r.suggested),0);
+  const high = rows.filter(r=>r.conf==='High').length;
+  const review = rows.filter(r=>r.conf==='Low').length;
   document.getElementById('order-metrics').innerHTML = `
     <div class="metric"><div class="metric-val gold">${rows.length}</div><div class="metric-label">Items to order</div></div>
     <div class="metric"><div class="metric-val">${total}</div><div class="metric-label">Total units</div></div>
-    <div class="metric green"><div class="metric-val green">${high}</div><div class="metric-label">High confidence</div></div>
-    <div class="metric red"><div class="metric-val red">${review}</div><div class="metric-label">Need review</div></div>
-  `;
+    <div class="metric"><div class="metric-val green">${high}</div><div class="metric-label">High confidence</div></div>
+    <div class="metric"><div class="metric-val red">${review}</div><div class="metric-label">Need review</div></div>`;
 }
 
 function renderOrderTable() {
-  const catF = document.getElementById('ob-filter-cat')?.value || '';
-  const confF = document.getElementById('ob-filter-conf')?.value || '';
+  const catF = document.getElementById('ob-filter-cat')?.value||'';
+  const confF = document.getElementById('ob-filter-conf')?.value||'';
   let rows = ST.orderRows;
-  if (catF) rows = rows.filter(r => r.category === catF);
-  if (confF) rows = rows.filter(r => r.conf === confF);
-  const confColor = { High: 'var(--green)', Medium: 'var(--gold)', Low: 'var(--red)' };
-  document.getElementById('order-tbody').innerHTML = rows.map((r, i) => `
-    <tr>
-      <td class="mono muted">${r.absCode}</td>
-      <td style="font-weight:500;">${r.name}</td>
-      <td>${catBadge(r.category)}</td>
-      <td class="mono">${r.onHand}</td>
-      <td class="mono">${r.dailyRate}/day</td>
-      <td class="mono" style="font-weight:500;">${r.suggested}</td>
-      <td><input type="number" value="${r.override || r.suggested}" min="0" style="width:64px;padding:4px 6px;border:1px solid var(--border2);border-radius:var(--r);font-family:var(--font-mono);font-size:13px;" onchange="ST.orderRows.find(x=>x.absCode==='${r.absCode}').override=this.value;renderOrderMetrics()"></td>
-      <td style="color:${confColor[r.conf]};font-family:var(--font-mono);font-size:12px;">${r.conf}</td>
-    </tr>`).join('');
+  if(catF) rows = rows.filter(r=>r.category===catF);
+  if(confF) rows = rows.filter(r=>r.conf===confF);
+  const confColor = {High:'var(--green)',Medium:'var(--gold)',Low:'var(--red)'};
+  document.getElementById('order-tbody').innerHTML = rows.map((r,i) => `<tr>
+    <td class="mono muted">${r.absCode}</td>
+    <td style="font-weight:500">${r.name}</td>
+    <td>${catBadge(r.category)}</td>
+    <td class="mono">${r.onHand}</td>
+    <td class="mono">${r.dailyRate}/day</td>
+    <td class="mono" style="font-weight:500">${r.suggested}</td>
+    <td><input type="number" value="${r.override||r.suggested}" min="0" style="width:64px;padding:4px 6px;border:1px solid var(--border2);border-radius:5px;font-family:var(--font-mono);font-size:13px" onchange="ST.orderRows.find(x=>x.absCode==='${r.absCode}').override=this.value;renderOrderMetrics()"></td>
+    <td style="font-family:var(--font-mono);font-size:12px;color:${confColor[r.conf]}">${r.conf}</td>
+  </tr>`).join('');
 }
 
 function exportOrderCSV() {
-  const rows = ST.orderRows.filter(r => (parseInt(r.override) || r.suggested) > 0);
-  const lines = [['County Product Code', 'Item Name', 'Quantity'].join(',')];
-  for (const r of rows) {
-    const qty = parseInt(r.override) || r.suggested;
-    lines.push([r.absCode, `"${r.name}"`, qty].join(','));
-  }
-  const blob = new Blob([lines.join('\n')], { type: 'text/csv' });
+  const rows = ST.orderRows.filter(r=>(parseInt(r.override)||r.suggested)>0);
+  const lines = [['County Product Code','Item Name','Quantity'].join(',')];
+  for(const r of rows) lines.push([r.absCode, `"${r.name}"`, parseInt(r.override)||r.suggested].join(','));
+  const blob = new Blob([lines.join('\n')], {type:'text/csv'});
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
   a.download = `GG_Order_${document.getElementById('ob-type').value}_${new Date().toISOString().slice(0,10)}.csv`;
   a.click();
 }
 
-async function saveOrderToAirtable() {
+async function saveOrder() {
   const orderType = document.getElementById('ob-type').value;
   const today = new Date().toISOString().slice(0,10);
-  const delivery = orderType === 'beer'
-    ? new Date(Date.now() + 3*86400000).toISOString().slice(0,10)
-    : new Date(Date.now() + 5*86400000).toISOString().slice(0,10);
-  const rows = ST.orderRows.filter(r => (parseInt(r.override)||r.suggested) > 0);
-  const totalCost = rows.reduce((a,r)=>(a+(parseInt(r.override)||r.suggested)*(r.cost||0)),0);
+  const rows = ST.orderRows.filter(r=>(parseInt(r.override)||r.suggested)>0);
+  const totalCost = rows.reduce((a,r)=>a+(parseInt(r.override)||r.suggested)*(r.cost||0),0);
   try {
-    const orderResult = await atCreate(CFG.tables.orders, {
-      'Order Name': `${orderType.charAt(0).toUpperCase()+orderType.slice(1)} Order — ${today}`,
-      'Order Type': orderType.charAt(0).toUpperCase()+orderType.slice(1),
-      'Order Date': today, 'Delivery Date': delivery,
-      'Status': 'Submitted', 'Total Items': rows.length,
-      'Estimated Cost': parseFloat(totalCost.toFixed(2)),
+    await apiPost('/api/orders', {
+      order: { order_name:`${orderType} Order — ${today}`, order_type:orderType, order_date:today, status:'Submitted', total_items:rows.length, estimated_cost:parseFloat(totalCost.toFixed(2)) },
+      lines: rows.map(r=>({ abs_code:r.absCode, gg_name:r.name, category:r.category, suggested_qty:r.suggested, final_qty:parseInt(r.override)||r.suggested, on_hand:r.onHand, daily_rate:r.dailyRate, confidence:r.conf, cost_per_unit:r.cost, line_total:parseFloat(((parseInt(r.override)||r.suggested)*(r.cost||0)).toFixed(2)) }))
     });
-    const orderId = orderResult.records[0].id;
-    const orderName = orderResult.records[0].fields['Order Name'];
-    await atCreateBatch(CFG.tables.orderLines, rows.map(r => ({
-      'Order Name': orderName, 'ABS Code': r.absCode,
-      'GG Name': r.name, 'Category': r.category,
-      'Suggested Qty': r.suggested, 'Final Qty': parseInt(r.override)||r.suggested,
-      'On Hand': r.onHand, 'Daily Rate': r.dailyRate,
-      'Confidence': r.conf, 'Cost Per Unit': r.cost || 0,
-      'Line Total': parseFloat(((parseInt(r.override)||r.suggested)*(r.cost||0)).toFixed(2)),
-    })));
-    alert(`Order saved to history: ${orderName}`);
-  } catch(e) { alert('Error saving order: ' + e.message); }
+    alert('Order saved to history!');
+  } catch(e) { alert('Error saving: '+e.message); }
 }
 
 // ── ORDER HISTORY ─────────────────────────────────────────────────────────────
 async function loadOrderHistory() {
   try {
-    const orders = await atFetch(CFG.tables.orders, { sort: 'Order Date', sortDir: 'desc' });
+    const orders = await apiGet('/api/orders');
     const tbody = document.getElementById('orders-tbody');
-    if (!orders.length) { tbody.innerHTML = '<tr><td colspan="7"><div class="empty"><div class="empty-title">No orders yet</div></div></td></tr>'; return; }
-    tbody.innerHTML = orders.map(o => {
-      const f = o.fields;
-      return `<tr>
-        <td style="font-weight:500;">${f['Order Name']||'—'}</td>
-        <td>${catBadge(f['Order Type'])}</td>
-        <td class="mono muted">${f['Order Date']||'—'}</td>
-        <td class="mono muted">${f['Delivery Date']||'—'}</td>
-        <td>${statusBadge(f.Status)}</td>
-        <td class="mono">${f['Total Items']||'—'}</td>
-        <td class="mono">${f['Estimated Cost'] ? '$' + parseFloat(f['Estimated Cost']).toFixed(2) : '—'}</td>
-      </tr>`;
-    }).join('');
-  } catch(e) { console.error(e); }
+    if(!orders.length){ tbody.innerHTML='<tr><td colspan="8"><div class="empty"><div class="empty-title">No orders yet</div></div></td></tr>'; return; }
+    tbody.innerHTML = orders.map(o => `<tr>
+      <td style="font-weight:500">${o.order_name||'—'}</td>
+      <td>${catBadge(o.order_type)}</td>
+      <td class="mono muted">${o.order_date||'—'}</td>
+      <td class="mono muted">${o.delivery_date||'—'}</td>
+      <td>${statusBadge(o.status)}</td>
+      <td class="mono">${o.total_items||'—'}</td>
+      <td class="mono">${o.estimated_cost?'$'+parseFloat(o.estimated_cost).toFixed(2):'—'}</td>
+      <td><button class="btn btn-sm" onclick="viewOrderLines(${o.id})">View</button></td>
+    </tr>`).join('');
+  } catch(e){ console.error(e); }
 }
 
-// ── SETTINGS ─────────────────────────────────────────────────────────────────
+async function viewOrderLines(id) {
+  try {
+    const lines = await apiGet('/api/orders/'+id+'/lines');
+    alert(`Order has ${lines.length} lines.\n\nTop items:\n${lines.slice(0,5).map(l=>l.gg_name+': '+l.final_qty).join('\n')}`);
+  } catch(e){ alert('Error: '+e.message); }
+}
+
+// ── DAILY REPORT ──────────────────────────────────────────────────────────────
+function setTodayDate() {
+  const today = new Date().toISOString().slice(0,10);
+  document.getElementById('dr-date').value = today;
+}
+
+function calcDR() {
+  const net = parseFloat(document.getElementById('dr-net').value)||0;
+  const cash = parseFloat(document.getElementById('dr-cash').value)||0;
+  const card = parseFloat(document.getElementById('dr-card').value)||0;
+  const sum = cash + card;
+  document.getElementById('dr-check').textContent = '$'+sum.toFixed(2);
+  document.getElementById('dr-net-display').textContent = '$'+net.toFixed(2);
+  const diff = Math.abs(sum - net);
+  const status = document.getElementById('dr-check-status');
+  if(net === 0 && sum === 0){ status.textContent=''; return; }
+  if(diff < 0.02){ status.innerHTML='<span style="color:var(--green)">✓ Balanced</span>'; }
+  else{ status.innerHTML=`<span style="color:var(--red)">Difference: $${diff.toFixed(2)}</span>`; }
+}
+
+async function saveDailyReport() {
+  const btn = document.getElementById('btn-save-dr');
+  const fb = document.getElementById('dr-feedback');
+  const date = document.getElementById('dr-date').value;
+  if(!date){ fb.innerHTML='<div class="alert alert-gold">Please select a date.</div>'; return; }
+  btn.disabled = true; btn.textContent = 'Saving...';
+  const data = {
+    report_date: date,
+    net_sales: parseFloat(document.getElementById('dr-net').value)||null,
+    cash_sales: parseFloat(document.getElementById('dr-cash').value)||null,
+    card_sales: parseFloat(document.getElementById('dr-card').value)||null,
+    refunds: parseFloat(document.getElementById('dr-refunds').value)||null,
+    tax_collected: parseFloat(document.getElementById('dr-tax').value)||null,
+    machine_income: parseFloat(document.getElementById('dr-machine').value)||null,
+    lottery_sales: parseFloat(document.getElementById('dr-lottery').value)||null,
+    lottery_payout: parseFloat(document.getElementById('dr-lottery-payout').value)||null,
+    notes: document.getElementById('dr-notes').value.trim()||null,
+    entered_by: document.getElementById('dr-by').value.trim()||null,
+  };
+  Object.keys(data).forEach(k => data[k]===null && delete data[k]);
+  try {
+    await apiPost('/api/daily-reports', data);
+    fb.innerHTML='<div class="alert alert-green">Report saved successfully.</div>';
+    loadDailyHistory();
+  } catch(e){ fb.innerHTML=`<div class="alert alert-gold">Error: ${e.message}</div>`; }
+  btn.disabled=false; btn.textContent='Save report';
+}
+
+async function loadDailyHistory() {
+  try {
+    const now = new Date();
+    const data = await apiGet(`/api/daily-reports?month=${now.getMonth()+1}&year=${now.getFullYear()}`);
+    const tbody = document.getElementById('dr-history');
+    if(!data.length){ tbody.innerHTML='<tr><td colspan="7" style="text-align:center;color:var(--faint);padding:16px">No reports this month</td></tr>'; return; }
+    tbody.innerHTML = data.map(r=>`<tr>
+      <td class="mono" style="font-weight:500">${r.report_date}</td>
+      <td class="mono">${r.net_sales?'$'+parseFloat(r.net_sales).toFixed(2):'—'}</td>
+      <td class="mono muted">${r.cash_sales?'$'+parseFloat(r.cash_sales).toFixed(2):'—'}</td>
+      <td class="mono muted">${r.card_sales?'$'+parseFloat(r.card_sales).toFixed(2):'—'}</td>
+      <td class="mono muted">${r.machine_income?'$'+parseFloat(r.machine_income).toFixed(2):'—'}</td>
+      <td class="mono muted">${r.lottery_sales&&r.lottery_payout?'$'+(parseFloat(r.lottery_sales)-parseFloat(r.lottery_payout)).toFixed(2):'—'}</td>
+      <td class="muted" style="font-size:12px">${r.entered_by||'—'}</td>
+    </tr>`).join('');
+  } catch(e){ console.error(e); }
+}
+
+// ── SETTINGS ──────────────────────────────────────────────────────────────────
+async function loadSettings() {
+  try {
+    const store = await apiGet('/api/store');
+    ST.store = store;
+    document.getElementById('store-logo').innerHTML = store.store_name + ' <em>STORE MANAGER</em>';
+    document.getElementById('cfg-name').value = store.store_name||'';
+    document.getElementById('cfg-type').value = store.store_type||'';
+    document.getElementById('cfg-city').value = store.city||'';
+    document.getElementById('cfg-state').value = store.state||'';
+    document.getElementById('cfg-county').value = store.county_system||'';
+    document.getElementById('cfg-plan').value = store.plan||'';
+    document.getElementById('cfg-beer-dl').value = store.beer_order_deadline||'';
+    document.getElementById('cfg-beer-del').value = store.beer_delivery_day||'';
+    document.getElementById('cfg-wine-dl').value = store.wine_order_deadline||'';
+    document.getElementById('cfg-wine-del').value = store.wine_delivery_day||'';
+    document.getElementById('cfg-mt-beer').value = store.margin_beer ? store.margin_beer+'%' : '';
+    document.getElementById('cfg-mt-wine').value = store.margin_wine ? store.margin_wine+'%' : '';
+    document.getElementById('cfg-mt-cigar').value = store.margin_cigar ? store.margin_cigar+'%' : '';
+    document.getElementById('cfg-mt-tobacco').value = store.margin_tobacco ? store.margin_tobacco+'%' : '';
+    document.getElementById('cfg-mt-default').value = store.margin_default ? store.margin_default+'%' : '';
+  } catch(e){ console.error(e); }
+}
+
 async function testConnection() {
   const btn = document.querySelector('[onclick="testConnection()"]');
-  btn.textContent = 'Testing...'; btn.disabled = true;
+  btn.textContent='Testing...'; btn.disabled=true;
   try {
-    const items = await atFetch(CFG.tables.items, { max: 1 });
-    document.getElementById('conn-result').innerHTML = '<div class="alert alert-green">✓ Connected — Airtable responding normally</div>';
-  } catch(e) {
-    document.getElementById('conn-result').innerHTML = '<div class="alert alert-gold">✗ Connection failed: ' + e.message + '</div>';
+    await apiGet('/api/store');
+    document.getElementById('conn-result').innerHTML='<div class="alert alert-green">Connected — Supabase responding normally</div>';
+  } catch(e){
+    document.getElementById('conn-result').innerHTML=`<div class="alert alert-gold">Connection failed: ${e.message}</div>`;
   }
-  btn.textContent = 'Test connection'; btn.disabled = false;
-}
-
-function saveSettings() {
-  CFG.baseId = document.getElementById('cfg-base').value;
-  CFG.token = document.getElementById('cfg-token').value;
-  alert('Settings saved for this session.');
+  btn.textContent='Test connection'; btn.disabled=false;
 }
 
 // ── HELPERS ───────────────────────────────────────────────────────────────────
-function catBadge(cat) {
-  const map = { Beer:'badge-beer', Wine:'badge-wine', 'Single Beer':'badge-blue', 'Custom Beer':'badge-gold', Cigar:'badge-gold', Tobacco:'badge-gray', 'On Hold':'badge-gray', Active:'badge-green' };
-  return `<span class="badge ${map[cat]||'badge-gray'}">${cat||'—'}</span>`;
-}
+const CAT_BADGE = { Beer:'badge-beer', Wine:'badge-wine', 'Single Beer':'badge-blue', 'Custom Beer':'badge-gold', Cigar:'badge-gold', Tobacco:'badge-gray', 'NA-Beer':'badge-gray', 'NA-Wine':'badge-gray', 'On Hold':'badge-gray', 'Active':'badge-green' };
+const STATUS_BADGE = { Active:'badge-green', 'On Hold':'badge-gold', Discontinued:'badge-red', Submitted:'badge-blue', Delivered:'badge-green', Draft:'badge-gray', Partial:'badge-gold' };
 
-function statusBadge(status) {
-  const map = { Active:'badge-green', 'On Hold':'badge-gold', Discontinued:'badge-red', Submitted:'badge-blue', Delivered:'badge-green', Draft:'badge-gray', Partial:'badge-gold' };
-  return `<span class="badge ${map[status]||'badge-gray'}">${status||'—'}</span>`;
-}
-
-function openModal(id) { document.getElementById(id).classList.add('open'); }
-function closeModal(id) { document.getElementById(id).classList.remove('open'); }
-
-function setSyncStatus(state, text) {
-  const el = document.getElementById('sync-status');
-  el.textContent = text;
-  el.className = 'sync-badge' + (state === 'ok' ? ' ok' : state === 'loading' ? ' loading' : '');
-}
+function catBadge(cat) { return `<span class="badge ${CAT_BADGE[cat]||'badge-gray'}">${cat||'—'}</span>`; }
+function statusBadge(s) { return `<span class="badge ${STATUS_BADGE[s]||'badge-gray'}">${s||'—'}</span>`; }
+function openModal(id){ document.getElementById(id).classList.add('open'); }
+function closeModal(id){ document.getElementById(id).classList.remove('open'); }
 
 // ── INIT ──────────────────────────────────────────────────────────────────────
-(async function init() {
-  loadDashboard();
-  await loadAllItems();
-  renderItemsTable();
+(async function init(){
+  try {
+    const store = await apiGet('/api/store');
+    ST.store = store;
+    if(store.store_name) document.getElementById('store-logo').innerHTML = store.store_name + ' <em>STORE MANAGER</em>';
+    setSync('ok', 'connected');
+    loadDashboard();
+  } catch(e){ setSync('err','connection error'); }
 })();
 </script>
 </body>
