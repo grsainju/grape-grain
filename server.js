@@ -5,7 +5,6 @@ const cors = require('cors');
 const app = express();
 app.use(cors());
 app.use(express.json({ limit: '10mb' }));
-app.use(express.static(path.join(__dirname, 'public')));
 
 const SUPABASE_URL = process.env.SUPABASE_URL || 'https://rlgsnznwdsfhpnsscrxs.supabase.co';
 const SUPABASE_KEY = process.env.SUPABASE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJsZ3Nuem53ZHNmaHBuc3NjcnhzIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NjA0MTExOCwiZXhwIjoyMDkxNjE3MTE4fQ.9bJxrUqpxa4gMqP5F4nJGH7Zp6IIZE8rNZQYk9p3FHM';
@@ -57,11 +56,7 @@ async function sbPost(table, data, prefer = 'return=representation') {
 
 async function sbPatch(table, id, data) {
   const url = `${SUPABASE_URL}/rest/v1/${table}?id=eq.${id}&store_id=eq.${STORE_ID}`;
-  const r = await sbFetch(url, {
-    method: 'PATCH',
-    headers: sbHeaders,
-    body: JSON.stringify(data)
-  });
+  const r = await sbFetch(url, { method: 'PATCH', headers: sbHeaders, body: JSON.stringify(data) });
   if (!r.ok) throw new Error(`PATCH ${table}: ${r.status} ${await r.text()}`);
   return r.json();
 }
@@ -72,6 +67,12 @@ async function sbCount(table, filter = '') {
   const range = r.headers.get('content-range') || '*/0';
   return parseInt(range.split('/')[1]) || 0;
 }
+
+// ── PAGE ROUTES ───────────────────────────────────────────────────────────────
+app.get('/staff', (req, res) => res.sendFile(path.join(__dirname, 'public', 'staff.html')));
+app.get('/staff/reports', (req, res) => res.sendFile(path.join(__dirname, 'public', 'staff-reports.html')));
+app.get('/owner', (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
+app.use(express.static(path.join(__dirname, 'public')));
 
 // ── STORE ─────────────────────────────────────────────────────────────────────
 app.get('/api/store', async (req, res) => {
@@ -101,11 +102,10 @@ app.get('/api/dashboard', async (req, res) => {
 // ── ITEMS ─────────────────────────────────────────────────────────────────────
 app.get('/api/items', async (req, res) => {
   try {
-    const { search, category, status, vendor, limit = 100, offset = 0 } = req.query;
+    const { search, category, status, limit = 100, offset = 0 } = req.query;
     let params = `limit=${limit}&offset=${offset}&order=gg_name.asc`;
     if (category) params += `&category=eq.${encodeURIComponent(category)}`;
     if (status) params += `&status=eq.${encodeURIComponent(status)}`;
-    if (vendor) params += `&vendor=eq.${encodeURIComponent(vendor)}`;
     if (search) params += `&or=(gg_name.ilike.*${encodeURIComponent(search)}*,abs_code.ilike.*${encodeURIComponent(search)}*,upc.ilike.*${encodeURIComponent(search)}*)`;
     const url = `${SUPABASE_URL}/rest/v1/items?store_id=eq.${STORE_ID}&${params}`;
     const r = await sbFetch(url, { headers: { ...sbHeaders, 'Prefer': 'count=exact' } });
@@ -117,8 +117,7 @@ app.get('/api/items', async (req, res) => {
 
 app.get('/api/items/all', async (req, res) => {
   try {
-    const items = await sbGetAll('items', 'order=gg_name.asc&select=id,gg_name,abs_code,upc,category,status,sell_price,cost,margin_pct,inventory,vendor,bpc,splitted,made_from_abs,cost_per_unit');
-    res.json(items);
+    res.json(await sbGetAll('items', 'order=gg_name.asc&select=id,gg_name,abs_code,upc,category,status,sell_price,cost,margin_pct,inventory,vendor,bpc,splitted,made_from_abs,cost_per_unit'));
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
@@ -137,19 +136,13 @@ app.patch('/api/items/:id', async (req, res) => {
     const updates = { ...req.body, updated_at: new Date().toISOString() };
     if (updates.cost && updates.bpc) updates.cost_per_unit = parseFloat((updates.cost / updates.bpc).toFixed(6));
     if (updates.sell_price && updates.cost_per_unit) updates.margin_pct = parseFloat(((updates.sell_price - updates.cost_per_unit) / updates.sell_price).toFixed(6));
-
     const oldR = await sbFetch(`${SUPABASE_URL}/rest/v1/items?id=eq.${req.params.id}`, { headers: sbHeaders });
-    const oldData = await oldR.json();
-    const old = oldData[0] || {};
-
+    const old = (await oldR.json())[0] || {};
     const priceChanges = [];
-    if (updates.cost && old.cost && Math.abs(parseFloat(updates.cost) - parseFloat(old.cost)) > 0.001) {
+    if (updates.cost && old.cost && Math.abs(parseFloat(updates.cost) - parseFloat(old.cost)) > 0.001)
       priceChanges.push({ store_id: STORE_ID, abs_code: old.abs_code, gg_name: old.gg_name, change_date: new Date().toISOString().slice(0,10), field_changed: 'Cost', old_value: parseFloat(old.cost), new_value: parseFloat(updates.cost), change_pct: parseFloat(((updates.cost - old.cost) / old.cost).toFixed(6)) });
-    }
-    if (updates.sell_price && old.sell_price && Math.abs(parseFloat(updates.sell_price) - parseFloat(old.sell_price)) > 0.001) {
+    if (updates.sell_price && old.sell_price && Math.abs(parseFloat(updates.sell_price) - parseFloat(old.sell_price)) > 0.001)
       priceChanges.push({ store_id: STORE_ID, abs_code: old.abs_code, gg_name: old.gg_name, change_date: new Date().toISOString().slice(0,10), field_changed: 'Sell Price', old_value: parseFloat(old.sell_price), new_value: parseFloat(updates.sell_price), change_pct: parseFloat(((updates.sell_price - old.sell_price) / old.sell_price).toFixed(6)) });
-    }
-
     const result = await sbPatch('items', req.params.id, updates);
     if (priceChanges.length) await sbPost('price_history', priceChanges, 'return=minimal');
     res.json(Array.isArray(result) ? result[0] : result);
@@ -158,9 +151,8 @@ app.patch('/api/items/:id', async (req, res) => {
 
 // ── VENDORS ───────────────────────────────────────────────────────────────────
 app.get('/api/vendors', async (req, res) => {
-  try {
-    res.json(await sbGet('vendors', 'order=vendor_name.asc'));
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  try { res.json(await sbGet('vendors', 'order=vendor_name.asc')); }
+  catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 app.post('/api/vendors', async (req, res) => {
@@ -172,9 +164,8 @@ app.post('/api/vendors', async (req, res) => {
 
 // ── ORDERS ────────────────────────────────────────────────────────────────────
 app.get('/api/orders', async (req, res) => {
-  try {
-    res.json(await sbGet('orders', 'order=created_at.desc&limit=50'));
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  try { res.json(await sbGet('orders', 'order=created_at.desc&limit=50')); }
+  catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 app.post('/api/orders', async (req, res) => {
@@ -182,9 +173,8 @@ app.post('/api/orders', async (req, res) => {
     const { order, lines } = req.body;
     const result = await sbPost('orders', { ...order, store_id: STORE_ID });
     const saved = Array.isArray(result) ? result[0] : result;
-    if (lines && lines.length && saved.id) {
+    if (lines && lines.length && saved.id)
       await sbPost('order_lines', lines.map(l => ({ ...l, order_id: saved.id, store_id: STORE_ID })), 'return=minimal');
-    }
     res.json(saved);
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -209,20 +199,34 @@ app.get('/api/price-history', async (req, res) => {
 // ── DAILY REPORTS ─────────────────────────────────────────────────────────────
 app.get('/api/daily-reports', async (req, res) => {
   try {
-    const { month, year } = req.query;
-    let params = 'order=report_date.desc&limit=31';
+    const { month, year, limit = 31 } = req.query;
+    let params = `order=report_date.desc&limit=${limit}`;
     if (month && year) {
       const from = `${year}-${String(month).padStart(2,'0')}-01`;
       const to = `${year}-${String(month).padStart(2,'0')}-31`;
       params += `&report_date=gte.${from}&report_date=lte.${to}`;
     }
-    res.json(await sbGet('daily_reports', params));
+    res.json(await sbGet('gg_daily_reports', params));
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.get('/api/daily-reports/:date', async (req, res) => {
+  try {
+    const reports = await sbGet('gg_daily_reports', `report_date=eq.${req.params.date}&limit=1`);
+    const report = reports[0] || null;
+    if (!report) { res.json(null); return; }
+    const [lines, payouts, drops] = await Promise.all([
+      sbFetch(`${SUPABASE_URL}/rest/v1/scratch_inventory_lines?report_id=eq.${report.id}&order=face_value.asc`, { headers: sbHeaders }).then(r=>r.json()),
+      sbFetch(`${SUPABASE_URL}/rest/v1/gg_daily_payouts?report_id=eq.${report.id}`, { headers: sbHeaders }).then(r=>r.json()),
+      sbFetch(`${SUPABASE_URL}/rest/v1/gg_safe_drops?report_id=eq.${report.id}&order=drop_time.asc`, { headers: sbHeaders }).then(r=>r.json()),
+    ]);
+    res.json({ ...report, scratch_lines: lines, payouts, safe_drops: drops });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 app.post('/api/daily-reports', async (req, res) => {
   try {
-    const r = await sbFetch(`${SUPABASE_URL}/rest/v1/daily_reports`, {
+    const r = await sbFetch(`${SUPABASE_URL}/rest/v1/gg_daily_reports`, {
       method: 'POST',
       headers: { ...sbHeaders, 'Prefer': 'return=representation,resolution=merge-duplicates' },
       body: JSON.stringify({ ...req.body, store_id: STORE_ID })
@@ -230,6 +234,12 @@ app.post('/api/daily-reports', async (req, res) => {
     const result = await r.json();
     res.json(Array.isArray(result) ? result[0] : result);
   } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// ── SCRATCH DENOMINATIONS ─────────────────────────────────────────────────────
+app.get('/api/scratch-denominations', async (req, res) => {
+  try { res.json(await sbGet('scratch_denominations', 'is_active=eq.true&order=sort_order.asc')); }
+  catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 // ── CATEGORY STATS ────────────────────────────────────────────────────────────
@@ -254,25 +264,6 @@ app.get('/api/stats/categories', async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// ── AUDIT ─────────────────────────────────────────────────────────────────────
-app.get('/api/audit', async (req, res) => {
-  try {
-    const { limit = 50 } = req.query;
-    const r = await sbFetch(`${SUPABASE_URL}/rest/v1/audit_log?order=created_at.desc&limit=${limit}`, { headers: sbHeaders });
-    res.json(await r.json());
-  } catch (e) { res.status(500).json({ error: e.message }); }
-});
-
-// ── SETTINGS ──────────────────────────────────────────────────────────────────
-app.get('/api/settings', async (req, res) => {
-  try {
-    const settings = await sbGet('app_settings', '');
-    const map = {};
-    settings.forEach(s => map[s.key] = s.value);
-    res.json(map);
-  } catch (e) { res.status(500).json({ error: e.message }); }
-});
-
 // ── CATCH ALL ─────────────────────────────────────────────────────────────────
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
@@ -281,5 +272,5 @@ app.get('*', (req, res) => {
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`Grape & Grain running on port ${PORT}`);
-  console.log(`Store: ${STORE_ID} | Supabase: ${SUPABASE_URL}`);
+  console.log(`Owner: /owner | Staff: /staff | Store: ${STORE_ID}`);
 });
