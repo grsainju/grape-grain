@@ -1,0 +1,670 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Grape & Grain — Daily Report</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#f8f9fa;--surface:#fff;--surface2:#f1f3f5;--border:#dee2e6;--border2:#ced4da;
+  --text:#212529;--muted:#6c757d;--faint:#adb5bd;
+  --gold:#8b6914;--gold-bg:#fff9e6;--gold-border:#ffd43b;
+  --green:#2d6a4f;--green-bg:#ebfbee;--green-border:#40c057;
+  --red:#c92a2a;--red-bg:#fff5f5;--red-border:#ff6b6b;
+  --blue:#1971c2;--blue-bg:#e7f5ff;--blue-border:#74c0fc;
+  --orange:#e67700;--orange-bg:#fff4e6;
+  --font:'DM Sans',sans-serif;--mono:'DM Mono',monospace;
+}
+body{font-family:var(--font);background:var(--bg);color:var(--text);font-size:14px;line-height:1.5;min-height:100vh}
+
+/* HEADER */
+.header{background:#1a1714;padding:0 20px;height:52px;display:flex;align-items:center;justify-content:space-between}
+.header-logo{color:#faf9f7;font-size:15px;font-weight:600}
+.header-logo em{color:#c8a96e;font-style:normal;font-size:11px;font-family:var(--mono);margin-left:8px}
+.header-right{display:flex;align-items:center;gap:12px}
+.header-date{font-family:var(--mono);font-size:12px;color:#888}
+.nav-link{font-size:12px;color:#888;text-decoration:none;padding:4px 10px;border:1px solid #333;border-radius:4px}
+.nav-link:hover{color:#c8a96e;border-color:#555}
+
+/* LAYOUT */
+.container{max-width:900px;margin:0 auto;padding:20px 16px}
+.page-title{font-size:20px;font-weight:600;margin-bottom:4px}
+.page-sub{font-size:13px;color:var(--muted);margin-bottom:20px}
+
+/* SECTIONS */
+.section{background:var(--surface);border:1px solid var(--border);border-radius:10px;margin-bottom:16px;overflow:hidden}
+.section-header{padding:12px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;background:var(--surface2)}
+.section-title{font-size:12px;font-family:var(--mono);font-weight:500;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+.section-body{padding:16px 18px}
+
+/* SCRATCH TABLE */
+.scratch-table{width:100%;border-collapse:collapse;font-size:13px}
+.scratch-table th{padding:8px 10px;text-align:center;font-family:var(--mono);font-size:11px;color:var(--muted);border-bottom:1px solid var(--border);background:var(--surface2);font-weight:500}
+.scratch-table th:first-child{text-align:left}
+.scratch-table td{padding:6px 8px;border-bottom:1px solid var(--border);text-align:center;vertical-align:middle}
+.scratch-table tr:last-child td{border-bottom:none}
+.scratch-table td:first-child{text-align:left;font-weight:500}
+.scratch-table input[type=number]{width:72px;padding:5px 7px;border:1px solid var(--border2);border-radius:5px;font-family:var(--mono);font-size:13px;text-align:center;background:var(--bg)}
+.scratch-table input[type=number]:focus{outline:none;border-color:var(--gold);background:#fff}
+.scratch-table .dollar-sold{font-family:var(--mono);font-weight:500;color:var(--green);font-size:13px}
+.scratch-table .start-val{font-family:var(--mono);font-size:13px;color:var(--muted);padding:5px 7px}
+.denom-badge{display:inline-block;padding:3px 10px;border-radius:4px;font-family:var(--mono);font-size:12px;font-weight:500}
+
+/* FORM ELEMENTS */
+.field{margin-bottom:14px}
+.field label{display:block;font-size:11px;font-family:var(--mono);color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px}
+.field input,.field select,.field textarea{width:100%;padding:9px 12px;border:1px solid var(--border2);border-radius:6px;background:var(--bg);color:var(--text);font-family:var(--font);font-size:13px;transition:border-color .15s}
+.field input:focus,.field select:focus{outline:none;border-color:var(--gold);background:#fff}
+.field.inline{display:flex;align-items:center;gap:12px}
+.field.inline label{margin-bottom:0;white-space:nowrap;min-width:160px}
+.field.inline input{flex:1}
+
+/* GRID */
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+
+/* TOTALS */
+.totals-row{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--border)}
+.totals-row:last-child{border-bottom:none}
+.totals-label{font-size:13px;color:var(--muted)}
+.totals-val{font-family:var(--mono);font-size:15px;font-weight:500}
+.totals-val.green{color:var(--green)}
+.totals-val.red{color:var(--red)}
+.totals-val.gold{color:var(--gold)}
+.totals-highlight{background:var(--gold-bg);border:1px solid var(--gold-border);border-radius:8px;padding:14px 18px;margin-top:10px}
+.totals-highlight .totals-label{font-weight:600;color:var(--text)}
+.totals-highlight .totals-val{font-size:20px;color:var(--gold)}
+
+/* PAYOUT ROWS */
+.payout-row{display:grid;grid-template-columns:1fr 100px 1fr auto;gap:8px;align-items:center;margin-bottom:8px}
+.payout-row input,.payout-row select{padding:8px 10px;border:1px solid var(--border2);border-radius:6px;background:var(--bg);font-family:var(--font);font-size:13px;color:var(--text);width:100%}
+.payout-row input:focus,.payout-row select:focus{outline:none;border-color:var(--gold)}
+
+/* SAFE DROP */
+.safe-drop-row{display:grid;grid-template-columns:120px 1fr auto;gap:8px;align-items:center;margin-bottom:8px}
+.safe-drop-row input{padding:8px 10px;border:1px solid var(--border2);border-radius:6px;background:var(--bg);font-family:var(--font);font-size:13px;color:var(--text);width:100%}
+
+/* BUTTONS */
+.btn{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border:1px solid var(--border2);border-radius:6px;background:var(--surface);color:var(--text);font-family:var(--font);font-size:13px;cursor:pointer;transition:all .15s;font-weight:400}
+.btn:hover{background:var(--surface2)}
+.btn-primary{background:#1a1714;color:#faf9f7;border-color:#1a1714}
+.btn-primary:hover{background:#2d2a26}
+.btn-green{background:var(--green-bg);color:var(--green);border-color:var(--green-border)}
+.btn-add{background:var(--blue-bg);color:var(--blue);border-color:var(--blue-border);font-size:12px;padding:5px 10px}
+.btn-remove{background:var(--red-bg);color:var(--red);border-color:var(--red-border);font-size:12px;padding:5px 8px;border-radius:5px}
+.btn-sm{padding:5px 10px;font-size:12px}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+
+/* ALERTS */
+.alert{padding:10px 14px;border-radius:6px;font-size:13px;margin-bottom:12px}
+.alert-gold{background:var(--gold-bg);border:1px solid var(--gold-border);color:var(--gold)}
+.alert-green{background:var(--green-bg);border:1px solid var(--green-border);color:var(--green)}
+.alert-red{background:var(--red-bg);border:1px solid var(--red-border);color:var(--red)}
+
+/* SQUARE PULL */
+.square-pull{display:flex;align-items:center;gap:8px}
+.square-pull input{flex:1;padding:9px 12px;border:1px solid var(--border2);border-radius:6px;background:var(--bg);font-family:var(--mono);font-size:14px;font-weight:500}
+.square-pull .pull-btn{white-space:nowrap}
+.auto-badge{font-size:10px;font-family:var(--mono);padding:2px 6px;border-radius:3px;background:var(--green-bg);color:var(--green);border:1px solid var(--green-border)}
+.manual-badge{font-size:10px;font-family:var(--mono);padding:2px 6px;border-radius:3px;background:var(--orange-bg);color:var(--orange);border:1px solid #ffd43b}
+
+/* SHORT/OVER */
+.short-over-positive{color:var(--green);font-weight:600}
+.short-over-negative{color:var(--red);font-weight:600}
+
+/* LOTTERY SALE */
+.lottery-input-wrap{position:relative}
+.lottery-input-wrap input{padding-left:28px}
+.lottery-input-wrap .currency{position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--muted);font-family:var(--mono)}
+.lottery-negative{color:var(--red)!important;border-color:var(--red-border)!important}
+
+/* SUBMIT SECTION */
+.submit-section{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:18px;margin-bottom:20px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px}
+.submit-name{flex:1;min-width:200px}
+.submit-name input{width:100%;padding:9px 12px;border:1px solid var(--border2);border-radius:6px;font-family:var(--font);font-size:13px}
+
+@media(max-width:600px){
+  .grid2,.grid3{grid-template-columns:1fr}
+  .payout-row{grid-template-columns:1fr 1fr}
+  .safe-drop-row{grid-template-columns:1fr 1fr}
+  .scratch-table input[type=number]{width:60px}
+}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-logo">Grape & Grain <em>DAILY REPORT</em></div>
+  <div class="header-right">
+    <div class="header-date" id="header-date">—</div>
+    <a href="/staff/reports" class="nav-link">View reports →</a>
+  </div>
+</div>
+
+<div class="container">
+  <div class="page-title" id="report-date-title">Daily Report</div>
+  <div class="page-sub">Complete all sections before submitting. Start values auto-fill from yesterday's report.</div>
+
+  <div id="main-alert"></div>
+
+  <!-- 1. SCRATCH INVENTORY -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-title">Scratch Ticket Inventory</div>
+      <div id="scratch-total-badge" style="font-family:var(--mono);font-size:13px;font-weight:500;color:var(--green)">$0.00 sold</div>
+    </div>
+    <div class="section-body" style="padding:0;overflow-x:auto">
+      <table class="scratch-table">
+        <thead>
+          <tr>
+            <th style="text-align:left;padding-left:18px">Value</th>
+            <th>Pack</th>
+            <th>Start</th>
+            <th>Add</th>
+            <th>End</th>
+            <th>Kiosk Add</th>
+            <th>Sold</th>
+            <th>Dollar Sold</th>
+          </tr>
+        </thead>
+        <tbody id="scratch-tbody"></tbody>
+        <tfoot>
+          <tr style="background:var(--surface2)">
+            <td colspan="6" style="padding:10px 18px;font-weight:600;font-size:13px">Total Scratch Sold</td>
+            <td style="text-align:center;font-family:var(--mono);font-weight:600" id="total-tickets-sold">0</td>
+            <td style="text-align:center;font-family:var(--mono);font-size:15px;font-weight:600;color:var(--green)" id="total-dollar-sold">$0.00</td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+  </div>
+
+  <!-- 2. SCRATCH FROM SQUARE + SHORT/OVER -->
+  <div class="section">
+    <div class="section-header"><div class="section-title">Square Reconciliation</div></div>
+    <div class="section-body">
+      <div class="grid2">
+        <div class="field">
+          <label>Scratch from Square <span class="auto-badge" id="scratch-sq-badge">auto</span></label>
+          <div class="square-pull">
+            <input type="number" step="0.01" id="scratch-from-square" placeholder="0.00" oninput="calcAll();markManual('scratch-sq-badge')">
+            <button class="btn btn-sm pull-btn" onclick="pullFromSquare('scratch')">Pull ↓</button>
+          </div>
+        </div>
+        <div class="field">
+          <label>Short / Over</label>
+          <div style="padding:9px 12px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);font-family:var(--mono);font-size:15px;font-weight:600" id="short-over-display">$0.00</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 3. CASH + LOTTERY -->
+  <div class="section">
+    <div class="section-header"><div class="section-title">Cash & Lottery</div></div>
+    <div class="section-body">
+      <div class="grid2">
+        <div class="field">
+          <label>Cash Sales from Square <span class="auto-badge" id="cash-sq-badge">auto</span></label>
+          <div class="square-pull">
+            <input type="number" step="0.01" id="cash-sales" placeholder="0.00" oninput="calcAll();markManual('cash-sq-badge')">
+            <button class="btn btn-sm pull-btn" onclick="pullFromSquare('cash')">Pull ↓</button>
+          </div>
+        </div>
+        <div class="field">
+          <label>Daily Lottery Sale <span style="font-size:10px;color:var(--muted)">(can be negative)</span></label>
+          <div class="lottery-input-wrap">
+            <span class="currency">$</span>
+            <input type="number" step="0.01" id="lottery-sale" placeholder="0.00" oninput="calcAll();updateLotteryColor()">
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 4. PAYOUTS -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-title">Payouts</div>
+      <div style="font-family:var(--mono);font-size:13px;font-weight:500;color:var(--red)" id="total-payouts-badge">$0.00</div>
+    </div>
+    <div class="section-body">
+      <div id="payouts-list"></div>
+      <div style="display:flex;gap:8px;margin-top:8px">
+        <button class="btn btn-add" onclick="addPayout()">+ Add payout</button>
+        <button class="btn btn-add" style="background:var(--surface2);color:var(--muted);border-color:var(--border2)" onclick="addNewVendorPrompt()">+ New vendor</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 5. TOTAL CASH -->
+  <div class="section">
+    <div class="section-header"><div class="section-title">Cash Summary</div></div>
+    <div class="section-body">
+      <div class="totals-row">
+        <div class="totals-label">Cash Sales (Square)</div>
+        <div class="totals-val" id="sum-cash">$0.00</div>
+      </div>
+      <div class="totals-row">
+        <div class="totals-label">Daily Lottery Sale</div>
+        <div class="totals-val" id="sum-lottery">$0.00</div>
+      </div>
+      <div class="totals-row">
+        <div class="totals-label">Total Payouts</div>
+        <div class="totals-val red" id="sum-payouts">−$0.00</div>
+      </div>
+      <div class="totals-highlight">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <div class="totals-label">Total Cash</div>
+          <div class="totals-val gold" id="total-cash-display">$0.00</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 6. SAFE DROP -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-title">Safe Drop</div>
+      <div style="font-family:var(--mono);font-size:13px;font-weight:500;color:var(--blue)" id="total-safe-badge">$0.00</div>
+    </div>
+    <div class="section-body">
+      <div id="safe-drops-list"></div>
+      <button class="btn btn-add" onclick="addSafeDrop()" style="margin-top:8px">+ Add safe drop</button>
+    </div>
+  </div>
+
+  <!-- 7. BANK DEPOSIT -->
+  <div class="section">
+    <div class="section-header"><div class="section-title">Bank Deposit</div></div>
+    <div class="section-body">
+      <div class="totals-row">
+        <div class="totals-label">Total Cash</div>
+        <div class="totals-val" id="dep-cash">$0.00</div>
+      </div>
+      <div class="totals-row">
+        <div class="totals-label">Total Safe Drop</div>
+        <div class="totals-val red" id="dep-safe">−$0.00</div>
+      </div>
+      <div class="totals-highlight" style="background:var(--green-bg);border-color:var(--green-border)">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <div class="totals-label">Total for Bank Deposit</div>
+          <div class="totals-val" style="font-size:22px;color:var(--green)" id="bank-deposit-display">$0.00</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SUBMIT -->
+  <div class="submit-section">
+    <div class="submit-name">
+      <input id="entered-by" placeholder="Your name (required before submitting)">
+    </div>
+    <div style="display:flex;gap:10px;align-items:center">
+      <button class="btn" onclick="saveDraft()">Save draft</button>
+      <button class="btn btn-primary" onclick="submitReport()" id="btn-submit">Submit report</button>
+    </div>
+  </div>
+  <div id="submit-feedback"></div>
+
+</div>
+
+<script>
+const SUPABASE_URL = 'https://rlgsnznwdsfhpnsscrxs.supabase.co';
+const ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJsZ3Nuem53ZHNmaHBuc3NjcnhzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYwNDExMTgsImV4cCI6MjA5MTYxNzExOH0.EcaS4e8gCHPr-TEQsmxAgSDgEG3QWU-9biGmrc1ryLA';
+const STORE_ID = 1;
+const TODAY = new Date().toISOString().slice(0,10);
+
+const H = { 'apikey': ANON_KEY, 'Authorization': `Bearer ${ANON_KEY}`, 'Content-Type': 'application/json', 'Prefer': 'return=representation' };
+
+// STATE
+const S = {
+  denoms: [],
+  scratchLines: [],   // {denomId, faceValue, packSize, startCount, addedCount, endCount, kioskAdded}
+  payouts: [],        // {vendor, amount, note}
+  safeDrops: [],      // {amount, note}
+  vendors: [],
+  reportId: null,
+  cashSales: 0,
+  scratchFromSquare: 0,
+  lotteryIsManualCash: false,
+  lotteryIsManualScratch: false,
+};
+
+async function sbGet(table, params='') {
+  const r = await fetch(`${SUPABASE_URL}/rest/v1/${table}?store_id=eq.${STORE_ID}&${params}`, { headers: H });
+  return r.json();
+}
+
+async function sbPost(table, data, prefer='return=representation') {
+  const r = await fetch(`${SUPABASE_URL}/rest/v1/${table}`, {
+    method: 'POST', headers: {...H, 'Prefer': prefer}, body: JSON.stringify(data)
+  });
+  if (!r.ok) throw new Error(await r.text());
+  return prefer.includes('representation') ? r.json() : {ok:true};
+}
+
+async function sbPatch(table, id, data) {
+  const r = await fetch(`${SUPABASE_URL}/rest/v1/${table}?id=eq.${id}`, {
+    method: 'PATCH', headers: H, body: JSON.stringify(data)
+  });
+  if (!r.ok) throw new Error(await r.text());
+  return r.json();
+}
+
+// INIT
+async function init() {
+  // Set date display
+  const d = new Date();
+  document.getElementById('header-date').textContent = d.toLocaleDateString('en-US', {weekday:'short', month:'short', day:'numeric'});
+  document.getElementById('report-date-title').textContent = 'Daily Report — ' + d.toLocaleDateString('en-US', {weekday:'long', month:'long', day:'numeric', year:'numeric'});
+
+  // Load denominations
+  const denoms = await sbGet('scratch_denominations', 'is_active=eq.true&order=sort_order.asc');
+  S.denoms = denoms;
+
+  // Load vendors
+  S.vendors = await sbGet('vendors', 'order=vendor_name.asc');
+
+  // Check for existing report today
+  const existing = await sbGet('gg_daily_reports', `report_date=eq.${TODAY}&limit=1`);
+  if (existing.length) {
+    S.reportId = existing[0].id;
+    // Pre-fill Square fields
+    if (existing[0].cash_sales) document.getElementById('cash-sales').value = existing[0].cash_sales;
+    if (existing[0].scratch_from_square) document.getElementById('scratch-from-square').value = existing[0].scratch_from_square;
+    if (existing[0].daily_lottery_sale) document.getElementById('lottery-sale').value = existing[0].daily_lottery_sale;
+    if (existing[0].entered_by) document.getElementById('entered-by').value = existing[0].entered_by;
+    // Load existing scratch lines
+    const lines = await fetch(`${SUPABASE_URL}/rest/v1/scratch_inventory_lines?report_id=eq.${S.reportId}&order=face_value.asc`, { headers: H }).then(r=>r.json());
+    lines.forEach(l => {
+      S.scratchLines.push({ denomId:l.denom_id, faceValue:l.face_value, packSize:l.pack_size, startCount:l.start_count, addedCount:l.added_count, endCount:l.end_count, kioskAdded:l.kiosk_added, lineId:l.id });
+    });
+    // Load payouts
+    const payouts = await fetch(`${SUPABASE_URL}/rest/v1/gg_daily_payouts?report_id=eq.${S.reportId}`, { headers: H }).then(r=>r.json());
+    S.payouts = payouts.map(p => ({vendor:p.vendor_name, amount:p.amount, note:p.note||'', dbId:p.id}));
+    // Load safe drops
+    const drops = await fetch(`${SUPABASE_URL}/rest/v1/gg_safe_drops?report_id=eq.${S.reportId}&order=drop_time.asc`, { headers: H }).then(r=>r.json());
+    S.safeDrops = drops.map(d => ({amount:d.amount, note:d.note||'', dbId:d.id}));
+  } else {
+    // Get yesterday's end counts for start values
+    const yesterday = new Date(d); yesterday.setDate(d.getDate()-1);
+    const yDate = yesterday.toISOString().slice(0,10);
+    const prevReport = await sbGet('gg_daily_reports', `report_date=eq.${yDate}&limit=1`);
+    let prevLines = [];
+    if (prevReport.length) {
+      prevLines = await fetch(`${SUPABASE_URL}/rest/v1/scratch_inventory_lines?report_id=eq.${prevReport[0].id}&order=face_value.asc`, { headers: H }).then(r=>r.json());
+    }
+    S.scratchLines = denoms.map(d => {
+      const prev = prevLines.find(l => parseFloat(l.face_value) === parseFloat(d.face_value));
+      return { denomId:d.id, faceValue:d.face_value, packSize:d.pack_size, startCount:prev ? prev.end_count : 0, addedCount:0, endCount:prev ? prev.end_count : 0, kioskAdded:0 };
+    });
+  }
+
+  renderScratchTable();
+  renderPayouts();
+  renderSafeDrops();
+  calcAll();
+  updateLotteryColor();
+}
+
+// SCRATCH TABLE
+function renderScratchTable() {
+  const tbody = document.getElementById('scratch-tbody');
+  tbody.innerHTML = S.scratchLines.map((line, i) => {
+    const val = parseFloat(line.faceValue);
+    const color = val >= 20 ? '#6b1f3a' : val >= 10 ? '#8b5e1a' : val >= 5 ? '#2d6a4f' : '#1a3a5c';
+    const sold = (line.startCount + line.addedCount - line.endCount);
+    const dollar = sold * val;
+    return `<tr>
+      <td style="padding-left:18px"><span class="denom-badge" style="background:${color}15;color:${color};border:1px solid ${color}40">$${val % 1 === 0 ? val.toFixed(0) : val.toFixed(2)}</span></td>
+      <td><span style="font-family:var(--mono);color:var(--muted)">${line.packSize}</span></td>
+      <td><span class="start-val">${line.startCount}</span></td>
+      <td><input type="number" min="0" value="${line.addedCount}" onchange="updateLine(${i},'addedCount',this.value)" style="border-color:var(--blue-border)"></td>
+      <td><input type="number" min="0" value="${line.endCount}" onchange="updateLine(${i},'endCount',this.value)"></td>
+      <td><input type="number" min="0" value="${line.kioskAdded}" onchange="updateLine(${i},'kioskAdded',this.value)" style="border-color:var(--gold-border)"></td>
+      <td><span style="font-family:var(--mono);color:${sold<0?'var(--red)':'var(--text)'}">${sold < 0 ? '<span style="color:var(--red)">!</span>' : sold}</span></td>
+      <td class="dollar-sold">${sold < 0 ? '<span style="color:var(--red)">check</span>' : '$'+dollar.toFixed(2)}</td>
+    </tr>`;
+  }).join('');
+  calcScratchTotals();
+}
+
+function updateLine(i, field, val) {
+  S.scratchLines[i][field] = parseInt(val)||0;
+  renderScratchTable();
+  calcAll();
+}
+
+function calcScratchTotals() {
+  let totalTickets = 0, totalDollar = 0;
+  S.scratchLines.forEach(line => {
+    const sold = line.startCount + line.addedCount - line.endCount;
+    if (sold > 0) {
+      totalTickets += sold;
+      totalDollar += sold * parseFloat(line.faceValue);
+    }
+  });
+  document.getElementById('total-tickets-sold').textContent = totalTickets;
+  document.getElementById('total-dollar-sold').textContent = '$'+totalDollar.toFixed(2);
+  document.getElementById('scratch-total-badge').textContent = '$'+totalDollar.toFixed(2)+' sold';
+  return totalDollar;
+}
+
+// CALC ALL
+function calcAll() {
+  const totalScratch = calcScratchTotals();
+  const scratchSq = parseFloat(document.getElementById('scratch-from-square').value)||0;
+  const shortOver = totalScratch - scratchSq;
+  const soEl = document.getElementById('short-over-display');
+  soEl.textContent = (shortOver >= 0 ? '+' : '') + '$'+Math.abs(shortOver).toFixed(2);
+  soEl.className = '';
+  soEl.style.color = shortOver === 0 ? 'var(--green)' : shortOver > 0 ? 'var(--green)' : 'var(--red)';
+  soEl.style.fontWeight = '600';
+
+  const cashSales = parseFloat(document.getElementById('cash-sales').value)||0;
+  const lotterySale = parseFloat(document.getElementById('lottery-sale').value)||0;
+  const totalPayouts = S.payouts.reduce((a,p) => a + parseFloat(p.amount||0), 0);
+  const totalCash = cashSales + lotterySale - totalPayouts;
+  const totalSafeDrop = S.safeDrops.reduce((a,d) => a + parseFloat(d.amount||0), 0);
+  const bankDeposit = totalCash - totalSafeDrop;
+
+  document.getElementById('sum-cash').textContent = '$'+cashSales.toFixed(2);
+  const lEl = document.getElementById('sum-lottery');
+  lEl.textContent = (lotterySale < 0 ? '−$' : '$') + Math.abs(lotterySale).toFixed(2);
+  lEl.style.color = lotterySale < 0 ? 'var(--red)' : 'var(--text)';
+  document.getElementById('sum-payouts').textContent = '−$'+totalPayouts.toFixed(2);
+  document.getElementById('total-payouts-badge').textContent = '$'+totalPayouts.toFixed(2);
+  document.getElementById('total-cash-display').textContent = '$'+totalCash.toFixed(2);
+  document.getElementById('dep-cash').textContent = '$'+totalCash.toFixed(2);
+  document.getElementById('dep-safe').textContent = '−$'+totalSafeDrop.toFixed(2);
+  document.getElementById('total-safe-badge').textContent = '$'+totalSafeDrop.toFixed(2);
+  document.getElementById('bank-deposit-display').textContent = '$'+bankDeposit.toFixed(2);
+}
+
+function updateLotteryColor() {
+  const val = parseFloat(document.getElementById('lottery-sale').value)||0;
+  const el = document.getElementById('lottery-sale');
+  el.style.color = val < 0 ? 'var(--red)' : 'var(--text)';
+  el.style.fontWeight = val < 0 ? '600' : '400';
+}
+
+function markManual(badgeId) {
+  const el = document.getElementById(badgeId);
+  el.textContent = 'manual';
+  el.className = 'manual-badge';
+}
+
+// SQUARE PULL (placeholder — will connect to Square API)
+async function pullFromSquare(type) {
+  const alert = document.getElementById('main-alert');
+  alert.innerHTML = '<div class="alert alert-gold">Square API not connected yet. Enter value manually and we will auto-connect soon.</div>';
+  setTimeout(() => alert.innerHTML = '', 4000);
+}
+
+// PAYOUTS
+function renderPayouts() {
+  const vendorOptions = S.vendors.map(v => `<option value="${v.vendor_name}">${v.vendor_name}</option>`).join('');
+  document.getElementById('payouts-list').innerHTML = S.payouts.length === 0
+    ? '<div style="color:var(--faint);font-size:13px;padding:4px 0">No payouts yet</div>'
+    : S.payouts.map((p, i) => `
+      <div class="payout-row">
+        <select onchange="S.payouts[${i}].vendor=this.value">
+          <option value="">Select vendor</option>
+          ${vendorOptions}
+          ${p.vendor && !S.vendors.find(v=>v.vendor_name===p.vendor) ? `<option value="${p.vendor}" selected>${p.vendor}</option>` : ''}
+          ${S.vendors.find(v=>v.vendor_name===p.vendor) ? S.payouts[i].vendor=p.vendor : ''}
+        </select>
+        <input type="number" step="0.01" placeholder="$0.00" value="${p.amount||''}" onchange="S.payouts[${i}].amount=parseFloat(this.value)||0;calcAll()">
+        <input type="text" placeholder="Note..." value="${p.note||''}" onchange="S.payouts[${i}].note=this.value">
+        <button class="btn-remove" onclick="S.payouts.splice(${i},1);renderPayouts();calcAll()">✕</button>
+      </div>`).join('');
+
+  // Set vendor selects
+  S.payouts.forEach((p, i) => {
+    const sel = document.getElementById('payouts-list')?.querySelectorAll('select')[i];
+    if (sel && p.vendor) sel.value = p.vendor;
+  });
+}
+
+function addPayout() {
+  S.payouts.push({vendor:'', amount:0, note:''});
+  renderPayouts();
+}
+
+function addNewVendorPrompt() {
+  const name = prompt('Enter new vendor name:');
+  if (!name || !name.trim()) return;
+  S.vendors.push({vendor_name: name.trim()});
+  S.payouts.push({vendor: name.trim(), amount:0, note:''});
+  renderPayouts();
+  // Save to DB
+  fetch(`${SUPABASE_URL}/rest/v1/vendors`, {
+    method:'POST', headers:{...H,'Prefer':'return=minimal'},
+    body: JSON.stringify({store_id:STORE_ID, vendor_name:name.trim(), type:'Other'})
+  });
+}
+
+// SAFE DROPS
+function renderSafeDrops() {
+  document.getElementById('safe-drops-list').innerHTML = S.safeDrops.length === 0
+    ? '<div style="color:var(--faint);font-size:13px;padding:4px 0">No safe drops yet</div>'
+    : S.safeDrops.map((d, i) => `
+      <div class="safe-drop-row">
+        <input type="number" step="0.01" placeholder="$0.00" value="${d.amount||''}" onchange="S.safeDrops[${i}].amount=parseFloat(this.value)||0;calcAll();document.getElementById('total-safe-badge').textContent='$'+S.safeDrops.reduce((a,x)=>a+parseFloat(x.amount||0),0).toFixed(2)">
+        <input type="text" placeholder="Note (optional)..." value="${d.note||''}" onchange="S.safeDrops[${i}].note=this.value">
+        <button class="btn-remove" onclick="S.safeDrops.splice(${i},1);renderSafeDrops();calcAll()">✕</button>
+      </div>`).join('');
+}
+
+function addSafeDrop() {
+  S.safeDrops.push({amount:0, note:''});
+  renderSafeDrops();
+}
+
+// SAVE / SUBMIT
+async function saveReport(status='draft') {
+  const enteredBy = document.getElementById('entered-by').value.trim();
+  if (status === 'submitted' && !enteredBy) {
+    document.getElementById('submit-feedback').innerHTML = '<div class="alert alert-gold">Please enter your name before submitting.</div>';
+    return false;
+  }
+
+  const totalScratch = S.scratchLines.reduce((a, line) => {
+    const sold = line.startCount + line.addedCount - line.endCount;
+    return a + (sold > 0 ? sold * parseFloat(line.faceValue) : 0);
+  }, 0);
+  const scratchSq = parseFloat(document.getElementById('scratch-from-square').value)||0;
+  const cashSales = parseFloat(document.getElementById('cash-sales').value)||0;
+  const lotterySale = parseFloat(document.getElementById('lottery-sale').value)||0;
+  const totalPayouts = S.payouts.reduce((a,p) => a + parseFloat(p.amount||0), 0);
+  const totalCash = cashSales + lotterySale - totalPayouts;
+  const totalSafeDrop = S.safeDrops.reduce((a,d) => a + parseFloat(d.amount||0), 0);
+
+  const reportData = {
+    store_id: STORE_ID,
+    report_date: TODAY,
+    cash_sales: cashSales || null,
+    scratch_from_square: scratchSq || null,
+    daily_lottery_sale: lotterySale || null,
+    total_scratch_sold: parseFloat(totalScratch.toFixed(2)),
+    short_over: parseFloat((totalScratch - scratchSq).toFixed(2)),
+    total_payouts: parseFloat(totalPayouts.toFixed(2)),
+    total_cash: parseFloat(totalCash.toFixed(2)),
+    total_safe_drop: parseFloat(totalSafeDrop.toFixed(2)),
+    bank_deposit: parseFloat((totalCash - totalSafeDrop).toFixed(2)),
+    entered_by: enteredBy || null,
+    status,
+  };
+
+  let reportId = S.reportId;
+  try {
+    if (reportId) {
+      await sbPatch('gg_daily_reports', reportId, reportData);
+    } else {
+      const r = await fetch(`${SUPABASE_URL}/rest/v1/gg_daily_reports`, {
+        method:'POST', headers:{...H,'Prefer':'return=representation,resolution=merge-duplicates'},
+        body: JSON.stringify(reportData)
+      });
+      const result = await r.json();
+      reportId = Array.isArray(result) ? result[0].id : result.id;
+      S.reportId = reportId;
+    }
+
+    // Save scratch lines
+    if (reportId) {
+      // Delete old lines and re-insert
+      await fetch(`${SUPABASE_URL}/rest/v1/scratch_inventory_lines?report_id=eq.${reportId}`, { method:'DELETE', headers:H });
+      const lines = S.scratchLines.map(line => {
+        const sold = Math.max(0, line.startCount + line.addedCount - line.endCount);
+        return { report_id:reportId, store_id:STORE_ID, denom_id:line.denomId, face_value:parseFloat(line.faceValue), pack_size:line.packSize, start_count:line.startCount, added_count:line.addedCount, end_count:line.endCount, kiosk_added:line.kioskAdded, tickets_sold:sold, dollar_sold:parseFloat((sold*parseFloat(line.faceValue)).toFixed(2)) };
+      });
+      await fetch(`${SUPABASE_URL}/rest/v1/scratch_inventory_lines`, { method:'POST', headers:{...H,'Prefer':'return=minimal'}, body:JSON.stringify(lines) });
+
+      // Save payouts
+      await fetch(`${SUPABASE_URL}/rest/v1/gg_daily_payouts?report_id=eq.${reportId}`, { method:'DELETE', headers:H });
+      if (S.payouts.length) {
+        const payouts = S.payouts.filter(p => p.amount > 0).map(p => ({ report_id:reportId, store_id:STORE_ID, vendor_name:p.vendor||null, amount:parseFloat(p.amount), note:p.note||null }));
+        if (payouts.length) await fetch(`${SUPABASE_URL}/rest/v1/gg_daily_payouts`, { method:'POST', headers:{...H,'Prefer':'return=minimal'}, body:JSON.stringify(payouts) });
+      }
+
+      // Save safe drops
+      await fetch(`${SUPABASE_URL}/rest/v1/gg_safe_drops?report_id=eq.${reportId}`, { method:'DELETE', headers:H });
+      if (S.safeDrops.length) {
+        const drops = S.safeDrops.filter(d => d.amount > 0).map(d => ({ report_id:reportId, store_id:STORE_ID, amount:parseFloat(d.amount), note:d.note||null }));
+        if (drops.length) await fetch(`${SUPABASE_URL}/rest/v1/gg_safe_drops`, { method:'POST', headers:{...H,'Prefer':'return=minimal'}, body:JSON.stringify(drops) });
+      }
+    }
+    return true;
+  } catch(e) {
+    document.getElementById('submit-feedback').innerHTML = `<div class="alert alert-red">Error saving: ${e.message}</div>`;
+    return false;
+  }
+}
+
+async function saveDraft() {
+  const btn = document.querySelector('[onclick="saveDraft()"]');
+  btn.disabled = true; btn.textContent = 'Saving...';
+  const ok = await saveReport('draft');
+  if (ok) document.getElementById('submit-feedback').innerHTML = '<div class="alert alert-gold">Draft saved.</div>';
+  btn.disabled = false; btn.textContent = 'Save draft';
+}
+
+async function submitReport() {
+  const btn = document.getElementById('btn-submit');
+  btn.disabled = true; btn.textContent = 'Submitting...';
+  const ok = await saveReport('submitted');
+  if (ok) {
+    document.getElementById('submit-feedback').innerHTML = '<div class="alert alert-green">Report submitted successfully! Have a great day.</div>';
+    btn.textContent = 'Submitted ✓';
+  } else {
+    btn.disabled = false; btn.textContent = 'Submit report';
+  }
+}
+
+init();
+</script>
+</body>
+</html>
