@@ -203,6 +203,98 @@ td{padding:9px 14px;vertical-align:middle}
   .form-grid{grid-template-columns:1fr}
   .main{padding:16px}
 }
+
+/* ── DASHBOARD SECTIONS ─────────────────────────────────────────────────── */
+.dash-section{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:18px 22px;margin-bottom:16px}
+.dash-section-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:8px}
+.dash-section-title{font-size:11px;font-family:var(--mono);color:var(--muted);text-transform:uppercase;letter-spacing:.08em;font-weight:500}
+.sub-label{font-size:11px;font-family:var(--mono);color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px}
+
+/* SNAP GRID */
+.snap-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:12px}
+.snap-card{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:14px 16px}
+.snap-card.accent{background:var(--text);border-color:var(--text)}
+.snap-card.accent .snap-val{color:#c8a96e}
+.snap-card.accent .snap-label{color:rgba(255,255,255,.5)}
+.snap-val{font-family:var(--font-display);font-size:22px;font-weight:600;color:var(--text);margin-bottom:2px}
+.snap-label{font-size:11px;font-family:var(--mono);color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+.snap-sub{font-size:10px;color:var(--faint);margin-top:2px}
+.source-pill{font-size:10px;font-family:var(--mono);padding:2px 8px;border-radius:3px;background:var(--green-bg);color:var(--green);border:1px solid var(--green-border)}
+.source-pill.manual{background:var(--gold-bg);color:var(--gold);border-color:var(--gold-border)}
+
+/* CAT BARS */
+.cat-bar-row{display:flex;align-items:center;gap:10px;margin-bottom:7px;font-size:12px}
+.cat-bar-label{width:100px;color:var(--muted);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex-shrink:0}
+.cat-bar-track{flex:1;background:var(--surface2);border-radius:3px;height:22px;overflow:hidden}
+.cat-bar-fill{height:100%;border-radius:3px;display:flex;align-items:center;padding:0 8px;font-size:11px;font-family:var(--mono);color:#fff;transition:width .5s}
+.cat-bar-val{width:70px;font-family:var(--mono);font-size:12px;color:var(--muted);text-align:right}
+
+/* MONTH SUMMARY */
+.month-metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:12px}
+.month-card{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:16px}
+.month-val{font-family:var(--font-display);font-size:24px;font-weight:600;margin-bottom:3px;color:var(--text)}
+.month-val.gold{color:var(--gold)}
+.month-val.green{color:var(--green)}
+.month-val.red{color:var(--red)}
+.month-label{font-size:11px;font-family:var(--mono);color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+.month-sub{font-size:11px;color:var(--faint);margin-top:3px;display:flex;align-items:center;gap:6px}
+.inline-edit-btn{background:none;border:none;color:var(--faint);cursor:pointer;font-size:13px;padding:0;line-height:1;transition:color .15s}
+.inline-edit-btn:hover{color:var(--gold)}
+.month-nav-btn{background:var(--surface2);border:1px solid var(--border2);border-radius:5px;padding:4px 10px;cursor:pointer;color:var(--muted);font-size:14px;transition:all .15s}
+.month-nav-btn:hover{background:var(--gold-bg);color:var(--gold);border-color:var(--gold-border)}
+
+/* EST ROW */
+.est-row{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:14px}
+.est-card{background:var(--gold-bg);border:1px solid var(--gold-border);border-radius:8px;padding:14px 16px;display:flex;align-items:flex-start;gap:12px}
+.est-icon{font-size:20px;flex-shrink:0;margin-top:2px}
+.est-val{font-family:var(--font-display);font-size:20px;font-weight:600;color:var(--gold);margin-bottom:2px}
+.est-label{font-size:11px;font-family:var(--mono);color:var(--gold);text-transform:uppercase;letter-spacing:.04em}
+.est-sub{font-size:10px;color:var(--gold);opacity:.7;margin-top:2px}
+
+/* PENDING PAYMENTS */
+.pending-tabs{display:flex;gap:6px;margin-bottom:12px}
+.ptab{padding:5px 14px;border:1px solid var(--border2);border-radius:5px;background:var(--surface);color:var(--muted);font-size:12px;font-family:var(--mono);cursor:pointer;transition:all .15s}
+.ptab:hover{background:var(--surface2)}
+.ptab.active{background:var(--gold-bg);color:var(--gold);border-color:var(--gold-border)}
+.payment-row{display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border);gap:10px;flex-wrap:wrap}
+.payment-row:last-child{border-bottom:none}
+.payment-info{display:flex;align-items:center;gap:10px;flex:1}
+.payment-type-pill{font-size:10px;font-family:var(--mono);padding:2px 7px;border-radius:3px}
+.pill-beer{background:#fef3e2;color:var(--beer);border:1px solid #f0d5a0}
+.pill-wine{background:#fdf0f4;color:var(--wine);border:1px solid #e8b8cc}
+.pill-other{background:var(--surface2);color:var(--muted);border:1px solid var(--border)}
+.payment-vendor{font-size:13px;font-weight:500}
+.payment-meta{font-size:11px;color:var(--muted);font-family:var(--mono)}
+.payment-amount{font-family:var(--mono);font-size:15px;font-weight:600;color:var(--red)}
+.payment-actions{display:flex;gap:6px}
+.pending-totals{display:flex;gap:20px;padding:12px 0;border-top:1px solid var(--border);margin-top:4px;flex-wrap:wrap}
+.pending-total-item{display:flex;flex-direction:column}
+.pending-total-val{font-family:var(--mono);font-size:15px;font-weight:600;color:var(--red)}
+.pending-total-label{font-size:11px;color:var(--muted);font-family:var(--mono)}
+
+/* CAT TRACKER */
+.cat-tracker-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:12px}
+.cat-tracker-card{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:14px}
+.ct-rank{font-size:10px;font-family:var(--mono);color:var(--faint);margin-bottom:4px}
+.ct-name{font-size:13px;font-weight:500;margin-bottom:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ct-actual{font-family:var(--font-display);font-size:20px;font-weight:600;color:var(--text);margin-bottom:2px}
+.ct-label{font-size:10px;font-family:var(--mono);color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:8px}
+.ct-divider{border:none;border-top:1px solid var(--border);margin:8px 0}
+.ct-est{font-family:var(--mono);font-size:14px;font-weight:500;color:var(--gold)}
+.ct-est-label{font-size:10px;color:var(--faint);font-family:var(--mono)}
+.ct-bar{height:4px;background:var(--border);border-radius:2px;margin-top:8px;overflow:hidden}
+.ct-bar-fill{height:100%;border-radius:2px;background:var(--gold);transition:width .5s}
+
+@media(max-width:900px){
+  .snap-grid{grid-template-columns:repeat(3,1fr)}
+  .month-metrics{grid-template-columns:1fr 1fr}
+  .est-row{grid-template-columns:1fr}
+  .cat-tracker-grid{grid-template-columns:1fr 1fr}
+}
+@media(max-width:600px){
+  .snap-grid{grid-template-columns:1fr 1fr}
+  .cat-tracker-grid{grid-template-columns:1fr}
+}
 </style>
 </head>
 <body>
@@ -270,73 +362,135 @@ td{padding:9px 14px;vertical-align:middle}
 <div class="main">
 
 <!-- ── DASHBOARD ── -->
+<!-- ── DASHBOARD ── -->
 <div class="page active" id="page-dashboard">
   <div class="page-header">
     <div>
       <div class="page-title">Dashboard</div>
-      <div class="page-sub" id="dash-updated">Loading...</div>
+      <div class="page-sub" id="dash-sub">Grape &amp; Grain — Live data</div>
     </div>
-    <div style="display:flex;gap:10px;align-items:center">
-      <div class="month-bar" style="margin-bottom:0;padding:8px 14px">
-        <label>Month</label>
-        <select id="sel-month" onchange="loadDashboard()">
-          <option value="1">Jan</option><option value="2">Feb</option><option value="3">Mar</option>
-          <option value="4">Apr</option><option value="5">May</option><option value="6">Jun</option>
-          <option value="7">Jul</option><option value="8">Aug</option><option value="9">Sep</option>
-          <option value="10">Oct</option><option value="11">Nov</option><option value="12">Dec</option>
-        </select>
-        <select id="sel-year" onchange="loadDashboard()">
-          <option value="2025">2025</option><option value="2026">2026</option>
-        </select>
+    <button class="btn btn-sm" onclick="loadDashboard()">&#8635; Refresh</button>
+  </div>
+
+  <!-- SECTION 1: DAILY SNAPSHOT -->
+  <div class="dash-section">
+    <div class="dash-section-header">
+      <div class="dash-section-title">Daily Snapshot</div>
+      <div style="display:flex;align-items:center;gap:10px">
+        <input type="date" id="snap-date" style="padding:5px 10px;border:1px solid var(--border2);border-radius:5px;font-family:var(--mono);font-size:12px;background:var(--surface);color:var(--text)" onchange="loadDailySnapshot()">
+        <div id="snap-source" class="source-pill">loading...</div>
       </div>
-      <button class="btn btn-sm" onclick="loadDashboard()">↻ Refresh</button>
+    </div>
+    <div class="snap-grid">
+      <div class="snap-card accent"><div class="snap-val" id="snap-net">—</div><div class="snap-label">Net Sales</div></div>
+      <div class="snap-card"><div class="snap-val" id="snap-cash">—</div><div class="snap-label">Cash</div></div>
+      <div class="snap-card"><div class="snap-val" id="snap-card-val">—</div><div class="snap-label">Card / Debit</div></div>
+      <div class="snap-card"><div class="snap-val" id="snap-txn">—</div><div class="snap-label">Transactions</div></div>
+      <div class="snap-card"><div class="snap-val" id="snap-scratch">—</div><div class="snap-label">Scratch Sold</div><div class="snap-sub">From daily report</div></div>
+      <div class="snap-card"><div class="snap-val" id="snap-deposit" style="color:var(--green)">—</div><div class="snap-label">Bank Deposit</div><div class="snap-sub">From daily report</div></div>
+    </div>
+    <div style="margin-top:14px">
+      <div class="sub-label">Top 5 categories today</div>
+      <div id="snap-categories"><div class="loading">Loading...</div></div>
     </div>
   </div>
 
-  <div id="dash-alert"></div>
-
-  <!-- TODAY BANNER -->
-  <div class="today-banner" id="today-banner">
-    <div class="today-stat"><div class="today-val gold" id="t-net">—</div><div class="today-label">Net Sales Today</div></div>
-    <div class="today-stat"><div class="today-val" id="t-scratch">—</div><div class="today-label">Scratch Sold</div></div>
-    <div class="today-stat"><div class="today-val" id="t-lottery">—</div><div class="today-label">Lottery Net</div></div>
-    <div class="today-stat"><div class="today-val" id="t-payouts">—</div><div class="today-label">Payouts</div></div>
-    <div class="today-stat"><div class="today-val green" id="t-deposit">—</div><div class="today-label">Bank Deposit</div></div>
-    <div class="today-stat"><div class="today-val" id="t-status">—</div><div class="today-label">Report Status</div></div>
+  <!-- SECTION 2: MONTHLY SUMMARY -->
+  <div class="dash-section">
+    <div class="dash-section-header">
+      <div class="dash-section-title">Monthly Summary</div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <button class="month-nav-btn" onclick="changeMonth(-1)">&#8592;</button>
+        <div id="month-label" style="font-family:var(--mono);font-size:13px;font-weight:500;min-width:110px;text-align:center">—</div>
+        <button class="month-nav-btn" onclick="changeMonth(1)">&#8594;</button>
+      </div>
+    </div>
+    <div class="month-metrics">
+      <div class="month-card"><div class="month-val gold" id="ms-net">—</div><div class="month-label">Total Net Sales</div><div class="month-sub" id="ms-net-sub">—</div></div>
+      <div class="month-card"><div class="month-val red" id="ms-purchase">—</div><div class="month-label">Total Purchase</div><div class="month-sub"><span id="ms-purchase-sub">—</span> <button class="inline-edit-btn" onclick="openPurchaseModal()" title="Edit">✎</button></div></div>
+      <div class="month-card"><div class="month-val green" id="ms-margin">—</div><div class="month-label">Profit Margin</div><div class="month-sub">(Net &#8722; Purchase) &#247; Net</div></div>
+      <div class="month-card"><div class="month-val" id="ms-avg-sale">—</div><div class="month-label">Avg Daily Sale</div><div class="month-sub" id="ms-avg-sale-sub">—</div></div>
+    </div>
+    <div class="est-row">
+      <div class="est-card"><div class="est-icon">📈</div><div><div class="est-val" id="ms-est-sale">—</div><div class="est-label">Est. Monthly Sale</div><div class="est-sub">Avg daily sale × days in month</div></div></div>
+      <div class="est-card"><div class="est-icon">📦</div><div><div class="est-val" id="ms-est-purchase">—</div><div class="est-label">Est. Monthly Purchase</div><div class="est-sub">Avg daily purchase × days in month</div></div></div>
+      <div class="est-card"><div class="est-icon">📅</div><div><div class="est-val" id="ms-days">—</div><div class="est-label">Days Reported</div><div class="est-sub" id="ms-days-sub">—</div></div></div>
+    </div>
+    <div style="margin-top:14px">
+      <div class="sub-label">Top 5 categories this month</div>
+      <div id="month-categories"><div class="loading">Loading...</div></div>
+    </div>
   </div>
 
-  <!-- MONTHLY METRICS -->
-  <div class="metrics">
-    <div class="metric"><div class="metric-val gold" id="m-net">—</div><div class="metric-label">Net Sales MTD</div><div class="metric-sub" id="m-net-sub">—</div></div>
-    <div class="metric"><div class="metric-val green" id="m-scratch">—</div><div class="metric-label">Scratch Sold MTD</div><div class="metric-sub" id="m-scratch-sub">—</div></div>
-    <div class="metric"><div class="metric-val" id="m-lottery">—</div><div class="metric-label">Lottery Net MTD</div><div class="metric-sub">From daily reports</div></div>
-    <div class="metric"><div class="metric-val blue" id="m-deposit">—</div><div class="metric-label">Bank Deposits MTD</div><div class="metric-sub">Total deposited</div></div>
-  </div>
-  <div class="metrics">
-    <div class="metric"><div class="metric-val" id="m-days">—</div><div class="metric-label">Days reported</div><div class="metric-sub" id="m-days-sub">—</div></div>
-    <div class="metric"><div class="metric-val gold" id="m-avg">—</div><div class="metric-label">Avg daily sale</div><div class="metric-sub">This month</div></div>
-    <div class="metric"><div class="metric-val green" id="m-est">—</div><div class="metric-label">Est. month-end</div><div class="metric-sub">Based on daily avg</div></div>
-    <div class="metric"><div class="metric-val red" id="m-payouts">—</div><div class="metric-label">Total payouts MTD</div><div class="metric-sub">Cash paid out</div></div>
+  <!-- SECTION 3: PENDING PAYMENTS -->
+  <div class="dash-section">
+    <div class="dash-section-header">
+      <div class="dash-section-title">Pending Payments</div>
+      <button class="btn btn-sm btn-gold" onclick="openAddPaymentModal()">+ Add payment</button>
+    </div>
+    <div class="pending-tabs">
+      <button class="ptab active" onclick="filterPending('all',this)">All</button>
+      <button class="ptab" onclick="filterPending('Beer',this)">Beer</button>
+      <button class="ptab" onclick="filterPending('Wine',this)">Wine</button>
+      <button class="ptab" onclick="filterPending('Other',this)">Other</button>
+    </div>
+    <div id="pending-list"><div class="loading">Loading...</div></div>
+    <div class="pending-totals" id="pending-totals"></div>
   </div>
 
-  <div class="two-col">
-    <div class="card">
-      <div class="card-title">Daily net sales — this week</div>
+  <!-- SECTION 4: CATEGORY TRACKER -->
+  <div class="dash-section">
+    <div class="dash-section-header">
+      <div class="dash-section-title">Category Tracker</div>
+      <div style="font-size:12px;color:var(--muted)">Top 5 from Square — actual vs estimated this month</div>
+    </div>
+    <div id="cat-tracker"><div class="loading">Loading...</div></div>
+  </div>
+
+  <!-- SECTION 5: WEEKLY + LOW INV -->
+  <div style="display:grid;grid-template-columns:2fr 1fr;gap:16px;margin-bottom:16px">
+    <div class="dash-section" style="margin-bottom:0">
+      <div class="dash-section-header"><div class="dash-section-title">Daily Net Sales — This Week</div></div>
       <div id="weekly-bars"><div class="loading">Loading...</div></div>
     </div>
-    <div class="card">
-      <div class="card-title">Scratch by denomination MTD</div>
-      <div id="scratch-bars"><div class="loading">Loading...</div></div>
+    <div class="dash-section" style="margin-bottom:0">
+      <div class="dash-section-header"><div class="dash-section-title">Low Inventory</div><span id="low-inv-count" style="font-size:12px;color:var(--red);font-family:var(--mono)"></span></div>
+      <div id="low-inv"><div class="loading">Loading...</div></div>
     </div>
-  </div>
-
-  <!-- LOW INVENTORY -->
-  <div class="card">
-    <div class="card-title">Low inventory alerts</div>
-    <div id="low-inv"><div class="loading">Loading...</div></div>
   </div>
 </div>
 
+<!-- PURCHASE MODAL -->
+<div class="modal-overlay" id="purchase-modal">
+  <div class="modal" style="width:420px">
+    <div class="modal-header"><div class="modal-title">Edit Monthly Purchase</div><button class="modal-close" onclick="closeModal('purchase-modal')">×</button></div>
+    <div class="modal-body">
+      <div id="purchase-modal-label" style="font-size:13px;color:var(--muted);margin-bottom:14px"></div>
+      <div class="field"><label>Total Purchase Amount ($)</label><input type="number" step="0.01" id="purchase-amount" placeholder="0.00"></div>
+      <div class="field" style="margin-top:12px"><label>Notes (optional)</label><input type="text" id="purchase-notes" placeholder="e.g. Beer + Wine orders"></div>
+    </div>
+    <div class="modal-footer"><button class="btn" onclick="closeModal('purchase-modal')">Cancel</button><button class="btn btn-primary" onclick="savePurchase()">Save</button></div>
+  </div>
+</div>
+
+<!-- ADD PAYMENT MODAL -->
+<div class="modal-overlay" id="add-payment-modal">
+  <div class="modal" style="width:480px">
+    <div class="modal-header"><div class="modal-title">Add Pending Payment</div><button class="modal-close" onclick="closeModal('add-payment-modal')">×</button></div>
+    <div class="modal-body">
+      <div class="form-grid" style="margin-bottom:12px">
+        <div class="field"><label>Vendor Name *</label><input id="pay-vendor" placeholder="e.g. ABS Beer Order"></div>
+        <div class="field"><label>Type *</label><select id="pay-type"><option value="Beer">Beer</option><option value="Wine">Wine</option><option value="Other">Other</option></select></div>
+        <div class="field"><label>Amount ($) *</label><input type="number" step="0.01" id="pay-amount" placeholder="0.00"></div>
+        <div class="field"><label>Invoice #</label><input id="pay-invoice" placeholder="Optional"></div>
+        <div class="field"><label>Invoice Date</label><input type="date" id="pay-date"></div>
+        <div class="field"><label>Due Date</label><input type="date" id="pay-due"></div>
+      </div>
+      <div class="field"><label>Notes</label><input id="pay-notes" placeholder="Optional"></div>
+    </div>
+    <div class="modal-footer"><button class="btn" onclick="closeModal('add-payment-modal')">Cancel</button><button class="btn btn-primary" onclick="savePayment()">Add payment</button></div>
+  </div>
+</div>
 <!-- ── DAILY REPORTS ── -->
 <div class="page" id="page-reports">
   <div class="page-header">
@@ -675,113 +829,356 @@ function nav(page) {
 // ── DASHBOARD ─────────────────────────────────────────────────────────────────
 function initSelectors() {
   const now = new Date();
-  g('sel-month').value = now.getMonth() + 1;
-  g('sel-year').value = now.getFullYear();
+  // rpt-month/year for reports page
   g('rpt-month').value = now.getMonth() + 1;
   g('rpt-year').value = now.getFullYear();
+  // Set snap-date to today
+  g('snap-date').value = now.toISOString().slice(0,10);
 }
 
+
+// ── DASHBOARD STATE ──────────────────────────────────────────────────────────
+let dashMonth = new Date().getMonth() + 1;
+let dashYear = new Date().getFullYear();
+let allPayments = [];
+let squareToken = null; // Set when Square API is connected
+const CAT_COLORS = ['#6b1f3a','#8b5e1a','#2d6a4f','#1a3a5c','#5c3a1a'];
+
+// ── DASHBOARD MAIN ────────────────────────────────────────────────────────────
 async function loadDashboard() {
-  const month = parseInt(g('sel-month').value);
-  const year = parseInt(g('sel-year').value);
-  const daysInMonth = new Date(year, month, 0).getDate();
-  const from = `${year}-${String(month).padStart(2,'0')}-01`;
-  const to = `${year}-${String(month).padStart(2,'0')}-${daysInMonth}`;
-  g('dash-updated').textContent = new Date(year,month-1,1).toLocaleString('en-US',{month:'long'}) + ' ' + year + ' — updated ' + new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'});
-
-  setSync('', 'loading...');
-  await Promise.all([loadToday(), loadMonthlyMetrics(from, to, month, year, daysInMonth), loadWeeklyBars(), loadLowInv()]);
-  setSync('ok', 'loaded');
+  const now = new Date();
+  g('dash-sub').textContent = 'Grape & Grain — updated ' + now.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'});
+  // Set date picker to today
+  if (!g('snap-date').value) g('snap-date').value = TODAY;
+  setSync('','loading...');
+  await Promise.all([
+    loadDailySnapshot(),
+    loadMonthlySummary(),
+    loadPendingPayments(),
+    loadWeeklyBars(),
+    loadLowInv(),
+  ]);
+  setSync('ok','loaded');
 }
 
-async function loadToday() {
-  const reports = await sbGet('gg_daily_reports', `store_id=eq.${SID}&report_date=eq.${TODAY}&limit=1`);
-  const rep = reports[0] || null;
-  if (!rep) {
-    ['t-net','t-scratch','t-lottery','t-payouts','t-deposit'].forEach(id => g(id).textContent = '—');
-    g('t-status').innerHTML = '<span style="color:#666;font-size:12px;font-family:var(--mono)">no report</span>';
-    g('dash-alert').innerHTML = '<div class="alert alert-gold"><span>⚠</span> No daily report submitted yet today.</div>';
-    return;
+// ── SECTION 1: DAILY SNAPSHOT ─────────────────────────────────────────────────
+async function loadDailySnapshot() {
+  const date = g('snap-date').value || TODAY;
+  g('snap-source').textContent = 'loading...';
+  g('snap-source').className = 'source-pill';
+
+  // Try Square API first
+  let squareData = null;
+  if (squareToken) {
+    squareData = await fetchSquareDay(date);
   }
-  g('dash-alert').innerHTML = '';
-  g('t-net').textContent = fmt(rep.cash_sales);
-  g('t-scratch').textContent = fmt(rep.total_scratch_sold);
-  const lot = parseFloat(rep.daily_lottery_sale||0);
-  g('t-lottery').textContent = fmtS(lot);
-  g('t-lottery').className = 'today-val ' + (lot < 0 ? 'red' : 'green');
-  g('t-payouts').textContent = fmt(rep.total_payouts);
-  g('t-deposit').textContent = fmt(rep.bank_deposit);
-  g('t-status').innerHTML = `<span style="color:${rep.status==='submitted'?'#6abf8a':'#c8a96e'};font-size:12px;font-family:var(--mono)">${rep.status||'draft'}</span>`;
+
+  if (squareData) {
+    g('snap-net').textContent = fmt(squareData.netSales);
+    g('snap-cash').textContent = fmt(squareData.cash);
+    g('snap-card-val').textContent = fmt(squareData.card);
+    g('snap-txn').textContent = squareData.transactions || '—';
+    g('snap-source').textContent = 'Square live';
+    g('snap-source').className = 'source-pill';
+    renderSnapCategories(squareData.categories || []);
+  } else {
+    // Fall back to daily report
+    g('snap-source').textContent = 'daily report';
+    g('snap-source').className = 'source-pill manual';
+    const reports = await sbGet('gg_daily_reports',`store_id=eq.${SID}&report_date=eq.${date}&limit=1`);
+    const rep = reports[0] || null;
+    if (rep) {
+      g('snap-net').textContent = fmt(rep.cash_sales);
+      g('snap-cash').textContent = fmt(rep.cash_sales);
+      g('snap-card-val').textContent = '—';
+      g('snap-txn').textContent = '—';
+      g('snap-scratch').textContent = fmt(rep.total_scratch_sold);
+      g('snap-deposit').textContent = fmt(rep.bank_deposit);
+      g('snap-categories').innerHTML = '<div class="empty" style="padding:12px">Connect Square API to see category breakdown</div>';
+    } else {
+      ['snap-net','snap-cash','snap-card-val','snap-txn','snap-scratch','snap-deposit'].forEach(id=>g(id).textContent='—');
+      g('snap-source').textContent = 'no report';
+      g('snap-categories').innerHTML = '<div class="empty" style="padding:12px">No report for this date</div>';
+    }
+  }
+
+  // Always load scratch/deposit from daily report
+  const reports = await sbGet('gg_daily_reports',`store_id=eq.${SID}&report_date=eq.${date}&limit=1`);
+  const rep = reports[0];
+  if (rep) {
+    g('snap-scratch').textContent = fmt(rep.total_scratch_sold);
+    g('snap-deposit').textContent = fmt(rep.bank_deposit);
+  }
 }
 
-async function loadMonthlyMetrics(from, to, month, year, daysInMonth) {
-  const reports = await sbGet('gg_daily_reports', `store_id=eq.${SID}&report_date=gte.${from}&report_date=lte.${to}&order=report_date.asc`);
+async function fetchSquareDay(date) {
+  // Placeholder — will be wired up when Square credentials are provided
+  // Returns: { netSales, cash, card, transactions, categories: [{name, netSales}] }
+  return null;
+}
+
+function renderSnapCategories(categories) {
+  if (!categories.length) { g('snap-categories').innerHTML = '<div class="empty" style="padding:12px">No category data</div>'; return; }
+  const top5 = categories.slice(0,5);
+  const maxV = Math.max(...top5.map(c=>c.netSales),1);
+  g('snap-categories').innerHTML = top5.map((c,i)=>`
+    <div class="cat-bar-row">
+      <div class="cat-bar-label" title="${c.name}">${c.name}</div>
+      <div class="cat-bar-track"><div class="cat-bar-fill" style="width:${(c.netSales/maxV*100).toFixed(1)}%;background:${CAT_COLORS[i]}">${c.netSales>100?fmt(c.netSales):''}</div></div>
+      <div class="cat-bar-val">${fmt(c.netSales)}</div>
+    </div>`).join('');
+}
+
+// ── SECTION 2: MONTHLY SUMMARY ────────────────────────────────────────────────
+function changeMonth(dir) {
+  dashMonth += dir;
+  if (dashMonth > 12) { dashMonth = 1; dashYear++; }
+  if (dashMonth < 1) { dashMonth = 12; dashYear--; }
+  loadMonthlySummary();
+  loadCategoryTracker();
+}
+
+async function loadMonthlySummary() {
+  const daysInMonth = new Date(dashYear, dashMonth, 0).getDate();
+  const from = `${dashYear}-${String(dashMonth).padStart(2,'0')}-01`;
+  const to = `${dashYear}-${String(dashMonth).padStart(2,'0')}-${daysInMonth}`;
+  const monthName = new Date(dashYear,dashMonth-1,1).toLocaleString('en-US',{month:'long'});
+  g('month-label').textContent = monthName + ' ' + dashYear;
+
+  // Load daily reports for month
+  const reports = await sbGet('gg_daily_reports',`store_id=eq.${SID}&report_date=gte.${from}&report_date=lte.${to}&order=report_date.asc`);
   const days = reports.length;
   const netSales = reports.reduce((a,r)=>a+parseFloat(r.cash_sales||0),0);
-  const scratch = reports.reduce((a,r)=>a+parseFloat(r.total_scratch_sold||0),0);
-  const lottery = reports.reduce((a,r)=>a+parseFloat(r.daily_lottery_sale||0),0);
-  const deposits = reports.reduce((a,r)=>a+parseFloat(r.bank_deposit||0),0);
-  const payouts = reports.reduce((a,r)=>a+parseFloat(r.total_payouts||0),0);
   const avgSale = days > 0 ? netSales / days : 0;
-  const now = new Date();
-  const isCurrentMonth = now.getMonth()+1===month && now.getFullYear()===year;
-  const daysElapsed = isCurrentMonth ? now.getDate() : daysInMonth;
-  const est = days > 0 ? (netSales / daysElapsed) * daysInMonth : 0;
+  const estSale = avgSale * daysInMonth;
 
-  g('m-net').textContent = fmt(netSales);
-  g('m-net-sub').textContent = days + ' days reported';
-  g('m-scratch').textContent = fmt(scratch);
-  g('m-scratch-sub').textContent = days > 0 ? 'avg ' + fmt(scratch/days) + '/day' : '—';
-  g('m-lottery').textContent = fmtS(lottery);
-  g('m-lottery').className = 'metric-val' + (lottery < 0 ? ' red' : '');
-  g('m-deposit').textContent = fmt(deposits);
-  g('m-days').textContent = days;
-  g('m-days-sub').textContent = 'of ' + daysInMonth + ' days this month';
-  g('m-avg').textContent = fmt(avgSale);
-  g('m-est').textContent = fmt(est);
-  g('m-payouts').textContent = fmt(payouts);
+  // Load purchase for this month (from monthly_purchases table or manual)
+  const purchases = await sbGet('monthly_purchases',`month=eq.${dashMonth}&year=eq.${dashYear}&store_id=eq.${SID}&limit=1`).catch(()=>[]);
+  const totalPurchase = purchases[0] ? parseFloat(purchases[0].amount||0) : 0;
+  const avgPurchase = days > 0 ? totalPurchase / days : 0;
+  const estPurchase = avgPurchase * daysInMonth;
 
-  // Scratch breakdown
-  if (days > 0 && reports.length) {
-    const ids = reports.map(r=>r.id).join(',');
-    const lines = await sbGet('scratch_inventory_lines', `report_id=in.(${ids})&select=face_value,dollar_sold`);
-    const dm = {};
-    lines.forEach(l => { const k = parseFloat(l.face_value); dm[k] = (dm[k]||0) + parseFloat(l.dollar_sold||0); });
-    const sorted = Object.entries(dm).sort((a,b)=>parseFloat(b[0])-parseFloat(a[0]));
-    const maxV = Math.max(...sorted.map(([,v])=>v), 1);
-    g('scratch-bars').innerHTML = sorted.length
-      ? `<div class="bar-chart">${sorted.map(([d,t])=>`<div class="bar-row"><div class="bar-label">$${parseFloat(d)%1===0?parseInt(d):parseFloat(d).toFixed(2)}</div><div class="bar-track"><div class="bar-fill" style="width:${(t/maxV*100).toFixed(1)}%;background:#6b1f3a">${t>30?fmt(t):''}</div></div><div class="bar-val">${fmt(t)}</div></div>`).join('')}</div>`
-      : '<div class="empty">No data yet</div>';
+  // Margin = (Net - Purchase) / Net
+  const margin = netSales > 0 ? ((netSales - totalPurchase) / netSales * 100) : 0;
+
+  g('ms-net').textContent = fmt(netSales);
+  g('ms-net-sub').textContent = days + ' days of data';
+  g('ms-purchase').textContent = fmt(totalPurchase);
+  g('ms-purchase-sub').textContent = totalPurchase > 0 ? 'entered manually' : 'click ✎ to enter';
+  g('ms-margin').textContent = margin.toFixed(1) + '%';
+  g('ms-margin').className = 'month-val ' + (margin >= 20 ? 'green' : margin >= 10 ? '' : 'red');
+  g('ms-avg-sale').textContent = fmt(avgSale);
+  g('ms-avg-sale-sub').textContent = days + ' days reported';
+  g('ms-est-sale').textContent = fmt(estSale);
+  g('ms-est-purchase').textContent = totalPurchase > 0 ? fmt(estPurchase) : '—';
+  g('ms-days').textContent = days;
+  g('ms-days-sub').textContent = 'of ' + daysInMonth + ' days this month';
+
+  // Store for purchase modal
+  ST.dashMonth = dashMonth; ST.dashYear = dashYear;
+  ST.currentPurchase = purchases[0] || null;
+
+  // Top 5 categories from Square or daily reports
+  await loadCategoryTracker();
+
+  // Month categories (Square or placeholder)
+  if (squareToken) {
+    // Will be filled by Square API
   } else {
-    g('scratch-bars').innerHTML = '<div class="empty">No reports this month</div>';
+    g('month-categories').innerHTML = `<div style="display:flex;align-items:center;gap:10px;padding:10px 0">
+      <div style="font-size:13px;color:var(--muted)">Connect Square API to see monthly category breakdown</div>
+      <button class="btn btn-sm btn-gold" onclick="nav('settings')">Connect Square →</button>
+    </div>`;
   }
 }
 
+// Purchase modal
+function openPurchaseModal() {
+  const monthName = new Date(dashYear,dashMonth-1,1).toLocaleString('en-US',{month:'long'});
+  g('purchase-modal-label').textContent = `Enter total purchases for ${monthName} ${dashYear}`;
+  g('purchase-amount').value = ST.currentPurchase ? ST.currentPurchase.amount : '';
+  g('purchase-notes').value = ST.currentPurchase ? (ST.currentPurchase.notes||'') : '';
+  openModal('purchase-modal');
+}
+
+async function savePurchase() {
+  const amount = parseFloat(g('purchase-amount').value)||0;
+  const notes = g('purchase-notes').value.trim();
+  const data = { store_id:SID, month:dashMonth, year:dashYear, amount, notes:notes||null };
+  try {
+    const r = await fetch(`${SB}/rest/v1/monthly_purchases`, {
+      method:'POST',
+      headers:{...H,'Prefer':'return=representation,resolution=merge-duplicates'},
+      body:JSON.stringify(data)
+    });
+    if (!r.ok) throw new Error(await r.text());
+    closeModal('purchase-modal');
+    loadMonthlySummary();
+  } catch(e) { alert('Error saving: '+e.message); }
+}
+
+// ── SECTION 3: PENDING PAYMENTS ───────────────────────────────────────────────
+let pendingFilter = 'all';
+
+async function loadPendingPayments() {
+  const data = await sbGet('pending_payments','status=eq.unpaid&order=due_date.asc');
+  allPayments = data;
+  renderPendingList();
+}
+
+function filterPending(type, btn) {
+  pendingFilter = type;
+  document.querySelectorAll('.ptab').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  renderPendingList();
+}
+
+function renderPendingList() {
+  const filtered = pendingFilter === 'all' ? allPayments : allPayments.filter(p=>p.vendor_type===pendingFilter);
+  const el = g('pending-list');
+  if (!filtered.length) { el.innerHTML = '<div class="empty">No pending payments</div>'; g('pending-totals').innerHTML=''; return; }
+
+  el.innerHTML = filtered.map(p => {
+    const typeClass = p.vendor_type==='Beer'?'pill-beer':p.vendor_type==='Wine'?'pill-wine':'pill-other';
+    const overdue = p.due_date && p.due_date < TODAY;
+    return `<div class="payment-row">
+      <div class="payment-info">
+        <span class="payment-type-pill ${typeClass}">${p.vendor_type}</span>
+        <div>
+          <div class="payment-vendor" style="${overdue?'color:var(--red)':''}">${p.vendor_name}${overdue?' ⚠ overdue':''}</div>
+          <div class="payment-meta">${p.invoice_number?'#'+p.invoice_number+' · ':''}${p.invoice_date||''}${p.due_date?' · due '+p.due_date:''}</div>
+          ${p.notes?`<div class="payment-meta">${p.notes}</div>`:''}
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:12px">
+        <div class="payment-amount">${fmt(p.amount)}</div>
+        <div class="payment-actions">
+          <button class="btn btn-sm btn-green" onclick="markPaid(${p.id})">Mark paid</button>
+          <button class="btn btn-sm btn-red" onclick="deletePayment(${p.id})">×</button>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+
+  // Totals by type
+  const totals = { Beer:0, Wine:0, Other:0 };
+  allPayments.forEach(p=>totals[p.vendor_type]=(totals[p.vendor_type]||0)+parseFloat(p.amount||0));
+  const grandTotal = Object.values(totals).reduce((a,b)=>a+b,0);
+  g('pending-totals').innerHTML = `
+    <div class="pending-total-item"><div class="pending-total-val">${fmt(grandTotal)}</div><div class="pending-total-label">Total Pending</div></div>
+    <div class="pending-total-item"><div class="pending-total-val" style="color:var(--beer)">${fmt(totals.Beer)}</div><div class="pending-total-label">Beer</div></div>
+    <div class="pending-total-item"><div class="pending-total-val" style="color:var(--wine)">${fmt(totals.Wine)}</div><div class="pending-total-label">Wine</div></div>
+    <div class="pending-total-item"><div class="pending-total-val" style="color:var(--muted)">${fmt(totals.Other)}</div><div class="pending-total-label">Other</div></div>`;
+}
+
+function openAddPaymentModal() {
+  g('pay-vendor').value=''; g('pay-amount').value=''; g('pay-invoice').value='';
+  g('pay-notes').value=''; g('pay-date').value=''; g('pay-due').value='';
+  openModal('add-payment-modal');
+}
+
+async function savePayment() {
+  const vendor = g('pay-vendor').value.trim();
+  const amount = parseFloat(g('pay-amount').value)||0;
+  if (!vendor||!amount) { alert('Vendor name and amount are required'); return; }
+  const data = {store_id:SID,vendor_name:vendor,vendor_type:g('pay-type').value,amount,invoice_number:g('pay-invoice').value.trim()||null,invoice_date:g('pay-date').value||null,due_date:g('pay-due').value||null,notes:g('pay-notes').value.trim()||null,status:'unpaid'};
+  try {
+    const r = await fetch(`${SB}/rest/v1/pending_payments`,{method:'POST',headers:{...H,'Prefer':'return=minimal'},body:JSON.stringify(data)});
+    if (!r.ok) throw new Error(await r.text());
+    closeModal('add-payment-modal');
+    loadPendingPayments();
+  } catch(e) { alert('Error: '+e.message); }
+}
+
+async function markPaid(id) {
+  await fetch(`${SB}/rest/v1/pending_payments?id=eq.${id}`,{method:'PATCH',headers:H,body:JSON.stringify({status:'paid',paid_date:TODAY})});
+  loadPendingPayments();
+}
+
+async function deletePayment(id) {
+  if (!confirm('Delete this payment?')) return;
+  await fetch(`${SB}/rest/v1/pending_payments?id=eq.${id}`,{method:'DELETE',headers:H});
+  loadPendingPayments();
+}
+
+// ── SECTION 4: CATEGORY TRACKER ───────────────────────────────────────────────
+async function loadCategoryTracker() {
+  const daysInMonth = new Date(dashYear, dashMonth, 0).getDate();
+  const from = `${dashYear}-${String(dashMonth).padStart(2,'0')}-01`;
+  const to = `${dashYear}-${String(dashMonth).padStart(2,'0')}-${daysInMonth}`;
+  const now = new Date();
+  const isCurrentMonth = now.getMonth()+1===dashMonth && now.getFullYear()===dashYear;
+  const daysElapsed = isCurrentMonth ? now.getDate() : daysInMonth;
+
+  if (squareToken) {
+    // Will pull from Square API
+    g('cat-tracker').innerHTML = '<div class="empty">Square category data loading...</div>';
+    return;
+  }
+
+  // Without Square — show scratch breakdown from daily reports as proxy
+  const reports = await sbGet('gg_daily_reports',`store_id=eq.${SID}&report_date=gte.${from}&report_date=lte.${to}&order=report_date.asc`);
+  if (!reports.length) { g('cat-tracker').innerHTML = '<div class="empty">No report data this month. Connect Square API for category tracking.</div>'; return; }
+
+  const ids = reports.map(r=>r.id).join(',');
+  const lines = await sbGet('scratch_inventory_lines',`report_id=in.(${ids})&select=face_value,dollar_sold`);
+
+  // Group scratch by denomination as proxy categories
+  const dm = {};
+  lines.forEach(l=>{const k='$'+parseFloat(l.face_value).toFixed(0)+' tickets';dm[k]=(dm[k]||0)+parseFloat(l.dollar_sold||0);});
+  const netSales = reports.reduce((a,r)=>a+parseFloat(r.cash_sales||0),0);
+  if (netSales > 0) dm['Net Sales Total'] = netSales;
+
+  const sorted = Object.entries(dm).sort((a,b)=>b[1]-a[1]).slice(0,5);
+  if (!sorted.length) { g('cat-tracker').innerHTML = '<div class="empty">No data yet this month</div>'; return; }
+
+  g('cat-tracker').innerHTML = `
+    <div style="margin-bottom:10px;padding:8px 12px;background:var(--blue-bg);border:1px solid var(--blue-border);border-radius:6px;font-size:12px;color:var(--blue)">
+      Showing scratch ticket data as proxy. Connect Square API for full category breakdown by product category.
+    </div>
+    <div class="cat-tracker-grid">${sorted.map(([ name, actual ],i)=>{
+      const avgDay = daysElapsed > 0 ? actual/daysElapsed : 0;
+      const est = avgDay * daysInMonth;
+      const pct = Math.min(100, (daysElapsed/daysInMonth*100));
+      return `<div class="cat-tracker-card">
+        <div class="ct-rank">#${i+1}</div>
+        <div class="ct-name" title="${name}">${name}</div>
+        <div class="ct-actual">${fmt(actual)}</div>
+        <div class="ct-label">Actual MTD</div>
+        <div class="ct-bar"><div class="ct-bar-fill" style="width:${pct.toFixed(1)}%;background:${CAT_COLORS[i]}"></div></div>
+        <hr class="ct-divider">
+        <div class="ct-est">${fmt(est)}</div>
+        <div class="ct-est-label">Est. month-end</div>
+      </div>`;
+    }).join('')}</div>`;
+}
+
+// ── WEEKLY BARS ────────────────────────────────────────────────────────────────
 async function loadWeeklyBars() {
   const now = new Date();
   const dow = now.getDay();
-  const monday = new Date(now);
-  monday.setDate(now.getDate() - (dow===0?6:dow-1));
-  const dates = Array.from({length:7},(_,i)=>{ const d=new Date(monday); d.setDate(monday.getDate()+i); return d.toISOString().slice(0,10); });
-  const reports = await sbGet('gg_daily_reports', `store_id=eq.${SID}&report_date=gte.${dates[0]}&report_date=lte.${dates[6]}&order=report_date.asc`);
-  const rm = {}; reports.forEach(r=>rm[r.report_date]=r);
-  const days = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
-  const vals = dates.map((d,i)=>({d,label:days[i],net:parseFloat(rm[d]?.cash_sales||0),isToday:d===TODAY,has:!!rm[d]}));
-  const maxV = Math.max(...vals.map(v=>v.net), 1);
-  g('weekly-bars').innerHTML = `<div class="bar-chart">${vals.map(v=>`<div class="bar-row"><div class="bar-label" style="${v.isToday?'color:var(--gold);font-weight:600':''}">${v.label}</div><div class="bar-track"><div class="bar-fill" style="width:${v.net>0?(v.net/maxV*100).toFixed(1):0}%;background:${v.isToday?'#8b6914':'#2d6a4f'}">${v.net>150?fmt(v.net):''}</div></div><div class="bar-val">${v.has?fmt(v.net):'<span style="color:var(--faint)">—</span>'}</div></div>`).join('')}</div>`;
+  const monday = new Date(now); monday.setDate(now.getDate()-(dow===0?6:dow-1));
+  const dates = Array.from({length:7},(_,i)=>{const d=new Date(monday);d.setDate(monday.getDate()+i);return d.toISOString().slice(0,10);});
+  const reports = await sbGet('gg_daily_reports',`store_id=eq.${SID}&report_date=gte.${dates[0]}&report_date=lte.${dates[6]}&order=report_date.asc`);
+  const rm={};reports.forEach(r=>rm[r.report_date]=r);
+  const days=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+  const vals=dates.map((d,i)=>({d,label:days[i],net:parseFloat(rm[d]?.cash_sales||0),isToday:d===TODAY,has:!!rm[d]}));
+  const maxV=Math.max(...vals.map(v=>v.net),1);
+  g('weekly-bars').innerHTML=`<div class="bar-chart">${vals.map(v=>`<div class="bar-row"><div class="bar-label" style="${v.isToday?'color:var(--gold);font-weight:600':''}">${v.label}</div><div class="bar-track"><div class="bar-fill" style="width:${v.net>0?(v.net/maxV*100).toFixed(1):0}%;background:${v.isToday?'#8b6914':'#2d6a4f'}">${v.net>150?fmt(v.net):''}</div></div><div class="bar-val">${v.has?fmt(v.net):'<span style="color:var(--faint)">—</span>'}</div></div>`).join('')}</div>`;
 }
 
+// ── LOW INVENTORY ──────────────────────────────────────────────────────────────
 async function loadLowInv() {
   try {
-    const items = await apiGet('/api/items?status=Active&limit=10');
-    const low = (items.items||[]).filter(i=>parseFloat(i.inventory||0)<=2&&parseFloat(i.inventory||0)>=0);
+    const data = await apiGet('/api/items?status=Active&limit=100');
+    const low = (data.items||[]).filter(i=>parseFloat(i.inventory||0)<=2&&parseFloat(i.inventory||0)>=0).slice(0,8);
+    g('low-inv-count').textContent = low.length ? '('+low.length+')' : '';
     g('low-inv').innerHTML = low.length
-      ? `<div class="tbl-wrap"><table><thead><tr><th>Item</th><th>Category</th><th>Inventory</th><th>ABS Code</th></tr></thead><tbody>${low.map(i=>`<tr><td style="font-weight:500">${i.gg_name||'—'}</td><td>${catBadge(i.category)}</td><td style="font-family:var(--mono);color:${parseFloat(i.inventory||0)===0?'var(--red)':'var(--gold)'}">${i.inventory}</td><td class="mono muted">${i.abs_code||'—'}</td></tr>`).join('')}</tbody></table></div>`
-      : '<div class="empty">No low inventory alerts</div>';
+      ? low.map(i=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid var(--border);font-size:12px"><span>${i.gg_name||'—'}</span><span style="font-family:var(--mono);color:${parseFloat(i.inventory||0)===0?'var(--red)':'var(--gold)'};font-weight:600">${i.inventory}</span></div>`).join('')
+      : '<div class="empty" style="padding:12px">No low inventory alerts</div>';
   } catch(e) { g('low-inv').innerHTML = '<div class="empty">Could not load</div>'; }
 }
 
-// ── DAILY REPORTS ─────────────────────────────────────────────────────────────
 async function loadReports() {
   const month = parseInt(g('rpt-month').value);
   const year = parseInt(g('rpt-year').value);
