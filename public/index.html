@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Grape & Grain — Store Manager</title>
-<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<title>Grape & Grain — Owner</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600&family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -17,79 +17,80 @@
   --wine:#6b1f3a;--beer:#8b5e1a;
   --sidebar-w:220px;
   --font-display:'Playfair Display',serif;
-  --font-body:'DM Sans',sans-serif;
-  --font-mono:'DM Mono',monospace;
+  --font:'DM Sans',sans-serif;
+  --mono:'DM Mono',monospace;
 }
-body{font-family:var(--font-body);background:var(--bg);color:var(--text);font-size:14px;line-height:1.6;min-height:100vh}
-
-/* LAYOUT */
+body{font-family:var(--font);background:var(--bg);color:var(--text);font-size:14px;line-height:1.6;min-height:100vh}
 .layout{display:grid;grid-template-rows:52px 1fr;grid-template-columns:var(--sidebar-w) 1fr;min-height:100vh}
+
+/* TOPBAR */
 .topbar{grid-column:1/-1;background:var(--text);display:flex;align-items:center;justify-content:space-between;padding:0 24px;border-bottom:1px solid #2d2a26}
-.logo{font-family:var(--font-display);font-size:19px;color:#faf9f7;letter-spacing:.02em}
-.logo em{color:#c8a96e;font-style:normal;font-size:11px;font-family:var(--font-mono);margin-left:10px;letter-spacing:.08em}
-.topbar-right{display:flex;align-items:center;gap:12px}
-.sync-dot{width:8px;height:8px;border-radius:50%;background:#555}
+.logo{font-family:var(--font-display);font-size:18px;color:#faf9f7}
+.logo em{color:#c8a96e;font-style:normal;font-size:11px;font-family:var(--mono);margin-left:10px;letter-spacing:.08em}
+.topbar-right{display:flex;align-items:center;gap:14px}
+.sync-dot{width:8px;height:8px;border-radius:50%;background:#444}
 .sync-dot.ok{background:#6abf8a}
 .sync-dot.err{background:#e05555}
-.sync-label{font-size:11px;font-family:var(--font-mono);color:#888}
-.sidebar{background:var(--surface);border-right:1px solid var(--border);padding:16px 0;overflow-y:auto}
+.sync-label{font-size:11px;font-family:var(--mono);color:#888}
+.topbar-link{font-size:12px;color:#888;text-decoration:none;padding:4px 10px;border:1px solid #333;border-radius:4px;font-family:var(--mono)}
+.topbar-link:hover{color:#c8a96e;border-color:#555}
+
+/* SIDEBAR */
+.sidebar{background:var(--surface);border-right:1px solid var(--border);padding:16px 0;overflow-y:auto;height:calc(100vh - 52px);position:sticky;top:52px}
 .nav-group{padding:0 12px;margin-bottom:4px}
-.nav-label{font-size:10px;font-family:var(--font-mono);color:var(--faint);letter-spacing:.1em;text-transform:uppercase;padding:10px 8px 4px}
-.nav-item{display:flex;align-items:center;gap:9px;padding:8px 12px;border-radius:6px;cursor:pointer;color:var(--muted);font-size:13px;margin-bottom:1px;transition:all .15s}
+.nav-label{font-size:10px;font-family:var(--mono);color:var(--faint);letter-spacing:.1em;text-transform:uppercase;padding:10px 8px 4px}
+.nav-item{display:flex;align-items:center;gap:9px;padding:8px 12px;border-radius:6px;cursor:pointer;color:var(--muted);font-size:13px;margin-bottom:1px;transition:all .15s;user-select:none}
 .nav-item:hover{background:var(--surface2);color:var(--text)}
 .nav-item.active{background:var(--gold-bg);color:var(--gold);font-weight:500}
 .nav-icon{width:15px;height:15px;flex-shrink:0;opacity:.6}
 .nav-item.active .nav-icon{opacity:1}
-hr.nav-hr{border:none;border-top:1px solid var(--border);margin:10px 12px}
+.nav-divider{border:none;border-top:1px solid var(--border);margin:10px 12px}
+
+/* MAIN */
 .main{overflow-y:auto;padding:28px 32px;height:calc(100vh - 52px)}
 .page{display:none}
 .page.active{display:block}
-.page-header{margin-bottom:24px}
+.page-header{margin-bottom:22px;display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:10px}
 .page-title{font-family:var(--font-display);font-size:26px;font-weight:600;margin-bottom:3px}
 .page-sub{font-size:13px;color:var(--muted)}
 
 /* METRICS */
-.metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:24px}
+.metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px}
 .metric{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:18px 20px}
-.metric-val{font-family:var(--font-display);font-size:28px;font-weight:600;margin-bottom:2px;color:var(--text)}
+.metric-val{font-family:var(--font-display);font-size:26px;font-weight:600;margin-bottom:2px;color:var(--text)}
 .metric-val.gold{color:var(--gold)}
 .metric-val.green{color:var(--green)}
 .metric-val.red{color:var(--red)}
 .metric-val.blue{color:var(--blue)}
-.metric-label{font-size:11px;font-family:var(--font-mono);color:var(--muted)}
+.metric-label{font-size:11px;font-family:var(--mono);color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
 .metric-sub{font-size:11px;color:var(--faint);margin-top:3px}
 
-/* CARDS */
-.card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px 24px;margin-bottom:16px}
-.card-title{font-size:11px;font-family:var(--font-mono);color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:14px}
+/* TODAY BANNER */
+.today-banner{background:var(--text);border-radius:10px;padding:16px 20px;margin-bottom:20px;display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:14px}
+.today-stat .today-val{font-family:var(--font-display);font-size:22px;font-weight:600;color:#faf9f7;margin-bottom:2px}
+.today-stat .today-val.gold{color:#c8a96e}
+.today-stat .today-val.green{color:#6abf8a}
+.today-stat .today-val.red{color:#e07070}
+.today-stat .today-label{font-size:10px;font-family:var(--mono);color:#666;text-transform:uppercase;letter-spacing:.05em}
 
-/* BUTTONS */
-.btn{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border:1px solid var(--border2);border-radius:7px;background:var(--surface);color:var(--text);font-family:var(--font-body);font-size:13px;cursor:pointer;transition:all .15s;font-weight:400}
-.btn:hover{background:var(--surface2)}
-.btn:disabled{opacity:.4;cursor:not-allowed}
-.btn-primary{background:var(--text);color:var(--bg);border-color:var(--text)}
-.btn-primary:hover{background:#2d2a26}
-.btn-gold{background:var(--gold-bg);color:var(--gold);border-color:var(--gold-border)}
-.btn-gold:hover{background:#faeec5}
-.btn-green{background:var(--green-bg);color:var(--green);border-color:var(--green-border)}
-.btn-red{background:var(--red-bg);color:var(--red);border-color:var(--red-border)}
-.btn-sm{padding:5px 10px;font-size:12px}
+/* CARDS */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px 22px;margin-bottom:16px}
+.card-title{font-size:11px;font-family:var(--mono);color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:14px}
+.two-col{display:grid;grid-template-columns:2fr 1fr;gap:16px;margin-bottom:16px}
 
 /* TABLE */
-.tbl-wrap{border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:16px}
+.tbl-wrap{border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:14px}
 table{width:100%;border-collapse:collapse;font-size:13px}
-thead th{background:var(--surface2);padding:10px 14px;text-align:left;font-family:var(--font-mono);font-size:11px;color:var(--muted);border-bottom:1px solid var(--border);font-weight:500;white-space:nowrap;cursor:pointer;user-select:none}
+thead th{background:var(--surface2);padding:9px 14px;text-align:left;font-family:var(--mono);font-size:11px;color:var(--muted);border-bottom:1px solid var(--border);font-weight:500;white-space:nowrap;cursor:pointer;user-select:none}
 thead th:hover{color:var(--text)}
 tbody tr{border-bottom:1px solid var(--border);transition:background .1s}
 tbody tr:last-child{border-bottom:none}
 tbody tr:hover{background:var(--surface2)}
 td{padding:9px 14px;vertical-align:middle}
-.mono{font-family:var(--font-mono);font-size:12px}
-.muted{color:var(--muted)}
 .pagination{display:flex;align-items:center;justify-content:space-between;padding:10px 16px;border-top:1px solid var(--border);font-size:12px;color:var(--muted)}
 
 /* BADGES */
-.badge{display:inline-block;font-size:11px;padding:2px 8px;border-radius:4px;font-family:var(--font-mono);font-weight:500;white-space:nowrap}
+.badge{display:inline-block;font-size:11px;padding:2px 8px;border-radius:4px;font-family:var(--mono);font-weight:500;white-space:nowrap}
 .badge-beer{background:#fef3e2;color:var(--beer);border:1px solid #f0d5a0}
 .badge-wine{background:#fdf0f4;color:var(--wine);border:1px solid #e8b8cc}
 .badge-green{background:var(--green-bg);color:var(--green);border:1px solid var(--green-border)}
@@ -98,44 +99,70 @@ td{padding:9px 14px;vertical-align:middle}
 .badge-red{background:var(--red-bg);color:var(--red);border:1px solid var(--red-border)}
 .badge-blue{background:var(--blue-bg);color:var(--blue);border:1px solid var(--blue-border)}
 
+/* BAR CHART */
+.bar-chart{display:flex;flex-direction:column;gap:7px}
+.bar-row{display:flex;align-items:center;gap:10px;font-size:12px}
+.bar-label{width:52px;font-family:var(--mono);font-size:11px;font-weight:500;color:var(--text);text-align:right;flex-shrink:0}
+.bar-track{flex:1;background:var(--surface2);border-radius:3px;height:26px;overflow:hidden}
+.bar-fill{height:100%;border-radius:3px;transition:width .5s ease;display:flex;align-items:center;padding:0 8px;font-size:11px;font-family:var(--mono);color:#fff;font-weight:500}
+.bar-val{width:65px;font-family:var(--mono);font-size:11px;color:var(--muted);text-align:right}
+
+/* STAT ROWS */
+.stat-row{display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid var(--border)}
+.stat-row:last-child{border-bottom:none}
+.stat-label{font-size:13px;color:var(--muted)}
+.stat-val{font-family:var(--mono);font-size:14px;font-weight:500}
+.stat-val.green{color:var(--green)}
+.stat-val.red{color:var(--red)}
+.stat-val.gold{color:var(--gold)}
+
+/* REPORT ROWS */
+.report-row{padding:10px 0;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;font-size:13px;flex-wrap:wrap;gap:8px}
+.report-row:last-child{border-bottom:none}
+.report-meta{display:flex;align-items:center;gap:10px}
+.report-date{font-family:var(--mono);font-size:12px;color:var(--muted)}
+.report-vals{display:flex;gap:18px;align-items:center;flex-wrap:wrap}
+.rval{display:flex;flex-direction:column;align-items:flex-end}
+.rval-label{font-size:10px;color:var(--faint);font-family:var(--mono)}
+.rval-num{font-family:var(--mono);font-size:13px;font-weight:500}
+
 /* FORMS */
 .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
-.form-grid.cols3{grid-template-columns:1fr 1fr 1fr}
-.form-grid.cols1{grid-template-columns:1fr}
+.form-grid.c3{grid-template-columns:1fr 1fr 1fr}
+.form-grid.c1{grid-template-columns:1fr}
 .field{display:flex;flex-direction:column;gap:5px}
-.field label{font-size:11px;font-family:var(--font-mono);color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
-.field input,.field select,.field textarea{padding:8px 11px;border:1px solid var(--border2);border-radius:6px;background:var(--bg);color:var(--text);font-family:var(--font-body);font-size:13px;transition:border-color .15s}
-.field input:focus,.field select:focus,.field textarea:focus{outline:none;border-color:var(--gold)}
-.field textarea{height:80px;resize:vertical}
+.field label{font-size:11px;font-family:var(--mono);color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+.field input,.field select,.field textarea{padding:8px 11px;border:1px solid var(--border2);border-radius:6px;background:var(--bg);color:var(--text);font-family:var(--font);font-size:13px}
+.field input:focus,.field select:focus{outline:none;border-color:var(--gold)}
 .field input[readonly]{background:var(--surface2);color:var(--muted)}
-.form-section{font-size:11px;font-family:var(--font-mono);color:var(--faint);text-transform:uppercase;letter-spacing:.08em;padding:14px 0 8px;border-top:1px solid var(--border);margin-top:4px}
+.form-section{font-size:11px;font-family:var(--mono);color:var(--faint);text-transform:uppercase;letter-spacing:.08em;padding:14px 0 8px;border-top:1px solid var(--border);margin-top:4px}
 .form-section:first-child{border-top:none;padding-top:0}
 .filter-row{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:14px}
 .filter-row input[type=text]{padding:8px 12px;border:1px solid var(--border2);border-radius:6px;background:var(--surface);color:var(--text);font-size:13px;min-width:200px}
 .filter-row input[type=text]:focus{outline:none;border-color:var(--gold)}
-.filter-row select{padding:8px 11px;border:1px solid var(--border2);border-radius:6px;background:var(--surface);color:var(--text);font-size:13px}
+.filter-row select{padding:8px 10px;border:1px solid var(--border2);border-radius:6px;background:var(--surface);color:var(--text);font-size:13px}
+
+/* BUTTONS */
+.btn{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border:1px solid var(--border2);border-radius:7px;background:var(--surface);color:var(--text);font-family:var(--font);font-size:13px;cursor:pointer;transition:all .15s}
+.btn:hover{background:var(--surface2)}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+.btn-primary{background:var(--text);color:var(--bg);border-color:var(--text)}
+.btn-primary:hover{background:#2d2a26}
+.btn-gold{background:var(--gold-bg);color:var(--gold);border-color:var(--gold-border)}
+.btn-green{background:var(--green-bg);color:var(--green);border-color:var(--green-border)}
+.btn-sm{padding:5px 10px;font-size:12px}
+
+/* MONTH SELECTOR */
+.month-bar{display:flex;align-items:center;gap:10px;margin-bottom:20px;padding:11px 16px;background:var(--surface);border:1px solid var(--border);border-radius:8px}
+.month-bar label{font-size:11px;font-family:var(--mono);color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+.month-bar select{padding:5px 10px;border:1px solid var(--border2);border-radius:5px;background:var(--surface);color:var(--text);font-family:var(--font);font-size:13px}
 
 /* ALERTS */
-.alert{padding:12px 16px;border-radius:7px;font-size:13px;margin-bottom:14px;display:flex;align-items:flex-start;gap:10px}
+.alert{padding:12px 16px;border-radius:8px;font-size:13px;margin-bottom:14px;display:flex;gap:10px;align-items:flex-start}
 .alert-gold{background:var(--gold-bg);border:1px solid var(--gold-border);color:var(--gold)}
 .alert-green{background:var(--green-bg);border:1px solid var(--green-border);color:var(--green)}
 .alert-red{background:var(--red-bg);border:1px solid var(--red-border);color:var(--red)}
 .alert-blue{background:var(--blue-bg);border:1px solid var(--blue-border);color:var(--blue)}
-
-/* CHARTS */
-.charts-grid{display:grid;grid-template-columns:2fr 1fr;gap:16px;margin-bottom:16px}
-.bar-chart{display:flex;flex-direction:column;gap:8px}
-.bar-row{display:flex;align-items:center;gap:10px;font-size:12px}
-.bar-label{width:90px;color:var(--muted);text-align:right;font-family:var(--font-mono);font-size:11px;flex-shrink:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.bar-track{flex:1;background:var(--surface2);border-radius:2px;height:18px;overflow:hidden}
-.bar-fill{height:100%;border-radius:2px;transition:width .6s ease;display:flex;align-items:center;padding-left:8px;font-size:11px;font-family:var(--font-mono);color:#fff;font-weight:500}
-.bar-val{width:55px;text-align:right;font-family:var(--font-mono);font-size:11px;color:var(--muted)}
-.stat-rows{display:flex;flex-direction:column;gap:0}
-.stat-row{display:flex;align-items:center;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--border)}
-.stat-row:last-child{border-bottom:none}
-.stat-dot{width:9px;height:9px;border-radius:50%;margin-right:8px;flex-shrink:0}
-.stat-name{flex:1;font-size:12px;display:flex;align-items:center}
-.stat-val{font-family:var(--font-mono);font-size:12px;color:var(--muted)}
 
 /* MODAL */
 .modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:200;align-items:center;justify-content:center;backdrop-filter:blur(2px)}
@@ -147,30 +174,32 @@ td{padding:9px 14px;vertical-align:middle}
 .modal-body{padding:20px 22px}
 .modal-footer{padding:14px 22px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:10px}
 
-/* ORDER BUILDER */
-.upload-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:20px}
-.upload-box{border:1px dashed var(--border2);border-radius:10px;padding:18px 16px;cursor:pointer;transition:all .15s;text-align:center}
+/* UPLOAD */
+.upload-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin-bottom:20px}
+.upload-box{border:1px dashed var(--border2);border-radius:10px;padding:18px 14px;cursor:pointer;transition:all .15s;text-align:center}
 .upload-box:hover{border-color:var(--gold);background:var(--gold-bg)}
 .upload-box.loaded{border-color:var(--green);border-style:solid;background:var(--green-bg)}
 .upload-box-title{font-size:13px;font-weight:500;margin-bottom:4px}
 .upload-box-sub{font-size:11px;color:var(--muted)}
 .upload-box-status{font-size:11px;margin-top:8px;color:var(--faint)}
 .upload-box.loaded .upload-box-status{color:var(--green)}
-.order-cfg{display:flex;gap:14px;flex-wrap:wrap;align-items:flex-end;padding:16px;background:var(--surface2);border-radius:8px;margin-bottom:20px}
-.order-cfg .field label{font-size:11px;color:var(--muted);margin-bottom:4px}
+.order-cfg{display:flex;gap:14px;flex-wrap:wrap;align-items:flex-end;padding:14px;background:var(--surface2);border-radius:8px;margin-bottom:18px}
+.order-cfg .field label{margin-bottom:4px}
 .order-cfg input,.order-cfg select{padding:7px 10px;border:1px solid var(--border2);border-radius:6px;background:var(--surface);color:var(--text);font-size:13px;width:110px}
 
-/* EMPTY + LOADING */
-.empty{text-align:center;padding:48px;color:var(--faint)}
-.empty-title{font-family:var(--font-display);font-size:20px;color:var(--muted);margin-bottom:6px}
-.loading{text-align:center;padding:32px;color:var(--muted);font-family:var(--font-mono);font-size:12px}
+/* MISC */
+.empty{text-align:center;padding:32px;color:var(--faint);font-size:13px}
+.loading{text-align:center;padding:24px;color:var(--muted);font-family:var(--mono);font-size:12px}
+.mono{font-family:var(--mono);font-size:12px}
+.muted{color:var(--muted)}
+.pill-submitted{background:var(--green-bg);color:var(--green);border:1px solid var(--green-border);font-size:10px;font-family:var(--mono);padding:2px 7px;border-radius:3px;display:inline-block}
+.pill-draft{background:var(--gold-bg);color:var(--gold);border:1px solid var(--gold-border);font-size:10px;font-family:var(--mono);padding:2px 7px;border-radius:3px;display:inline-block}
 
-/* RESPONSIVE */
 @media(max-width:768px){
   .layout{grid-template-columns:1fr}
   .sidebar{display:none}
   .metrics{grid-template-columns:1fr 1fr}
-  .charts-grid{grid-template-columns:1fr}
+  .two-col{grid-template-columns:1fr}
   .form-grid{grid-template-columns:1fr}
   .main{padding:16px}
 }
@@ -181,10 +210,11 @@ td{padding:9px 14px;vertical-align:middle}
 
 <!-- TOPBAR -->
 <div class="topbar">
-  <div class="logo" id="store-logo">Grape & Grain <em>STORE MANAGER</em></div>
+  <div class="logo" id="store-logo">Grape & Grain <em>OWNER</em></div>
   <div class="topbar-right">
     <div class="sync-dot" id="sync-dot"></div>
     <div class="sync-label" id="sync-label">connecting...</div>
+    <a href="/staff" class="topbar-link">Staff view →</a>
   </div>
 </div>
 
@@ -195,6 +225,10 @@ td{padding:9px 14px;vertical-align:middle}
     <div class="nav-item active" data-page="dashboard" onclick="nav('dashboard')">
       <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1" y="1" width="6" height="6" rx="1"/><rect x="9" y="1" width="6" height="6" rx="1"/><rect x="1" y="9" width="6" height="6" rx="1"/><rect x="9" y="9" width="6" height="6" rx="1"/></svg>
       Dashboard
+    </div>
+    <div class="nav-item" data-page="reports" onclick="nav('reports')">
+      <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="2" width="12" height="12" rx="1"/><path d="M5 8h6M5 5h6M5 11h4"/></svg>
+      Daily Reports
     </div>
   </div>
   <div class="nav-group">
@@ -223,14 +257,7 @@ td{padding:9px 14px;vertical-align:middle}
       Order History
     </div>
   </div>
-  <div class="nav-group">
-    <div class="nav-label">Reports</div>
-    <div class="nav-item" data-page="daily-report" onclick="nav('daily-report')">
-      <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="2" width="12" height="12" rx="1"/><path d="M5 8h6M5 5h6M5 11h4"/></svg>
-      Daily Report
-    </div>
-  </div>
-  <hr class="nav-hr">
+  <hr class="nav-divider">
   <div class="nav-group">
     <div class="nav-item" data-page="settings" onclick="nav('settings')">
       <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="2"/><path d="M8 2v1M8 13v1M2 8h1M13 8h1M3.5 3.5l.7.7M11.8 11.8l.7.7M3.5 12.5l.7-.7M11.8 4.2l.7-.7"/></svg>
@@ -242,68 +269,119 @@ td{padding:9px 14px;vertical-align:middle}
 <!-- MAIN -->
 <div class="main">
 
-<!-- DASHBOARD -->
+<!-- ── DASHBOARD ── -->
 <div class="page active" id="page-dashboard">
-  <div class="page-header" style="display:flex;justify-content:space-between;align-items:flex-start">
+  <div class="page-header">
     <div>
       <div class="page-title">Dashboard</div>
-      <div class="page-sub" id="dash-date">—</div>
+      <div class="page-sub" id="dash-updated">Loading...</div>
     </div>
-    <button class="btn btn-sm" onclick="loadDashboard()">↻ Refresh</button>
+    <div style="display:flex;gap:10px;align-items:center">
+      <div class="month-bar" style="margin-bottom:0;padding:8px 14px">
+        <label>Month</label>
+        <select id="sel-month" onchange="loadDashboard()">
+          <option value="1">Jan</option><option value="2">Feb</option><option value="3">Mar</option>
+          <option value="4">Apr</option><option value="5">May</option><option value="6">Jun</option>
+          <option value="7">Jul</option><option value="8">Aug</option><option value="9">Sep</option>
+          <option value="10">Oct</option><option value="11">Nov</option><option value="12">Dec</option>
+        </select>
+        <select id="sel-year" onchange="loadDashboard()">
+          <option value="2025">2025</option><option value="2026">2026</option>
+        </select>
+      </div>
+      <button class="btn btn-sm" onclick="loadDashboard()">↻ Refresh</button>
+    </div>
   </div>
-  <div class="metrics" id="dash-metrics">
-    <div class="metric"><div class="metric-val gold" id="m-total">—</div><div class="metric-label">Total Items</div><div class="metric-sub">in database</div></div>
-    <div class="metric"><div class="metric-val blue" id="m-beer">—</div><div class="metric-label">Beer Items</div><div class="metric-sub">active</div></div>
-    <div class="metric"><div class="metric-val" style="color:var(--wine)" id="m-wine">—</div><div class="metric-label">Wine Items</div><div class="metric-sub">active</div></div>
-    <div class="metric"><div class="metric-val green" id="m-active">—</div><div class="metric-label">Active Items</div><div class="metric-sub">orderable</div></div>
+
+  <div id="dash-alert"></div>
+
+  <!-- TODAY BANNER -->
+  <div class="today-banner" id="today-banner">
+    <div class="today-stat"><div class="today-val gold" id="t-net">—</div><div class="today-label">Net Sales Today</div></div>
+    <div class="today-stat"><div class="today-val" id="t-scratch">—</div><div class="today-label">Scratch Sold</div></div>
+    <div class="today-stat"><div class="today-val" id="t-lottery">—</div><div class="today-label">Lottery Net</div></div>
+    <div class="today-stat"><div class="today-val" id="t-payouts">—</div><div class="today-label">Payouts</div></div>
+    <div class="today-stat"><div class="today-val green" id="t-deposit">—</div><div class="today-label">Bank Deposit</div></div>
+    <div class="today-stat"><div class="today-val" id="t-status">—</div><div class="today-label">Report Status</div></div>
   </div>
-  <div class="charts-grid">
+
+  <!-- MONTHLY METRICS -->
+  <div class="metrics">
+    <div class="metric"><div class="metric-val gold" id="m-net">—</div><div class="metric-label">Net Sales MTD</div><div class="metric-sub" id="m-net-sub">—</div></div>
+    <div class="metric"><div class="metric-val green" id="m-scratch">—</div><div class="metric-label">Scratch Sold MTD</div><div class="metric-sub" id="m-scratch-sub">—</div></div>
+    <div class="metric"><div class="metric-val" id="m-lottery">—</div><div class="metric-label">Lottery Net MTD</div><div class="metric-sub">From daily reports</div></div>
+    <div class="metric"><div class="metric-val blue" id="m-deposit">—</div><div class="metric-label">Bank Deposits MTD</div><div class="metric-sub">Total deposited</div></div>
+  </div>
+  <div class="metrics">
+    <div class="metric"><div class="metric-val" id="m-days">—</div><div class="metric-label">Days reported</div><div class="metric-sub" id="m-days-sub">—</div></div>
+    <div class="metric"><div class="metric-val gold" id="m-avg">—</div><div class="metric-label">Avg daily sale</div><div class="metric-sub">This month</div></div>
+    <div class="metric"><div class="metric-val green" id="m-est">—</div><div class="metric-label">Est. month-end</div><div class="metric-sub">Based on daily avg</div></div>
+    <div class="metric"><div class="metric-val red" id="m-payouts">—</div><div class="metric-label">Total payouts MTD</div><div class="metric-sub">Cash paid out</div></div>
+  </div>
+
+  <div class="two-col">
     <div class="card">
-      <div class="card-title">Inventory by category</div>
-      <div class="bar-chart" id="cat-bars"><div class="loading">Loading...</div></div>
+      <div class="card-title">Daily net sales — this week</div>
+      <div id="weekly-bars"><div class="loading">Loading...</div></div>
     </div>
     <div class="card">
-      <div class="card-title">Avg margin by category</div>
-      <div class="stat-rows" id="margin-rows"><div class="loading">Loading...</div></div>
+      <div class="card-title">Scratch by denomination MTD</div>
+      <div id="scratch-bars"><div class="loading">Loading...</div></div>
     </div>
   </div>
+
+  <!-- LOW INVENTORY -->
   <div class="card">
-    <div class="card-title">Low inventory alerts <span id="low-inv-count" style="color:var(--red)"></span></div>
-    <div id="low-inv-list"><div class="loading">Loading...</div></div>
-  </div>
-  <div class="card">
-    <div class="card-title">Recent price changes</div>
-    <div id="price-changes-list"><div class="loading">Loading...</div></div>
+    <div class="card-title">Low inventory alerts</div>
+    <div id="low-inv"><div class="loading">Loading...</div></div>
   </div>
 </div>
 
-<!-- ITEM MANAGER -->
+<!-- ── DAILY REPORTS ── -->
+<div class="page" id="page-reports">
+  <div class="page-header">
+    <div><div class="page-title">Daily Reports</div><div class="page-sub">All staff submitted reports</div></div>
+  </div>
+  <div class="month-bar">
+    <label>Month</label>
+    <select id="rpt-month" onchange="loadReports()">
+      <option value="1">January</option><option value="2">February</option><option value="3">March</option>
+      <option value="4">April</option><option value="5">May</option><option value="6">June</option>
+      <option value="7">July</option><option value="8">August</option><option value="9">September</option>
+      <option value="10">October</option><option value="11">November</option><option value="12">December</option>
+    </select>
+    <select id="rpt-year" onchange="loadReports()">
+      <option value="2025">2025</option><option value="2026">2026</option>
+    </select>
+    <span id="rpt-count" style="font-size:12px;color:var(--muted);font-family:var(--mono)"></span>
+  </div>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>Date</th><th>Status</th><th>Net Sales</th><th>Scratch Sold</th><th>Lottery Net</th><th>Payouts</th><th>Safe Drop</th><th>Bank Deposit</th><th>By</th></tr></thead>
+      <tbody id="reports-tbody"><tr><td colspan="9"><div class="loading">Loading...</div></td></tr></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ── ITEM MANAGER ── -->
 <div class="page" id="page-items">
   <div class="page-header" style="display:flex;justify-content:space-between;align-items:flex-start">
-    <div>
-      <div class="page-title">Item Manager</div>
-      <div class="page-sub" id="items-count">Loading...</div>
-    </div>
+    <div><div class="page-title">Item Manager</div><div class="page-sub" id="items-count">Loading...</div></div>
     <button class="btn btn-primary" onclick="nav('add-item')">+ Add new item</button>
   </div>
   <div class="filter-row">
     <input type="text" id="item-search" placeholder="Search name, ABS code, UPC..." oninput="debounceSearch()">
     <select id="item-cat" onchange="loadItems()">
       <option value="">All categories</option>
-      <option value="Beer">Beer</option>
-      <option value="Wine">Wine</option>
-      <option value="Single Beer">Single Beer</option>
-      <option value="Custom Beer">Custom Beer</option>
-      <option value="Cigar">Cigar</option>
-      <option value="Tobacco">Tobacco</option>
-      <option value="Snacks">Snacks</option>
-      <option value="Drinks">Drinks</option>
+      <option value="Beer">Beer</option><option value="Wine">Wine</option>
+      <option value="Single Beer">Single Beer</option><option value="Custom Beer">Custom Beer</option>
+      <option value="Cigar">Cigar</option><option value="Tobacco">Tobacco</option>
+      <option value="Snacks">Snacks</option><option value="Drinks">Drinks</option>
       <option value="On Hold">On Hold</option>
     </select>
     <select id="item-status" onchange="loadItems()">
       <option value="">All statuses</option>
-      <option value="Active">Active</option>
-      <option value="On Hold">On Hold</option>
+      <option value="Active">Active</option><option value="On Hold">On Hold</option>
     </select>
   </div>
   <div class="tbl-wrap">
@@ -320,10 +398,10 @@ td{padding:9px 14px;vertical-align:middle}
         <th>Status</th>
         <th></th>
       </tr></thead>
-      <tbody id="items-tbody"><tr><td colspan="10"><div class="loading">Loading items...</div></td></tr></tbody>
+      <tbody id="items-tbody"><tr><td colspan="10"><div class="loading">Loading...</div></td></tr></tbody>
     </table>
     <div class="pagination">
-      <span id="items-pagination-info">—</span>
+      <span id="items-pag-info">—</span>
       <div style="display:flex;gap:8px">
         <button class="btn btn-sm" id="btn-prev" onclick="itemsPage(-1)">← Prev</button>
         <button class="btn btn-sm" id="btn-next" onclick="itemsPage(1)">Next →</button>
@@ -332,7 +410,7 @@ td{padding:9px 14px;vertical-align:middle}
   </div>
 </div>
 
-<!-- ADD ITEM -->
+<!-- ── ADD ITEM ── -->
 <div class="page" id="page-add-item">
   <div class="page-header"><div class="page-title">Add New Item</div><div class="page-sub">Add a new product from the county catalog</div></div>
   <div class="card">
@@ -341,23 +419,17 @@ td{padding:9px 14px;vertical-align:middle}
       <div class="field"><label>ABS Code *</label><input id="new-abs" placeholder="e.g. 12345"></div>
       <div class="field"><label>Item Name (County) *</label><input id="new-county-name" placeholder="As shown in county catalog"></div>
       <div class="field"><label>BPC (units per case)</label><input id="new-bpc" type="number" placeholder="12" oninput="calcNewMargin()"></div>
-      <div class="field"><label>Manufacturer / Supplier</label><input id="new-supplier" placeholder="e.g. ANHEUSER BUSCH INC"></div>
-      <div class="field"><label>Cost (per case $)</label><input id="new-cost" type="number" step="0.01" placeholder="0.00" oninput="calcNewMargin()"></div>
+      <div class="field"><label>Manufacturer</label><input id="new-supplier" placeholder="e.g. ANHEUSER BUSCH INC"></div>
+      <div class="field"><label>Cost per case ($)</label><input id="new-cost" type="number" step="0.01" placeholder="0.00" oninput="calcNewMargin()"></div>
       <div class="field"><label>Low Discount ($)</label><input id="new-low-dis" type="number" step="0.01" placeholder="0.00"></div>
       <div class="field"><label>High Discount ($)</label><input id="new-high-dis" type="number" step="0.01" placeholder="0.00"></div>
       <div class="field"><label>Vendor</label>
-        <select id="new-vendor">
-          <option value="ABS"> ABS</option>
-          <option value="MD Lottery"> MD Lottery</option>
-          <option value="UTZ"> UTZ</option>
-          <option value="Falter"> Falter</option>
-          <option value="Other">Other</option>
-        </select>
+        <select id="new-vendor"><option value="ABS"> ABS</option><option value="MD Lottery"> MD Lottery</option><option value="UTZ"> UTZ</option><option value="Falter"> Falter</option><option value="Other">Other</option></select>
       </div>
     </div>
-    <div class="form-section">Your store info (Square POS)</div>
+    <div class="form-section">Store information (Square POS)</div>
     <div class="form-grid" style="margin-bottom:16px">
-      <div class="field"><label>GG Name (your name) *</label><input id="new-gg-name" placeholder="e.g. Bud Light 30pk Can"></div>
+      <div class="field"><label>GG Name *</label><input id="new-gg-name" placeholder="e.g. Bud Light 30pk Can"></div>
       <div class="field"><label>UPC / Barcode</label><input id="new-upc" placeholder="Scan or enter barcode"></div>
       <div class="field"><label>Category *</label>
         <select id="new-category">
@@ -376,16 +448,14 @@ td{padding:9px 14px;vertical-align:middle}
           <option value="Original Item">Original Item</option>
           <option value="Always Custom">Always Custom</option>
           <option value="Also made to custom">Also made to custom</option>
-          <option value="Made From 4">Made From 4</option>
-          <option value="Made From 6">Made From 6</option>
-          <option value="Made From 12">Made From 12</option>
-          <option value="Made From 24">Made From 24</option>
+          <option value="Made From 4">Made From 4</option><option value="Made From 6">Made From 6</option>
+          <option value="Made From 12">Made From 12</option><option value="Made From 24">Made From 24</option>
           <option value="Made From 30">Made From 30</option>
         </select>
       </div>
       <div class="field"><label>Made From ABS (if split)</label><input id="new-made-from" placeholder="Parent ABS code"></div>
     </div>
-    <div class="field form-grid cols1" style="margin-bottom:20px"><label>Notes</label><textarea id="new-notes" placeholder="Any additional notes..."></textarea></div>
+    <div class="field c1" style="margin-bottom:20px"><label>Notes</label><textarea id="new-notes" style="height:70px;resize:vertical;padding:8px 11px;border:1px solid var(--border2);border-radius:6px;font-family:var(--font);font-size:13px;background:var(--bg);color:var(--text)" placeholder="Any notes..."></textarea></div>
     <div style="display:flex;gap:10px;justify-content:flex-end">
       <button class="btn" onclick="clearNewItem()">Clear</button>
       <button class="btn btn-primary" onclick="saveNewItem()" id="btn-save-item">Save to database</button>
@@ -394,11 +464,11 @@ td{padding:9px 14px;vertical-align:middle}
   </div>
 </div>
 
-<!-- PRICE HISTORY -->
+<!-- ── PRICE HISTORY ── -->
 <div class="page" id="page-price-history">
-  <div class="page-header"><div class="page-title">Price History</div><div class="page-sub">All cost and price changes — auto-logged when items are edited</div></div>
+  <div class="page-header"><div class="page-title">Price History</div><div class="page-sub">Auto-logged when items are edited</div></div>
   <div class="filter-row">
-    <input type="text" id="ph-search" placeholder="Search by item name or ABS code..." oninput="loadPriceHistory()">
+    <input type="text" id="ph-search" placeholder="Search by ABS code or item name..." oninput="loadPriceHistory()">
     <select id="ph-field" onchange="loadPriceHistory()">
       <option value="">All changes</option>
       <option value="Cost">Cost changes</option>
@@ -413,40 +483,35 @@ td{padding:9px 14px;vertical-align:middle}
   </div>
 </div>
 
-<!-- ORDER BUILDER -->
+<!-- ── ORDER BUILDER ── -->
 <div class="page" id="page-order-builder">
   <div class="page-header"><div class="page-title">Order Builder</div><div class="page-sub">Upload Square exports to auto-generate your county order</div></div>
-  <div class="alert alert-gold">Beer deadline: <strong>Wednesday 11am</strong> &nbsp;|&nbsp; Wine deadline: <strong>Friday 11am</strong> &nbsp;|&nbsp; Beer delivery: Thursday &nbsp;|&nbsp; Wine delivery: Monday</div>
+  <div class="alert alert-gold"><span>⏰</span> Beer deadline: <strong>Wednesday 11am</strong> &nbsp;|&nbsp; Wine deadline: <strong>Friday 11am</strong> &nbsp;|&nbsp; Beer delivery: Thursday &nbsp;|&nbsp; Wine delivery: Monday</div>
   <div class="card">
     <div class="card-title">Upload Square exports</div>
     <div class="upload-grid">
       <div class="upload-box" id="ob-inv-box" onclick="document.getElementById('ob-inv').click()">
-        <div class="upload-box-title">Current inventory</div>
-        <div class="upload-box-sub">Square → Reports → Inventory</div>
+        <div class="upload-box-title">Current inventory</div><div class="upload-box-sub">Square → Reports → Inventory</div>
         <div class="upload-box-status" id="ob-inv-st">Click to upload CSV</div>
         <input type="file" id="ob-inv" accept=".csv" style="display:none" onchange="loadOrderFile('inv',this)">
       </div>
       <div class="upload-box" id="ob-mtd-box" onclick="document.getElementById('ob-mtd').click()">
-        <div class="upload-box-title">Month-to-date sales</div>
-        <div class="upload-box-sub">Square → Reports → Sales</div>
+        <div class="upload-box-title">Month-to-date sales</div><div class="upload-box-sub">Square → Reports → Sales</div>
         <div class="upload-box-status" id="ob-mtd-st">Click to upload CSV</div>
         <input type="file" id="ob-mtd" accept=".csv" style="display:none" onchange="loadOrderFile('mtd',this)">
       </div>
       <div class="upload-box" id="ob-week-box" onclick="document.getElementById('ob-week').click()">
-        <div class="upload-box-title">Last 7 days sales</div>
-        <div class="upload-box-sub">Square → Reports → Sales (7d)</div>
+        <div class="upload-box-title">Last 7 days sales</div><div class="upload-box-sub">Square → Reports → Sales (7d)</div>
         <div class="upload-box-status" id="ob-week-st">Click to upload CSV</div>
         <input type="file" id="ob-week" accept=".csv" style="display:none" onchange="loadOrderFile('week',this)">
       </div>
       <div class="upload-box" id="ob-ly-box" onclick="document.getElementById('ob-ly').click()">
-        <div class="upload-box-title">Last year same month</div>
-        <div class="upload-box-sub">Square → Reports → Sales (LY)</div>
+        <div class="upload-box-title">Last year same month</div><div class="upload-box-sub">Square → Reports → Sales (LY)</div>
         <div class="upload-box-status" id="ob-ly-st">Click to upload CSV</div>
         <input type="file" id="ob-ly" accept=".csv" style="display:none" onchange="loadOrderFile('ly',this)">
       </div>
       <div class="upload-box" id="ob-hol-box" onclick="document.getElementById('ob-hol').click()">
-        <div class="upload-box-title">Holiday sales <span style="font-size:10px;opacity:.6">optional</span></div>
-        <div class="upload-box-sub">Last year holiday week</div>
+        <div class="upload-box-title">Holiday sales <span style="font-size:10px;opacity:.6">optional</span></div><div class="upload-box-sub">Last year holiday week</div>
         <div class="upload-box-status" id="ob-hol-st">Click to upload CSV</div>
         <input type="file" id="ob-hol" accept=".csv" style="display:none" onchange="loadOrderFile('hol',this)">
       </div>
@@ -455,8 +520,7 @@ td{padding:9px 14px;vertical-align:middle}
   <div class="order-cfg">
     <div class="field"><label>Order type</label>
       <select id="ob-type" onchange="document.getElementById('ob-days').value=this.value==='Beer'?8:10">
-        <option value="Beer">Beer (Thu delivery)</option>
-        <option value="Wine">Wine (Mon delivery)</option>
+        <option value="Beer">Beer (Thu delivery)</option><option value="Wine">Wine (Mon delivery)</option>
       </select>
     </div>
     <div class="field"><label>Days to cover</label><input type="number" id="ob-days" value="8" min="1" max="30"></div>
@@ -471,7 +535,7 @@ td{padding:9px 14px;vertical-align:middle}
   </div>
   <div id="order-results" style="display:none">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
-      <div><div style="font-family:var(--font-display);font-size:20px" id="order-result-title">Order ready</div><div style="font-size:12px;color:var(--muted)" id="order-result-sub"></div></div>
+      <div><div style="font-family:var(--font-display);font-size:20px" id="order-title">Order ready</div><div style="font-size:12px;color:var(--muted)" id="order-sub"></div></div>
       <div style="display:flex;gap:10px">
         <button class="btn btn-gold" onclick="saveOrder()">Save to history</button>
         <button class="btn btn-green" onclick="exportOrderCSV()">Export county CSV</button>
@@ -483,105 +547,38 @@ td{padding:9px 14px;vertical-align:middle}
       <select id="ob-filter-conf" onchange="renderOrderTable()"><option value="">All confidence</option><option value="High">High</option><option value="Medium">Medium</option><option value="Low">Low — review</option></select>
     </div>
     <div class="tbl-wrap">
-      <table>
-        <thead><tr><th>ABS Code</th><th>Item</th><th>Category</th><th>On hand</th><th>Daily rate</th><th>Suggested</th><th>Your qty</th><th>Confidence</th></tr></thead>
-        <tbody id="order-tbody"></tbody>
-      </table>
-    </div>
-    <div id="oos-section" style="display:none;margin-top:16px">
-      <div class="card-title" style="margin-bottom:10px">Not orderable at county</div>
-      <div class="tbl-wrap"><table><thead><tr><th>ABS Code</th><th>Item</th><th>Daily rate</th></tr></thead><tbody id="oos-tbody"></tbody></table></div>
+      <table><thead><tr><th>ABS Code</th><th>Item</th><th>Category</th><th>On hand</th><th>Daily rate</th><th>Suggested</th><th>Your qty</th><th>Confidence</th></tr></thead>
+      <tbody id="order-tbody"></tbody></table>
     </div>
   </div>
 </div>
 
-<!-- ORDER HISTORY -->
+<!-- ── ORDER HISTORY ── -->
 <div class="page" id="page-order-history">
   <div class="page-header"><div class="page-title">Order History</div><div class="page-sub">All submitted orders</div></div>
   <div class="tbl-wrap">
     <table>
-      <thead><tr><th>Order</th><th>Type</th><th>Date</th><th>Delivery</th><th>Status</th><th>Items</th><th>Est. Cost</th><th></th></tr></thead>
-      <tbody id="orders-tbody"><tr><td colspan="8"><div class="loading">Loading...</div></td></tr></tbody>
+      <thead><tr><th>Order</th><th>Type</th><th>Date</th><th>Delivery</th><th>Status</th><th>Items</th><th>Est. Cost</th></tr></thead>
+      <tbody id="orders-tbody"><tr><td colspan="7"><div class="loading">Loading...</div></td></tr></tbody>
     </table>
   </div>
 </div>
 
-<!-- DAILY REPORT -->
-<div class="page" id="page-daily-report">
-  <div class="page-header"><div class="page-title">Daily Report</div><div class="page-sub">Enter today's sales and income figures</div></div>
-  <div class="card">
-    <div class="form-section">Report date</div>
-    <div class="form-grid" style="margin-bottom:16px">
-      <div class="field"><label>Date *</label><input type="date" id="dr-date" value=""></div>
-      <div class="field"><label>Entered by</label><input id="dr-by" placeholder="Your name"></div>
-    </div>
-    <div class="form-section">Sales</div>
-    <div class="form-grid cols3" style="margin-bottom:16px">
-      <div class="field"><label>Net Sales ($)</label><input type="number" step="0.01" id="dr-net" placeholder="0.00" oninput="calcDR()"></div>
-      <div class="field"><label>Cash Sales ($)</label><input type="number" step="0.01" id="dr-cash" placeholder="0.00" oninput="calcDR()"></div>
-      <div class="field"><label>Card Sales ($)</label><input type="number" step="0.01" id="dr-card" placeholder="0.00" oninput="calcDR()"></div>
-      <div class="field"><label>Refunds ($)</label><input type="number" step="0.01" id="dr-refunds" placeholder="0.00"></div>
-      <div class="field"><label>Tax Collected ($)</label><input type="number" step="0.01" id="dr-tax" placeholder="0.00"></div>
-    </div>
-    <div class="form-section">Other income</div>
-    <div class="form-grid cols3" style="margin-bottom:16px">
-      <div class="field"><label>Machine Income ($)</label><input type="number" step="0.01" id="dr-machine" placeholder="0.00"></div>
-      <div class="field"><label>Lottery Sales ($)</label><input type="number" step="0.01" id="dr-lottery" placeholder="0.00"></div>
-      <div class="field"><label>Lottery Payout ($)</label><input type="number" step="0.01" id="dr-lottery-payout" placeholder="0.00"></div>
-    </div>
-    <div class="field form-grid cols1" style="margin-bottom:20px"><label>Notes</label><textarea id="dr-notes" placeholder="Any notes about today..."></textarea></div>
-    <div style="background:var(--surface2);border-radius:8px;padding:14px;margin-bottom:16px;font-family:var(--font-mono);font-size:13px">
-      Cash + Card = <span id="dr-check">$0.00</span> &nbsp;|&nbsp; Net Sales = <span id="dr-net-display">$0.00</span>
-      <span id="dr-check-status" style="margin-left:12px"></span>
-    </div>
-    <div style="display:flex;gap:10px;justify-content:flex-end">
-      <button class="btn btn-primary" onclick="saveDailyReport()" id="btn-save-dr">Save report</button>
-    </div>
-    <div id="dr-feedback" style="margin-top:12px"></div>
-  </div>
-  <div class="card" style="margin-top:16px">
-    <div class="card-title">Recent reports</div>
-    <div class="tbl-wrap"><table>
-      <thead><tr><th>Date</th><th>Net Sales</th><th>Cash</th><th>Card</th><th>Machine</th><th>Lottery Net</th><th>By</th></tr></thead>
-      <tbody id="dr-history"><tr><td colspan="7"><div class="loading">Loading...</div></td></tr></tbody>
-    </table></div>
-  </div>
-</div>
-
-<!-- SETTINGS -->
+<!-- ── SETTINGS ── -->
 <div class="page" id="page-settings">
-  <div class="page-header"><div class="page-title">Settings</div><div class="page-sub">Store configuration and connection settings</div></div>
+  <div class="page-header"><div class="page-title">Settings</div><div class="page-sub">Store configuration</div></div>
   <div class="card">
     <div class="card-title">Store info</div>
-    <div class="form-grid" id="store-info-form" style="margin-bottom:16px">
+    <div class="form-grid" style="margin-bottom:16px">
       <div class="field"><label>Store name</label><input id="cfg-name" readonly></div>
       <div class="field"><label>Store type</label><input id="cfg-type" readonly></div>
       <div class="field"><label>City</label><input id="cfg-city" readonly></div>
-      <div class="field"><label>State</label><input id="cfg-state" readonly></div>
       <div class="field"><label>County system</label><input id="cfg-county" readonly></div>
-      <div class="field"><label>Plan</label><input id="cfg-plan" readonly></div>
+      <div class="field"><label>Beer deadline</label><input id="cfg-beer-dl" readonly></div>
+      <div class="field"><label>Wine deadline</label><input id="cfg-wine-dl" readonly></div>
     </div>
     <button class="btn btn-primary" onclick="testConnection()">Test connection</button>
     <div id="conn-result" style="margin-top:12px"></div>
-  </div>
-  <div class="card">
-    <div class="card-title">Order deadlines</div>
-    <div class="form-grid" id="order-deadlines">
-      <div class="field"><label>Beer order deadline</label><input id="cfg-beer-dl" readonly></div>
-      <div class="field"><label>Beer delivery day</label><input id="cfg-beer-del" readonly></div>
-      <div class="field"><label>Wine order deadline</label><input id="cfg-wine-dl" readonly></div>
-      <div class="field"><label>Wine delivery day</label><input id="cfg-wine-del" readonly></div>
-    </div>
-  </div>
-  <div class="card">
-    <div class="card-title">Margin targets</div>
-    <div class="form-grid cols3">
-      <div class="field"><label>Beer target %</label><input id="cfg-mt-beer" readonly></div>
-      <div class="field"><label>Wine target %</label><input id="cfg-mt-wine" readonly></div>
-      <div class="field"><label>Cigar target %</label><input id="cfg-mt-cigar" readonly></div>
-      <div class="field"><label>Tobacco target %</label><input id="cfg-mt-tobacco" readonly></div>
-      <div class="field"><label>Default target %</label><input id="cfg-mt-default" readonly></div>
-    </div>
   </div>
 </div>
 
@@ -611,21 +608,15 @@ td{padding:9px 14px;vertical-align:middle}
         <div class="field"><label>GG Name</label><input id="edit-gg-name"></div>
         <div class="field"><label>UPC</label><input id="edit-upc"></div>
         <div class="field"><label>Category</label>
-          <select id="edit-category">
-            <option>Beer</option><option>Wine</option><option>Single Beer</option>
-            <option>Custom Beer</option><option>Cigar</option><option>Tobacco</option>
-            <option>Snacks</option><option>Drinks</option><option>On Hold</option>
-          </select>
+          <select id="edit-category"><option>Beer</option><option>Wine</option><option>Single Beer</option><option>Custom Beer</option><option>Cigar</option><option>Tobacco</option><option>Snacks</option><option>Drinks</option><option>On Hold</option></select>
         </div>
         <div class="field"><label>Sell Price ($)</label><input id="edit-sp" type="number" step="0.01" oninput="calcEditMargin()"></div>
         <div class="field"><label>Margin % (auto)</label><input id="edit-margin" readonly></div>
-        <div class="field"><label>Status</label>
-          <select id="edit-status"><option>Active</option><option>On Hold</option><option>Discontinued</option></select>
-        </div>
+        <div class="field"><label>Status</label><select id="edit-status"><option>Active</option><option>On Hold</option><option>Discontinued</option></select></div>
         <div class="field"><label>Inventory</label><input id="edit-inv" type="number" step="0.1"></div>
         <div class="field"><label>Vendor</label><input id="edit-vendor"></div>
       </div>
-      <div class="field"><label>Notes</label><textarea id="edit-notes"></textarea></div>
+      <div class="field"><label>Notes</label><textarea id="edit-notes" style="height:70px;resize:vertical;padding:8px 11px;border:1px solid var(--border2);border-radius:6px;font-family:var(--font);font-size:13px;width:100%;background:var(--bg)"></textarea></div>
     </div>
     <div class="modal-footer">
       <button class="btn" onclick="closeModal('edit-modal')">Cancel</button>
@@ -635,125 +626,198 @@ td{padding:9px 14px;vertical-align:middle}
 </div>
 
 <script>
+// ── CONFIG ────────────────────────────────────────────────────────────────────
+const SB = 'https://rlgsnznwdsfhpnsscrxs.supabase.co';
+const AK = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJsZ3Nuem53ZHNmaHBuc3NjcnhzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYwNDExMTgsImV4cCI6MjA5MTYxNzExOH0.EcaS4e8gCHPr-TEQsmxAgSDgEG3QWU-9biGmrc1ryLA';
+const SID = 1;
+const TODAY = new Date().toISOString().slice(0, 10);
+const H = { 'apikey': AK, 'Authorization': 'Bearer ' + AK, 'Content-Type': 'application/json', 'Prefer': 'return=representation' };
+
 // ── STATE ─────────────────────────────────────────────────────────────────────
 const ST = {
-  store: {}, items: [], itemsTotal: 0, itemsOffset: 0, itemsLimit: 50,
+  items: [], itemsTotal: 0, itemsOffset: 0, itemsLimit: 50,
   itemsSort: 'gg_name', itemsSortDir: 'asc',
-  orderFiles: {}, orderRows: [], oosRows: [],
-  searchTimer: null,
+  orderFiles: {}, orderRows: [],
 };
-const API = '';  // relative — same origin
 
-// ── API HELPERS ───────────────────────────────────────────────────────────────
-async function apiGet(path) {
-  const r = await fetch(API + path);
-  if (!r.ok) throw new Error(await r.text());
-  return r.json();
-}
-async function apiPost(path, body) {
-  const r = await fetch(API + path, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
-  if (!r.ok) throw new Error(await r.text());
-  return r.json();
-}
-async function apiPatch(path, body) {
-  const r = await fetch(API + path, { method:'PATCH', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
-  if (!r.ok) throw new Error(await r.text());
-  return r.json();
-}
+// ── HELPERS ───────────────────────────────────────────────────────────────────
+const g = id => document.getElementById(id);
+const fmt = (n, dec=2) => '$' + Math.abs(parseFloat(n||0)).toLocaleString('en-US',{minimumFractionDigits:dec,maximumFractionDigits:dec});
+const fmtS = n => { const v = parseFloat(n||0); return (v<0?'−$':'$') + Math.abs(v).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}); };
 
-// ── SYNC STATUS ───────────────────────────────────────────────────────────────
+async function apiGet(path) { const r = await fetch(path); if(!r.ok) throw new Error(await r.text()); return r.json(); }
+async function apiPost(path, body) { const r = await fetch(path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}); if(!r.ok) throw new Error(await r.text()); return r.json(); }
+async function apiPatch(path, body) { const r = await fetch(path,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}); if(!r.ok) throw new Error(await r.text()); return r.json(); }
+async function sbGet(table, q='') { const r = await fetch(`${SB}/rest/v1/${table}?${q}`,{headers:H}); return r.json(); }
+
 function setSync(state, label) {
-  const dot = document.getElementById('sync-dot');
-  document.getElementById('sync-label').textContent = label;
-  dot.className = 'sync-dot' + (state === 'ok' ? ' ok' : state === 'err' ? ' err' : '');
+  g('sync-dot').className = 'sync-dot' + (state==='ok'?' ok':state==='err'?' err':'');
+  g('sync-label').textContent = label;
 }
+function openModal(id) { g(id).classList.add('open'); }
+function closeModal(id) { g(id).classList.remove('open'); }
 
 // ── NAV ───────────────────────────────────────────────────────────────────────
 function nav(page) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-  document.getElementById('page-' + page).classList.add('active');
+  g('page-' + page).classList.add('active');
   const navEl = document.querySelector(`[data-page="${page}"]`);
   if (navEl) navEl.classList.add('active');
   if (page === 'dashboard') loadDashboard();
   if (page === 'items') { ST.itemsOffset = 0; loadItems(); }
   if (page === 'price-history') loadPriceHistory();
   if (page === 'order-history') loadOrderHistory();
-  if (page === 'daily-report') { loadDailyHistory(); setTodayDate(); }
+  if (page === 'reports') loadReports();
   if (page === 'settings') loadSettings();
 }
 
 // ── DASHBOARD ─────────────────────────────────────────────────────────────────
+function initSelectors() {
+  const now = new Date();
+  g('sel-month').value = now.getMonth() + 1;
+  g('sel-year').value = now.getFullYear();
+  g('rpt-month').value = now.getMonth() + 1;
+  g('rpt-year').value = now.getFullYear();
+}
+
 async function loadDashboard() {
-  document.getElementById('dash-date').textContent = new Date().toLocaleDateString('en-US', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
+  const month = parseInt(g('sel-month').value);
+  const year = parseInt(g('sel-year').value);
+  const daysInMonth = new Date(year, month, 0).getDate();
+  const from = `${year}-${String(month).padStart(2,'0')}-01`;
+  const to = `${year}-${String(month).padStart(2,'0')}-${daysInMonth}`;
+  g('dash-updated').textContent = new Date(year,month-1,1).toLocaleString('en-US',{month:'long'}) + ' ' + year + ' — updated ' + new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'});
+
   setSync('', 'loading...');
-  try {
-    const [dash, cats] = await Promise.all([apiGet('/api/dashboard'), apiGet('/api/stats/categories')]);
-    document.getElementById('m-total').textContent = dash.totalItems.toLocaleString();
-    document.getElementById('m-beer').textContent = dash.beerItems.toLocaleString();
-    document.getElementById('m-wine').textContent = dash.wineItems.toLocaleString();
-    document.getElementById('m-active').textContent = dash.activeItems.toLocaleString();
+  await Promise.all([loadToday(), loadMonthlyMetrics(from, to, month, year, daysInMonth), loadWeeklyBars(), loadLowInv()]);
+  setSync('ok', 'loaded');
+}
 
-    // Category bars
-    const catOrder = ['Beer','Wine','Single Beer','Cigar','Tobacco','Custom Beer','Snacks','Drinks','NA-Beer','NA-Wine'];
-    const catColors = { Beer:'#8b5e1a', Wine:'#6b1f3a', 'Single Beer':'#1a3a5c', 'Custom Beer':'#2d6a4f', Cigar:'#5c3a1a', Tobacco:'#4a4a2a', Snacks:'#6a8b1a', Drinks:'#1a5c5a', 'NA-Beer':'#555', 'NA-Wine':'#7a3a5a' };
-    const catsSorted = catOrder.filter(c => cats[c]).map(c => [c, cats[c]]);
-    const maxInv = Math.max(...catsSorted.map(([,v]) => v.totalInventory), 1);
-    document.getElementById('cat-bars').innerHTML = catsSorted.map(([cat, data]) => `
-      <div class="bar-row">
-        <div class="bar-label" title="${cat}">${cat}</div>
-        <div class="bar-track"><div class="bar-fill" style="width:${(data.totalInventory/maxInv*100).toFixed(1)}%;background:${catColors[cat]||'#888'}">${data.totalInventory > 50 ? Math.round(data.totalInventory) : ''}</div></div>
-        <div class="bar-val">${Math.round(data.totalInventory)}</div>
-      </div>`).join('');
+async function loadToday() {
+  const reports = await sbGet('gg_daily_reports', `store_id=eq.${SID}&report_date=eq.${TODAY}&limit=1`);
+  const rep = reports[0] || null;
+  if (!rep) {
+    ['t-net','t-scratch','t-lottery','t-payouts','t-deposit'].forEach(id => g(id).textContent = '—');
+    g('t-status').innerHTML = '<span style="color:#666;font-size:12px;font-family:var(--mono)">no report</span>';
+    g('dash-alert').innerHTML = '<div class="alert alert-gold"><span>⚠</span> No daily report submitted yet today.</div>';
+    return;
+  }
+  g('dash-alert').innerHTML = '';
+  g('t-net').textContent = fmt(rep.cash_sales);
+  g('t-scratch').textContent = fmt(rep.total_scratch_sold);
+  const lot = parseFloat(rep.daily_lottery_sale||0);
+  g('t-lottery').textContent = fmtS(lot);
+  g('t-lottery').className = 'today-val ' + (lot < 0 ? 'red' : 'green');
+  g('t-payouts').textContent = fmt(rep.total_payouts);
+  g('t-deposit').textContent = fmt(rep.bank_deposit);
+  g('t-status').innerHTML = `<span style="color:${rep.status==='submitted'?'#6abf8a':'#c8a96e'};font-size:12px;font-family:var(--mono)">${rep.status||'draft'}</span>`;
+}
 
-    // Margin rows
-    document.getElementById('margin-rows').innerHTML = catsSorted.map(([cat, data]) => `
-      <div class="stat-row">
-        <div class="stat-name"><div class="stat-dot" style="background:${catColors[cat]||'#888'}"></div>${cat}</div>
-        <div class="stat-val">${data.avg_margin !== null ? data.avg_margin + '%' : '—'}</div>
-      </div>`).join('');
+async function loadMonthlyMetrics(from, to, month, year, daysInMonth) {
+  const reports = await sbGet('gg_daily_reports', `store_id=eq.${SID}&report_date=gte.${from}&report_date=lte.${to}&order=report_date.asc`);
+  const days = reports.length;
+  const netSales = reports.reduce((a,r)=>a+parseFloat(r.cash_sales||0),0);
+  const scratch = reports.reduce((a,r)=>a+parseFloat(r.total_scratch_sold||0),0);
+  const lottery = reports.reduce((a,r)=>a+parseFloat(r.daily_lottery_sale||0),0);
+  const deposits = reports.reduce((a,r)=>a+parseFloat(r.bank_deposit||0),0);
+  const payouts = reports.reduce((a,r)=>a+parseFloat(r.total_payouts||0),0);
+  const avgSale = days > 0 ? netSales / days : 0;
+  const now = new Date();
+  const isCurrentMonth = now.getMonth()+1===month && now.getFullYear()===year;
+  const daysElapsed = isCurrentMonth ? now.getDate() : daysInMonth;
+  const est = days > 0 ? (netSales / daysElapsed) * daysInMonth : 0;
 
-    // Low inventory
-    const low = dash.lowInv || [];
-    document.getElementById('low-inv-count').textContent = low.length ? `(${low.length})` : '';
-    document.getElementById('low-inv-list').innerHTML = low.length
-      ? `<div class="tbl-wrap"><table><thead><tr><th>Item</th><th>Category</th><th>Inventory</th><th>ABS Code</th></tr></thead><tbody>${
-          low.map(i => `<tr><td style="font-weight:500">${i.gg_name||'—'}</td><td>${catBadge(i.category)}</td><td style="font-family:var(--font-mono);color:${parseFloat(i.inventory||0)===0?'var(--red)':'var(--gold)'}">${i.inventory}</td><td class="mono muted">${i.abs_code||'—'}</td></tr>`).join('')
-        }</tbody></table></div>`
-      : '<div style="color:var(--faint);font-size:13px;padding:12px 0">No low inventory alerts</div>';
+  g('m-net').textContent = fmt(netSales);
+  g('m-net-sub').textContent = days + ' days reported';
+  g('m-scratch').textContent = fmt(scratch);
+  g('m-scratch-sub').textContent = days > 0 ? 'avg ' + fmt(scratch/days) + '/day' : '—';
+  g('m-lottery').textContent = fmtS(lottery);
+  g('m-lottery').className = 'metric-val' + (lottery < 0 ? ' red' : '');
+  g('m-deposit').textContent = fmt(deposits);
+  g('m-days').textContent = days;
+  g('m-days-sub').textContent = 'of ' + daysInMonth + ' days this month';
+  g('m-avg').textContent = fmt(avgSale);
+  g('m-est').textContent = fmt(est);
+  g('m-payouts').textContent = fmt(payouts);
 
-    // Price changes
-    const pc = dash.priceChanges || [];
-    document.getElementById('price-changes-list').innerHTML = pc.length
-      ? `<div class="tbl-wrap"><table><thead><tr><th>Date</th><th>Item</th><th>Field</th><th>Old</th><th>New</th><th>Change</th></tr></thead><tbody>${
-          pc.map(p => {
-            const pct = parseFloat(p.change_pct || 0);
-            const color = pct > 0 ? 'var(--red)' : 'var(--green)';
-            return `<tr><td class="mono muted">${p.change_date||'—'}</td><td>${p.gg_name||'—'}</td><td>${p.field_changed}</td><td class="mono">$${parseFloat(p.old_value||0).toFixed(2)}</td><td class="mono">$${parseFloat(p.new_value||0).toFixed(2)}</td><td class="mono" style="color:${color}">${pct > 0 ? '+' : ''}${(pct*100).toFixed(1)}%</td></tr>`;
-          }).join('')
-        }</tbody></table></div>`
-      : '<div style="color:var(--faint);font-size:13px;padding:12px 0">No recent price changes</div>';
-
-    setSync('ok', `${dash.totalItems.toLocaleString()} items`);
-  } catch(e) {
-    setSync('err', 'error');
-    console.error(e);
+  // Scratch breakdown
+  if (days > 0 && reports.length) {
+    const ids = reports.map(r=>r.id).join(',');
+    const lines = await sbGet('scratch_inventory_lines', `report_id=in.(${ids})&select=face_value,dollar_sold`);
+    const dm = {};
+    lines.forEach(l => { const k = parseFloat(l.face_value); dm[k] = (dm[k]||0) + parseFloat(l.dollar_sold||0); });
+    const sorted = Object.entries(dm).sort((a,b)=>parseFloat(b[0])-parseFloat(a[0]));
+    const maxV = Math.max(...sorted.map(([,v])=>v), 1);
+    g('scratch-bars').innerHTML = sorted.length
+      ? `<div class="bar-chart">${sorted.map(([d,t])=>`<div class="bar-row"><div class="bar-label">$${parseFloat(d)%1===0?parseInt(d):parseFloat(d).toFixed(2)}</div><div class="bar-track"><div class="bar-fill" style="width:${(t/maxV*100).toFixed(1)}%;background:#6b1f3a">${t>30?fmt(t):''}</div></div><div class="bar-val">${fmt(t)}</div></div>`).join('')}</div>`
+      : '<div class="empty">No data yet</div>';
+  } else {
+    g('scratch-bars').innerHTML = '<div class="empty">No reports this month</div>';
   }
 }
 
-// ── ITEMS ─────────────────────────────────────────────────────────────────────
-let searchTimeout;
-function debounceSearch() {
-  clearTimeout(searchTimeout);
-  searchTimeout = setTimeout(() => { ST.itemsOffset = 0; loadItems(); }, 350);
+async function loadWeeklyBars() {
+  const now = new Date();
+  const dow = now.getDay();
+  const monday = new Date(now);
+  monday.setDate(now.getDate() - (dow===0?6:dow-1));
+  const dates = Array.from({length:7},(_,i)=>{ const d=new Date(monday); d.setDate(monday.getDate()+i); return d.toISOString().slice(0,10); });
+  const reports = await sbGet('gg_daily_reports', `store_id=eq.${SID}&report_date=gte.${dates[0]}&report_date=lte.${dates[6]}&order=report_date.asc`);
+  const rm = {}; reports.forEach(r=>rm[r.report_date]=r);
+  const days = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+  const vals = dates.map((d,i)=>({d,label:days[i],net:parseFloat(rm[d]?.cash_sales||0),isToday:d===TODAY,has:!!rm[d]}));
+  const maxV = Math.max(...vals.map(v=>v.net), 1);
+  g('weekly-bars').innerHTML = `<div class="bar-chart">${vals.map(v=>`<div class="bar-row"><div class="bar-label" style="${v.isToday?'color:var(--gold);font-weight:600':''}">${v.label}</div><div class="bar-track"><div class="bar-fill" style="width:${v.net>0?(v.net/maxV*100).toFixed(1):0}%;background:${v.isToday?'#8b6914':'#2d6a4f'}">${v.net>150?fmt(v.net):''}</div></div><div class="bar-val">${v.has?fmt(v.net):'<span style="color:var(--faint)">—</span>'}</div></div>`).join('')}</div>`;
 }
 
+async function loadLowInv() {
+  try {
+    const items = await apiGet('/api/items?status=Active&limit=10');
+    const low = (items.items||[]).filter(i=>parseFloat(i.inventory||0)<=2&&parseFloat(i.inventory||0)>=0);
+    g('low-inv').innerHTML = low.length
+      ? `<div class="tbl-wrap"><table><thead><tr><th>Item</th><th>Category</th><th>Inventory</th><th>ABS Code</th></tr></thead><tbody>${low.map(i=>`<tr><td style="font-weight:500">${i.gg_name||'—'}</td><td>${catBadge(i.category)}</td><td style="font-family:var(--mono);color:${parseFloat(i.inventory||0)===0?'var(--red)':'var(--gold)'}">${i.inventory}</td><td class="mono muted">${i.abs_code||'—'}</td></tr>`).join('')}</tbody></table></div>`
+      : '<div class="empty">No low inventory alerts</div>';
+  } catch(e) { g('low-inv').innerHTML = '<div class="empty">Could not load</div>'; }
+}
+
+// ── DAILY REPORTS ─────────────────────────────────────────────────────────────
+async function loadReports() {
+  const month = parseInt(g('rpt-month').value);
+  const year = parseInt(g('rpt-year').value);
+  const from = `${year}-${String(month).padStart(2,'0')}-01`;
+  const to = `${year}-${String(month).padStart(2,'0')}-31`;
+  const reports = await sbGet('gg_daily_reports', `store_id=eq.${SID}&report_date=gte.${from}&report_date=lte.${to}&order=report_date.desc`);
+  g('rpt-count').textContent = reports.length + ' reports';
+  const tbody = g('reports-tbody');
+  if (!reports.length) { tbody.innerHTML = '<tr><td colspan="9"><div class="empty">No reports this month</div></td></tr>'; return; }
+  tbody.innerHTML = reports.map(r => {
+    const lot = parseFloat(r.daily_lottery_sale||0);
+    const d = new Date(r.report_date+'T12:00:00');
+    return `<tr>
+      <td>${d.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'})}</td>
+      <td><span class="${r.status==='submitted'?'pill-submitted':'pill-draft'}">${r.status||'draft'}</span></td>
+      <td class="mono">${fmt(r.cash_sales)}</td>
+      <td class="mono">${fmt(r.total_scratch_sold)}</td>
+      <td class="mono" style="color:${lot<0?'var(--red)':'var(--text)'}">${fmtS(lot)}</td>
+      <td class="mono red">−${fmt(r.total_payouts)}</td>
+      <td class="mono muted">${fmt(r.total_safe_drop)}</td>
+      <td class="mono" style="color:var(--green);font-weight:500">${fmt(r.bank_deposit)}</td>
+      <td class="muted" style="font-size:12px">${r.entered_by||'—'}</td>
+    </tr>`;
+  }).join('');
+}
+
+// ── ITEMS ─────────────────────────────────────────────────────────────────────
+let searchTimer;
+function debounceSearch() { clearTimeout(searchTimer); searchTimer = setTimeout(()=>{ST.itemsOffset=0;loadItems();},350); }
+
 async function loadItems() {
-  setSync('', 'loading...');
-  const search = document.getElementById('item-search').value.trim();
-  const category = document.getElementById('item-cat').value;
-  const status = document.getElementById('item-status').value;
-  const params = new URLSearchParams({ limit: ST.itemsLimit, offset: ST.itemsOffset, sort: ST.itemsSort, dir: ST.itemsSortDir });
+  setSync('','loading...');
+  const search = g('item-search').value.trim();
+  const category = g('item-cat').value;
+  const status = g('item-status').value;
+  const params = new URLSearchParams({limit:ST.itemsLimit, offset:ST.itemsOffset});
   if (search) params.set('search', search);
   if (category) params.set('category', category);
   if (status) params.set('status', status);
@@ -763,503 +827,286 @@ async function loadItems() {
     ST.itemsTotal = data.total || 0;
     renderItemsTable();
     setSync('ok', ST.itemsTotal.toLocaleString() + ' items');
-    document.getElementById('items-count').textContent = ST.itemsTotal.toLocaleString() + ' items' + (search || category || status ? ' (filtered)' : '');
-  } catch(e) { setSync('err', 'error'); console.error(e); }
+    g('items-count').textContent = ST.itemsTotal.toLocaleString() + ' items' + (search||category||status?' (filtered)':'');
+  } catch(e) { setSync('err','error'); }
 }
 
 function sortItems(field) {
-  if (ST.itemsSort === field) ST.itemsSortDir = ST.itemsSortDir === 'asc' ? 'desc' : 'asc';
-  else { ST.itemsSort = field; ST.itemsSortDir = 'asc'; }
-  ST.itemsOffset = 0;
-  loadItems();
+  if (ST.itemsSort===field) ST.itemsSortDir = ST.itemsSortDir==='asc'?'desc':'asc';
+  else { ST.itemsSort=field; ST.itemsSortDir='asc'; }
+  ST.itemsOffset = 0; loadItems();
 }
 
-function itemsPage(dir) {
-  ST.itemsOffset = Math.max(0, ST.itemsOffset + dir * ST.itemsLimit);
-  loadItems();
-}
+function itemsPage(dir) { ST.itemsOffset = Math.max(0, ST.itemsOffset + dir * ST.itemsLimit); loadItems(); }
 
 function renderItemsTable() {
-  const tbody = document.getElementById('items-tbody');
-  if (!ST.items.length) { tbody.innerHTML = '<tr><td colspan="10"><div class="empty"><div class="empty-title">No items found</div></div></td></tr>'; return; }
+  const tbody = g('items-tbody');
+  if (!ST.items.length) { tbody.innerHTML = '<tr><td colspan="10"><div class="empty">No items found</div></td></tr>'; return; }
   tbody.innerHTML = ST.items.map(item => {
     const margin = item.margin_pct ? (parseFloat(item.margin_pct)*100).toFixed(1)+'%' : '—';
-    const mColor = !item.margin_pct ? 'var(--muted)' : parseFloat(item.margin_pct) < 0.2 ? 'var(--red)' : parseFloat(item.margin_pct) > 0.35 ? 'var(--green)' : 'var(--gold)';
-    const invColor = parseFloat(item.inventory||0) <= 0 ? 'var(--red)' : parseFloat(item.inventory||0) <= 2 ? 'var(--gold)' : 'var(--text)';
+    const mColor = !item.margin_pct?'var(--muted)':parseFloat(item.margin_pct)<0.2?'var(--red)':parseFloat(item.margin_pct)>0.35?'var(--green)':'var(--gold)';
+    const invColor = parseFloat(item.inventory||0)<=0?'var(--red)':parseFloat(item.inventory||0)<=2?'var(--gold)':'var(--text)';
     return `<tr>
       <td style="font-weight:500">${item.gg_name||'—'}</td>
       <td class="mono muted">${item.abs_code||'—'}</td>
       <td>${catBadge(item.category)}</td>
-      <td class="mono">${item.sell_price ? '$'+parseFloat(item.sell_price).toFixed(2) : '—'}</td>
-      <td class="mono muted">${item.cost ? '$'+parseFloat(item.cost).toFixed(2) : '—'}</td>
+      <td class="mono">${item.sell_price?'$'+parseFloat(item.sell_price).toFixed(2):'—'}</td>
+      <td class="mono muted">${item.cost?'$'+parseFloat(item.cost).toFixed(2):'—'}</td>
       <td class="mono" style="color:${mColor}">${margin}</td>
-      <td class="mono" style="color:${invColor}">${item.inventory ?? '—'}</td>
+      <td class="mono" style="color:${invColor}">${item.inventory??'—'}</td>
       <td class="muted" style="font-size:12px">${(item.vendor||'').trim()||'—'}</td>
       <td>${statusBadge(item.status)}</td>
       <td><button class="btn btn-sm" onclick="openEdit(${item.id})">edit</button></td>
     </tr>`;
   }).join('');
-  const start = ST.itemsOffset + 1, end = Math.min(ST.itemsOffset + ST.itemsLimit, ST.itemsTotal);
-  document.getElementById('items-pagination-info').textContent = `${start}–${end} of ${ST.itemsTotal}`;
-  document.getElementById('btn-prev').disabled = ST.itemsOffset === 0;
-  document.getElementById('btn-next').disabled = end >= ST.itemsTotal;
+  const start = ST.itemsOffset+1, end = Math.min(ST.itemsOffset+ST.itemsLimit, ST.itemsTotal);
+  g('items-pag-info').textContent = `${start}–${end} of ${ST.itemsTotal}`;
+  g('btn-prev').disabled = ST.itemsOffset === 0;
+  g('btn-next').disabled = end >= ST.itemsTotal;
 }
 
 // ── EDIT ITEM ─────────────────────────────────────────────────────────────────
 async function openEdit(id) {
-  let item = ST.items.find(i => i.id === id);
+  let item = ST.items.find(i=>i.id===id);
   if (!item) { try { item = await apiGet('/api/items/'+id); } catch(e) { return; } }
-  document.getElementById('edit-id').value = id;
-  document.getElementById('edit-modal-title').textContent = item.gg_name || 'Edit item';
-  document.getElementById('edit-abs').value = item.abs_code || '';
-  document.getElementById('edit-county-name').value = item.county_name || '';
-  document.getElementById('edit-bpc').value = item.bpc || '';
-  document.getElementById('edit-cost').value = item.cost || '';
-  document.getElementById('edit-low-dis').value = item.low_discount || '';
-  document.getElementById('edit-high-dis').value = item.high_discount || '';
-  document.getElementById('edit-gg-name').value = item.gg_name || '';
-  document.getElementById('edit-upc').value = item.upc || '';
-  document.getElementById('edit-category').value = item.category || 'Beer';
-  document.getElementById('edit-sp').value = item.sell_price || '';
-  document.getElementById('edit-margin').value = item.margin_pct ? (parseFloat(item.margin_pct)*100).toFixed(2)+'%' : '';
-  document.getElementById('edit-status').value = item.status || 'Active';
-  document.getElementById('edit-inv').value = item.inventory ?? '';
-  document.getElementById('edit-vendor').value = (item.vendor||'').trim();
-  document.getElementById('edit-notes').value = item.notes || '';
+  g('edit-id').value = id;
+  g('edit-modal-title').textContent = item.gg_name || 'Edit item';
+  g('edit-abs').value = item.abs_code||'';
+  g('edit-county-name').value = item.county_name||'';
+  g('edit-bpc').value = item.bpc||'';
+  g('edit-cost').value = item.cost||'';
+  g('edit-low-dis').value = item.low_discount||'';
+  g('edit-high-dis').value = item.high_discount||'';
+  g('edit-gg-name').value = item.gg_name||'';
+  g('edit-upc').value = item.upc||'';
+  g('edit-category').value = item.category||'Beer';
+  g('edit-sp').value = item.sell_price||'';
+  g('edit-margin').value = item.margin_pct?(parseFloat(item.margin_pct)*100).toFixed(2)+'%':'';
+  g('edit-status').value = item.status||'Active';
+  g('edit-inv').value = item.inventory??'';
+  g('edit-vendor').value = (item.vendor||'').trim();
+  g('edit-notes').value = item.notes||'';
   openModal('edit-modal');
 }
 
 function calcEditMargin() {
-  const cost = parseFloat(document.getElementById('edit-cost').value)||0;
-  const sp = parseFloat(document.getElementById('edit-sp').value)||0;
-  const bpc = parseFloat(document.getElementById('edit-bpc').value)||1;
-  if (cost > 0 && sp > 0 && bpc > 0) {
-    const cpu = cost/bpc;
-    document.getElementById('edit-margin').value = ((sp-cpu)/sp*100).toFixed(2)+'%';
-  }
+  const cost=parseFloat(g('edit-cost').value)||0, sp=parseFloat(g('edit-sp').value)||0, bpc=parseFloat(g('edit-bpc').value)||1;
+  if(cost>0&&sp>0&&bpc>0) g('edit-margin').value=((sp-cost/bpc)/sp*100).toFixed(2)+'%';
 }
 
 async function saveEdit() {
-  const id = document.getElementById('edit-id').value;
-  const btn = document.getElementById('btn-save-edit');
-  btn.disabled = true; btn.textContent = 'Saving...';
+  const id = g('edit-id').value;
+  const btn = g('btn-save-edit');
+  btn.disabled=true; btn.textContent='Saving...';
   const updates = {
-    gg_name: document.getElementById('edit-gg-name').value.trim(),
-    county_name: document.getElementById('edit-county-name').value.trim() || null,
-    bpc: parseInt(document.getElementById('edit-bpc').value) || null,
-    cost: parseFloat(document.getElementById('edit-cost').value) || null,
-    low_discount: parseFloat(document.getElementById('edit-low-dis').value) || null,
-    high_discount: parseFloat(document.getElementById('edit-high-dis').value) || null,
-    sell_price: parseFloat(document.getElementById('edit-sp').value) || null,
-    upc: document.getElementById('edit-upc').value.trim() || null,
-    category: document.getElementById('edit-category').value,
-    status: document.getElementById('edit-status').value,
-    inventory: document.getElementById('edit-inv').value !== '' ? parseFloat(document.getElementById('edit-inv').value) : null,
-    vendor: document.getElementById('edit-vendor').value.trim() || null,
-    notes: document.getElementById('edit-notes').value.trim() || null,
+    gg_name: g('edit-gg-name').value.trim()||undefined,
+    county_name: g('edit-county-name').value.trim()||undefined,
+    bpc: parseInt(g('edit-bpc').value)||undefined,
+    cost: parseFloat(g('edit-cost').value)||undefined,
+    low_discount: parseFloat(g('edit-low-dis').value)||undefined,
+    high_discount: parseFloat(g('edit-high-dis').value)||undefined,
+    sell_price: parseFloat(g('edit-sp').value)||undefined,
+    upc: g('edit-upc').value.trim()||undefined,
+    category: g('edit-category').value,
+    status: g('edit-status').value,
+    inventory: g('edit-inv').value!==''?parseFloat(g('edit-inv').value):undefined,
+    vendor: g('edit-vendor').value.trim()||undefined,
+    notes: g('edit-notes').value.trim()||undefined,
   };
-  Object.keys(updates).forEach(k => updates[k] === null && delete updates[k]);
+  Object.keys(updates).forEach(k=>updates[k]===undefined&&delete updates[k]);
   try {
     await apiPatch('/api/items/'+id, updates);
-    closeModal('edit-modal');
-    loadItems();
-    setSync('ok', 'saved');
-  } catch(e) { alert('Save failed: ' + e.message); }
-  btn.disabled = false; btn.textContent = 'Save changes';
+    closeModal('edit-modal'); loadItems(); setSync('ok','saved');
+  } catch(e) { alert('Save failed: '+e.message); }
+  btn.disabled=false; btn.textContent='Save changes';
 }
 
 // ── ADD ITEM ──────────────────────────────────────────────────────────────────
 function calcNewMargin() {
-  const cost = parseFloat(document.getElementById('new-cost').value)||0;
-  const sp = parseFloat(document.getElementById('new-sp').value)||0;
-  const bpc = parseFloat(document.getElementById('new-bpc').value)||1;
-  if (cost > 0 && sp > 0 && bpc > 0) {
-    document.getElementById('new-margin').value = ((sp - cost/bpc)/sp*100).toFixed(2)+'%';
-  }
+  const cost=parseFloat(g('new-cost').value)||0, sp=parseFloat(g('new-sp').value)||0, bpc=parseFloat(g('new-bpc').value)||1;
+  if(cost>0&&sp>0&&bpc>0) g('new-margin').value=((sp-cost/bpc)/sp*100).toFixed(2)+'%';
 }
 
 async function saveNewItem() {
-  const btn = document.getElementById('btn-save-item');
-  const fb = document.getElementById('save-feedback');
-  const ggName = document.getElementById('new-gg-name').value.trim();
-  const absCode = document.getElementById('new-abs').value.trim();
-  if (!ggName || !absCode) { fb.innerHTML = '<div class="alert alert-gold">GG Name and ABS Code are required.</div>'; return; }
-  btn.disabled = true; btn.textContent = 'Saving...';
+  const btn = g('btn-save-item');
+  const fb = g('save-feedback');
+  const ggName = g('new-gg-name').value.trim();
+  const absCode = g('new-abs').value.trim();
+  if (!ggName||!absCode) { fb.innerHTML='<div class="alert alert-gold">GG Name and ABS Code are required.</div>'; return; }
+  btn.disabled=true; btn.textContent='Saving...';
   const item = {
-    gg_name: ggName, abs_code: absCode,
-    county_name: document.getElementById('new-county-name').value.trim() || null,
-    category: document.getElementById('new-category').value,
-    status: 'Active',
-    splitted: document.getElementById('new-splitted').value,
-    bpc: parseInt(document.getElementById('new-bpc').value) || null,
-    sell_size: document.getElementById('new-sell-size').value.trim() || null,
-    cost: parseFloat(document.getElementById('new-cost').value) || null,
-    low_discount: parseFloat(document.getElementById('new-low-dis').value) || null,
-    high_discount: parseFloat(document.getElementById('new-high-dis').value) || null,
-    sell_price: parseFloat(document.getElementById('new-sp').value) || null,
-    vendor: document.getElementById('new-vendor').value,
-    supplier: document.getElementById('new-supplier').value.trim() || null,
-    upc: document.getElementById('new-upc').value.trim() || null,
-    made_from_abs: document.getElementById('new-made-from').value.trim() || null,
-    notes: document.getElementById('new-notes').value.trim() || null,
+    gg_name:ggName, abs_code:absCode,
+    county_name:g('new-county-name').value.trim()||null,
+    category:g('new-category').value, status:'Active',
+    splitted:g('new-splitted').value,
+    bpc:parseInt(g('new-bpc').value)||null,
+    sell_size:g('new-sell-size').value.trim()||null,
+    cost:parseFloat(g('new-cost').value)||null,
+    low_discount:parseFloat(g('new-low-dis').value)||null,
+    high_discount:parseFloat(g('new-high-dis').value)||null,
+    sell_price:parseFloat(g('new-sp').value)||null,
+    vendor:g('new-vendor').value,
+    supplier:g('new-supplier').value.trim()||null,
+    upc:g('new-upc').value.trim()||null,
+    made_from_abs:g('new-made-from').value.trim()||null,
+    notes:g('new-notes').value.trim()||null,
   };
-  Object.keys(item).forEach(k => item[k] === null && delete item[k]);
+  Object.keys(item).forEach(k=>item[k]===null&&delete item[k]);
   try {
     await apiPost('/api/items', item);
-    fb.innerHTML = `<div class="alert alert-green">Saved "${ggName}" successfully.</div>`;
+    fb.innerHTML=`<div class="alert alert-green">Saved "${ggName}" successfully.</div>`;
     clearNewItem();
-  } catch(e) { fb.innerHTML = `<div class="alert alert-gold">Error: ${e.message}</div>`; }
-  btn.disabled = false; btn.textContent = 'Save to database';
+  } catch(e) { fb.innerHTML=`<div class="alert alert-gold">Error: ${e.message}</div>`; }
+  btn.disabled=false; btn.textContent='Save to database';
 }
 
 function clearNewItem() {
-  ['new-abs','new-county-name','new-gg-name','new-upc','new-bpc','new-cost','new-low-dis','new-high-dis','new-sp','new-margin','new-supplier','new-sell-size','new-made-from','new-notes'].forEach(id => { const el=document.getElementById(id); if(el) el.value=''; });
+  ['new-abs','new-county-name','new-gg-name','new-upc','new-bpc','new-cost','new-low-dis','new-high-dis','new-sp','new-margin','new-supplier','new-sell-size','new-made-from','new-notes'].forEach(id=>{const el=g(id);if(el)el.value='';});
 }
 
 // ── PRICE HISTORY ─────────────────────────────────────────────────────────────
 async function loadPriceHistory() {
-  const search = document.getElementById('ph-search').value.trim();
-  const field = document.getElementById('ph-field').value;
+  const search = g('ph-search').value.trim();
+  const field = g('ph-field').value;
   let path = '/api/price-history?';
   if (search) path += `abs_code=${encodeURIComponent(search)}&`;
   try {
     let data = await apiGet(path);
-    if (field) data = data.filter(r => r.field_changed === field);
-    if (search && data.length === 0) {
-      // try name search client-side from loaded data
-    }
-    const tbody = document.getElementById('ph-tbody');
-    if (!data.length) { tbody.innerHTML = '<tr><td colspan="7"><div class="empty"><div class="empty-title">No price changes found</div></div></td></tr>'; return; }
-    tbody.innerHTML = data.map(p => {
-      const pct = parseFloat(p.change_pct||0);
-      const color = pct > 0 ? 'var(--red)' : 'var(--green)';
-      return `<tr>
-        <td class="mono muted">${p.change_date||'—'}</td>
-        <td style="font-weight:500">${p.gg_name||'—'}</td>
-        <td class="mono">${p.abs_code||'—'}</td>
-        <td>${p.field_changed}</td>
-        <td class="mono">$${parseFloat(p.old_value||0).toFixed(2)}</td>
-        <td class="mono">$${parseFloat(p.new_value||0).toFixed(2)}</td>
-        <td class="mono" style="color:${color}">${pct>0?'+':''}${(pct*100).toFixed(1)}%</td>
-      </tr>`;
+    if (field) data = data.filter(r=>r.field_changed===field);
+    const tbody = g('ph-tbody');
+    if (!data.length) { tbody.innerHTML='<tr><td colspan="7"><div class="empty">No price changes found</div></td></tr>'; return; }
+    tbody.innerHTML = data.map(p=>{
+      const pct=parseFloat(p.change_pct||0);
+      return `<tr><td class="mono muted">${p.change_date||'—'}</td><td style="font-weight:500">${p.gg_name||'—'}</td><td class="mono">${p.abs_code||'—'}</td><td>${p.field_changed}</td><td class="mono">$${parseFloat(p.old_value||0).toFixed(2)}</td><td class="mono">$${parseFloat(p.new_value||0).toFixed(2)}</td><td class="mono" style="color:${pct>0?'var(--red)':'var(--green)'}">${pct>0?'+':''}${(pct*100).toFixed(1)}%</td></tr>`;
     }).join('');
   } catch(e) { console.error(e); }
 }
 
 // ── ORDER BUILDER ─────────────────────────────────────────────────────────────
+function splitLine(line) { const r=[]; let cur=''; let inQ=false; for(let ch of line){if(ch==='"')inQ=!inQ;else if(ch===','&&!inQ){r.push(cur);cur='';}else cur+=ch;} r.push(cur); return r; }
 function parseCSV(text) {
-  const lines = text.trim().split('\n');
-  const headers = splitLine(lines[0]).map(h => h.replace(/^"|"$/g,'').trim());
-  return lines.slice(1).map(l => {
-    const vals = splitLine(l);
-    return Object.fromEntries(headers.map((h,i) => [h, (vals[i]||'').replace(/^"|"$/g,'').trim()]));
-  }).filter(r => Object.values(r).some(v => v));
+  const lines=text.trim().split('\n');
+  const headers=splitLine(lines[0]).map(h=>h.replace(/^"|"$/g,'').trim());
+  return lines.slice(1).map(l=>{const vals=splitLine(l);return Object.fromEntries(headers.map((h,i)=>[h,(vals[i]||'').replace(/^"|"$/g,'').trim()]));}).filter(r=>Object.values(r).some(v=>v));
 }
-
-function splitLine(line) {
-  const r=[]; let cur=''; let inQ=false;
-  for(let ch of line){ if(ch==='"') inQ=!inQ; else if(ch===','&&!inQ){r.push(cur);cur='';} else cur+=ch; }
-  r.push(cur); return r;
-}
-
-function loadOrderFile(key, input) {
-  const file = input.files[0]; if(!file) return;
-  const reader = new FileReader();
-  reader.onload = e => {
-    ST.orderFiles[key] = parseCSV(e.target.result);
-    document.getElementById(`ob-${key}-box`).classList.add('loaded');
-    document.getElementById(`ob-${key}-st`).textContent = file.name + ' (' + ST.orderFiles[key].length + ' rows)';
-  };
+function loadOrderFile(key,input) {
+  const file=input.files[0]; if(!file)return;
+  const reader=new FileReader();
+  reader.onload=e=>{ST.orderFiles[key]=parseCSV(e.target.result);g('ob-'+key+'-box').classList.add('loaded');g('ob-'+key+'-st').textContent=file.name+' ('+ST.orderFiles[key].length+' rows)';};
   reader.readAsText(file);
 }
 
 async function buildOrder() {
-  if (!ST.orderFiles.inv || !ST.orderFiles.mtd || !ST.orderFiles.week || !ST.orderFiles.ly) {
-    alert('Please upload all required CSV files first.'); return;
-  }
-  const btn = document.getElementById('btn-build');
-  btn.disabled = true; btn.textContent = 'Building...';
-  setSync('', 'building order...');
+  if (!ST.orderFiles.inv||!ST.orderFiles.mtd||!ST.orderFiles.week||!ST.orderFiles.ly) { alert('Please upload all required CSV files.'); return; }
+  const btn=g('btn-build'); btn.disabled=true; btn.textContent='Building...';
   try {
-    const daysCover = parseInt(document.getElementById('ob-days').value)||8;
-    const bufferPct = parseFloat(document.getElementById('ob-buffer').value)/100||0.2;
-    const mtdDays = parseInt(document.getElementById('ob-mtd-days').value)||12;
-    const lyDays = parseInt(document.getElementById('ob-ly-days').value)||30;
-    const useHoliday = document.getElementById('ob-holiday').checked && ST.orderFiles.hol;
-    const orderType = document.getElementById('ob-type').value;
-
-    const allItems = await apiGet('/api/items/all');
-
-    const buildSalesMap = (rows, days) => {
-      const m = {};
-      for(const r of rows){
-        const sku = r['SKU']||r['Token']||Object.values(r)[1]||'';
-        const qty = parseFloat((r['Quantity']||r['Net Quantity']||r['Qty Sold']||Object.values(r)[2]||'0').replace(/[^0-9.\-]/g,''))||0;
-        if(sku) m[sku] = (m[sku]||0) + qty;
-      }
-      const d = {};
-      for(const [k,v] of Object.entries(m)) d[k] = v/days;
-      return d;
-    };
-
-    const invMap = {};
-    for(const r of ST.orderFiles.inv){
-      const sku = r['SKU']||r['Token']||Object.values(r)[1]||'';
-      const qty = parseFloat((r['Quantity']||r['On Hand']||'0').replace(/[^0-9.\-]/g,''))||0;
-      if(sku) invMap[sku] = qty;
-    }
-
-    const weekD = buildSalesMap(ST.orderFiles.week, 7);
-    const mtdD = buildSalesMap(ST.orderFiles.mtd, mtdDays);
-    const lyD = buildSalesMap(ST.orderFiles.ly, lyDays);
-    const holD = useHoliday ? buildSalesMap(ST.orderFiles.hol, 7) : {};
-
-    const customConsumption = {};
+    const daysCover=parseInt(g('ob-days').value)||8;
+    const bufferPct=parseFloat(g('ob-buffer').value)/100||0.2;
+    const mtdDays=parseInt(g('ob-mtd-days').value)||12;
+    const lyDays=parseInt(g('ob-ly-days').value)||30;
+    const useHol=g('ob-holiday').checked&&ST.orderFiles.hol;
+    const orderType=g('ob-type').value;
+    const allItems=await apiGet('/api/items/all');
+    const bsm=(rows,days)=>{const m={};for(const r of rows){const sku=r['SKU']||r['Token']||Object.values(r)[1]||'';const qty=parseFloat((r['Quantity']||r['Net Quantity']||r['Qty Sold']||Object.values(r)[2]||'0').replace(/[^0-9.\-]/g,''))||0;if(sku)m[sku]=(m[sku]||0)+qty;}const d={};for(const[k,v]of Object.entries(m))d[k]=v/days;return d;};
+    const invMap={};for(const r of ST.orderFiles.inv){const sku=r['SKU']||r['Token']||Object.values(r)[1]||'';const qty=parseFloat((r['Quantity']||r['On Hand']||'0').replace(/[^0-9.\-]/g,''))||0;if(sku)invMap[sku]=qty;}
+    const wD=bsm(ST.orderFiles.week,7),mD=bsm(ST.orderFiles.mtd,mtdDays),lD=bsm(ST.orderFiles.ly,lyDays),hD=useHol?bsm(ST.orderFiles.hol,7):{};
+    const cc={};for(const item of allItems){if(item.made_from_abs&&parseFloat(item.inventory||0)<0){const sn=parseInt((item.splitted||'').match(/\d+/)?.[0]||1);cc[item.made_from_abs]=(cc[item.made_from_abs]||0)+Math.abs(parseFloat(item.inventory))/sn;}}
+    const catF=orderType==='Beer'?['Beer','Single Beer','Custom Beer','NA-Beer']:['Wine','NA-Wine'];
+    ST.orderRows=[];
     for(const item of allItems){
-      if(item.made_from_abs && parseFloat(item.inventory||0) < 0){
-        const splitNum = parseInt((item.splitted||'').match(/\d+/)?.[0]||1);
-        customConsumption[item.made_from_abs] = (customConsumption[item.made_from_abs]||0) + Math.abs(parseFloat(item.inventory))/splitNum;
-      }
+      if(!catF.includes(item.category))continue;if(item.status==='On Hold'||item.status==='Discontinued')continue;if(!item.abs_code||item.abs_code==='GGCustom')continue;
+      const sku=item.upc||item.abs_code||'';const oh=parseFloat(item.inventory||0)-(cc[item.abs_code]||0);
+      const w=wD[sku]||0,m=mD[sku]||0,l=lD[sku]||0,h=hD[sku]||0;
+      const dr=useHol?w*.35+m*.2+l*.15+h*.3:w*.5+m*.3+l*.2;
+      if(dr===0&&oh>2)continue;
+      const signals=[w,m,l];const avg=signals.reduce((a,b)=>a+b,0)/3;const maxDev=Math.max(...signals.map(s=>Math.abs(s-avg)));
+      let conf=avg===0?'Low':maxDev/avg>1.2?'Low':maxDev/avg>0.5?'Medium':'High';
+      const qty=Math.max(0,Math.ceil(dr*daysCover*(1+bufferPct)-Math.max(0,oh)));
+      if(qty>0||conf==='Low') ST.orderRows.push({absCode:item.abs_code,name:item.gg_name||'—',category:item.category,onHand:parseFloat(oh.toFixed(1)),dailyRate:parseFloat(dr.toFixed(3)),suggested:qty,override:'',conf,cost:parseFloat(item.cost_per_unit||0)});
     }
-
-    const catFilter = orderType === 'Beer' ? ['Beer','Single Beer','Custom Beer','NA-Beer'] : ['Wine','NA-Wine'];
-    ST.orderRows = [];
-
-    for(const item of allItems){
-      if(!catFilter.includes(item.category)) continue;
-      if(item.status === 'On Hold' || item.status === 'Discontinued') continue;
-      if(!item.abs_code || item.abs_code === 'GGCustom') continue;
-
-      const sku = item.upc || item.abs_code || '';
-      const trueOnHand = parseFloat(item.inventory||0) - (customConsumption[item.abs_code]||0);
-      const w = weekD[sku]||0, m = mtdD[sku]||0, ly = lyD[sku]||0, h = holD[sku]||0;
-      const dailyRate = useHoliday ? w*.35+m*.2+ly*.15+h*.3 : w*.5+m*.3+ly*.2;
-      if(dailyRate === 0 && trueOnHand > 2) continue;
-
-      const signals=[w,m,ly];
-      const avg = signals.reduce((a,b)=>a+b,0)/3;
-      const maxDev = Math.max(...signals.map(s=>Math.abs(s-avg)));
-      let conf = avg === 0 ? 'Low' : maxDev/avg > 1.2 ? 'Low' : maxDev/avg > 0.5 ? 'Medium' : 'High';
-
-      const rawNeed = dailyRate * daysCover;
-      const orderQty = Math.max(0, Math.ceil(rawNeed*(1+bufferPct) - Math.max(0, trueOnHand)));
-      if(orderQty > 0 || conf === 'Low')
-        ST.orderRows.push({ absCode:item.abs_code, name:item.gg_name||'—', category:item.category, onHand:parseFloat(trueOnHand.toFixed(1)), dailyRate:parseFloat(dailyRate.toFixed(3)), suggested:orderQty, override:'', conf, cost:parseFloat(item.cost_per_unit||0), itemId:item.id });
-    }
-
-    ST.orderRows.sort((a,b) => a.name.localeCompare(b.name));
-    document.getElementById('order-results').style.display = '';
-    document.getElementById('order-result-title').textContent = orderType + ' order ready';
-    document.getElementById('order-result-sub').textContent = ST.orderRows.length + ' items — deadline ' + (orderType==='Beer'?'Wednesday 11am':'Friday 11am');
-    renderOrderMetrics();
-    renderOrderTable();
-    setSync('ok', 'order built');
-  } catch(e) { setSync('err','error'); console.error(e); }
+    ST.orderRows.sort((a,b)=>a.name.localeCompare(b.name));
+    g('order-results').style.display='';
+    g('order-title').textContent=orderType+' order ready';
+    g('order-sub').textContent=ST.orderRows.length+' items — deadline '+(orderType==='Beer'?'Wednesday 11am':'Friday 11am');
+    renderOrderMetrics();renderOrderTable();
+  } catch(e) { alert('Error: '+e.message); }
   btn.disabled=false; btn.textContent='Build order →';
 }
 
 function renderOrderMetrics() {
-  const rows = ST.orderRows;
-  const total = rows.reduce((a,r)=>a+(parseInt(r.override)||r.suggested),0);
-  const high = rows.filter(r=>r.conf==='High').length;
-  const review = rows.filter(r=>r.conf==='Low').length;
-  document.getElementById('order-metrics').innerHTML = `
-    <div class="metric"><div class="metric-val gold">${rows.length}</div><div class="metric-label">Items to order</div></div>
-    <div class="metric"><div class="metric-val">${total}</div><div class="metric-label">Total units</div></div>
-    <div class="metric"><div class="metric-val green">${high}</div><div class="metric-label">High confidence</div></div>
-    <div class="metric"><div class="metric-val red">${review}</div><div class="metric-label">Need review</div></div>`;
+  const rows=ST.orderRows;const total=rows.reduce((a,r)=>a+(parseInt(r.override)||r.suggested),0);
+  const high=rows.filter(r=>r.conf==='High').length;const rev=rows.filter(r=>r.conf==='Low').length;
+  g('order-metrics').innerHTML=`<div class="metric"><div class="metric-val gold">${rows.length}</div><div class="metric-label">Items to order</div></div><div class="metric"><div class="metric-val">${total}</div><div class="metric-label">Total units</div></div><div class="metric"><div class="metric-val green">${high}</div><div class="metric-label">High confidence</div></div><div class="metric"><div class="metric-val red">${rev}</div><div class="metric-label">Need review</div></div>`;
 }
 
 function renderOrderTable() {
-  const catF = document.getElementById('ob-filter-cat')?.value||'';
-  const confF = document.getElementById('ob-filter-conf')?.value||'';
-  let rows = ST.orderRows;
-  if(catF) rows = rows.filter(r=>r.category===catF);
-  if(confF) rows = rows.filter(r=>r.conf===confF);
-  const confColor = {High:'var(--green)',Medium:'var(--gold)',Low:'var(--red)'};
-  document.getElementById('order-tbody').innerHTML = rows.map((r,i) => `<tr>
-    <td class="mono muted">${r.absCode}</td>
-    <td style="font-weight:500">${r.name}</td>
-    <td>${catBadge(r.category)}</td>
-    <td class="mono">${r.onHand}</td>
-    <td class="mono">${r.dailyRate}/day</td>
-    <td class="mono" style="font-weight:500">${r.suggested}</td>
-    <td><input type="number" value="${r.override||r.suggested}" min="0" style="width:64px;padding:4px 6px;border:1px solid var(--border2);border-radius:5px;font-family:var(--font-mono);font-size:13px" onchange="ST.orderRows.find(x=>x.absCode==='${r.absCode}').override=this.value;renderOrderMetrics()"></td>
-    <td style="font-family:var(--font-mono);font-size:12px;color:${confColor[r.conf]}">${r.conf}</td>
-  </tr>`).join('');
+  const cf=g('ob-filter-cat')?.value||'';const cf2=g('ob-filter-conf')?.value||'';
+  let rows=ST.orderRows;if(cf)rows=rows.filter(r=>r.category===cf);if(cf2)rows=rows.filter(r=>r.conf===cf2);
+  const cc={'High':'var(--green)','Medium':'var(--gold)','Low':'var(--red)'};
+  g('order-tbody').innerHTML=rows.map(r=>`<tr><td class="mono muted">${r.absCode}</td><td style="font-weight:500">${r.name}</td><td>${catBadge(r.category)}</td><td class="mono">${r.onHand}</td><td class="mono">${r.dailyRate}/day</td><td class="mono" style="font-weight:500">${r.suggested}</td><td><input type="number" value="${r.override||r.suggested}" min="0" style="width:62px;padding:4px 6px;border:1px solid var(--border2);border-radius:5px;font-family:var(--mono);font-size:13px" onchange="ST.orderRows.find(x=>x.absCode==='${r.absCode}').override=this.value;renderOrderMetrics()"></td><td style="font-family:var(--mono);font-size:12px;color:${cc[r.conf]}">${r.conf}</td></tr>`).join('');
 }
 
 function exportOrderCSV() {
-  const rows = ST.orderRows.filter(r=>(parseInt(r.override)||r.suggested)>0);
-  const lines = [['County Product Code','Item Name','Quantity'].join(',')];
-  for(const r of rows) lines.push([r.absCode, `"${r.name}"`, parseInt(r.override)||r.suggested].join(','));
-  const blob = new Blob([lines.join('\n')], {type:'text/csv'});
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = `GG_Order_${document.getElementById('ob-type').value}_${new Date().toISOString().slice(0,10)}.csv`;
-  a.click();
+  const rows=ST.orderRows.filter(r=>(parseInt(r.override)||r.suggested)>0);
+  const lines=[['County Product Code','Item Name','Quantity'].join(',')];
+  for(const r of rows)lines.push([r.absCode,`"${r.name}"`,parseInt(r.override)||r.suggested].join(','));
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([lines.join('\n')],{type:'text/csv'}));
+  a.download=`GG_Order_${g('ob-type').value}_${new Date().toISOString().slice(0,10)}.csv`;a.click();
 }
 
 async function saveOrder() {
-  const orderType = document.getElementById('ob-type').value;
-  const today = new Date().toISOString().slice(0,10);
-  const rows = ST.orderRows.filter(r=>(parseInt(r.override)||r.suggested)>0);
-  const totalCost = rows.reduce((a,r)=>a+(parseInt(r.override)||r.suggested)*(r.cost||0),0);
+  const orderType=g('ob-type').value;const today=new Date().toISOString().slice(0,10);
+  const rows=ST.orderRows.filter(r=>(parseInt(r.override)||r.suggested)>0);
+  const totalCost=rows.reduce((a,r)=>a+(parseInt(r.override)||r.suggested)*(r.cost||0),0);
   try {
-    await apiPost('/api/orders', {
-      order: { order_name:`${orderType} Order — ${today}`, order_type:orderType, order_date:today, status:'Submitted', total_items:rows.length, estimated_cost:parseFloat(totalCost.toFixed(2)) },
-      lines: rows.map(r=>({ abs_code:r.absCode, gg_name:r.name, category:r.category, suggested_qty:r.suggested, final_qty:parseInt(r.override)||r.suggested, on_hand:r.onHand, daily_rate:r.dailyRate, confidence:r.conf, cost_per_unit:r.cost, line_total:parseFloat(((parseInt(r.override)||r.suggested)*(r.cost||0)).toFixed(2)) }))
-    });
-    alert('Order saved to history!');
-  } catch(e) { alert('Error saving: '+e.message); }
+    await apiPost('/api/orders',{order:{order_name:`${orderType} Order — ${today}`,order_type:orderType,order_date:today,status:'Submitted',total_items:rows.length,estimated_cost:parseFloat(totalCost.toFixed(2))},lines:rows.map(r=>({abs_code:r.absCode,gg_name:r.name,category:r.category,suggested_qty:r.suggested,final_qty:parseInt(r.override)||r.suggested,on_hand:r.onHand,daily_rate:r.dailyRate,confidence:r.conf,cost_per_unit:r.cost,line_total:parseFloat(((parseInt(r.override)||r.suggested)*(r.cost||0)).toFixed(2))}))});
+    alert('Order saved!');
+  } catch(e) { alert('Error: '+e.message); }
 }
 
 // ── ORDER HISTORY ─────────────────────────────────────────────────────────────
 async function loadOrderHistory() {
   try {
-    const orders = await apiGet('/api/orders');
-    const tbody = document.getElementById('orders-tbody');
-    if(!orders.length){ tbody.innerHTML='<tr><td colspan="8"><div class="empty"><div class="empty-title">No orders yet</div></div></td></tr>'; return; }
-    tbody.innerHTML = orders.map(o => `<tr>
-      <td style="font-weight:500">${o.order_name||'—'}</td>
-      <td>${catBadge(o.order_type)}</td>
-      <td class="mono muted">${o.order_date||'—'}</td>
-      <td class="mono muted">${o.delivery_date||'—'}</td>
-      <td>${statusBadge(o.status)}</td>
-      <td class="mono">${o.total_items||'—'}</td>
-      <td class="mono">${o.estimated_cost?'$'+parseFloat(o.estimated_cost).toFixed(2):'—'}</td>
-      <td><button class="btn btn-sm" onclick="viewOrderLines(${o.id})">View</button></td>
-    </tr>`).join('');
-  } catch(e){ console.error(e); }
-}
-
-async function viewOrderLines(id) {
-  try {
-    const lines = await apiGet('/api/orders/'+id+'/lines');
-    alert(`Order has ${lines.length} lines.\n\nTop items:\n${lines.slice(0,5).map(l=>l.gg_name+': '+l.final_qty).join('\n')}`);
-  } catch(e){ alert('Error: '+e.message); }
-}
-
-// ── DAILY REPORT ──────────────────────────────────────────────────────────────
-function setTodayDate() {
-  const today = new Date().toISOString().slice(0,10);
-  document.getElementById('dr-date').value = today;
-}
-
-function calcDR() {
-  const net = parseFloat(document.getElementById('dr-net').value)||0;
-  const cash = parseFloat(document.getElementById('dr-cash').value)||0;
-  const card = parseFloat(document.getElementById('dr-card').value)||0;
-  const sum = cash + card;
-  document.getElementById('dr-check').textContent = '$'+sum.toFixed(2);
-  document.getElementById('dr-net-display').textContent = '$'+net.toFixed(2);
-  const diff = Math.abs(sum - net);
-  const status = document.getElementById('dr-check-status');
-  if(net === 0 && sum === 0){ status.textContent=''; return; }
-  if(diff < 0.02){ status.innerHTML='<span style="color:var(--green)">✓ Balanced</span>'; }
-  else{ status.innerHTML=`<span style="color:var(--red)">Difference: $${diff.toFixed(2)}</span>`; }
-}
-
-async function saveDailyReport() {
-  const btn = document.getElementById('btn-save-dr');
-  const fb = document.getElementById('dr-feedback');
-  const date = document.getElementById('dr-date').value;
-  if(!date){ fb.innerHTML='<div class="alert alert-gold">Please select a date.</div>'; return; }
-  btn.disabled = true; btn.textContent = 'Saving...';
-  const data = {
-    report_date: date,
-    net_sales: parseFloat(document.getElementById('dr-net').value)||null,
-    cash_sales: parseFloat(document.getElementById('dr-cash').value)||null,
-    card_sales: parseFloat(document.getElementById('dr-card').value)||null,
-    refunds: parseFloat(document.getElementById('dr-refunds').value)||null,
-    tax_collected: parseFloat(document.getElementById('dr-tax').value)||null,
-    machine_income: parseFloat(document.getElementById('dr-machine').value)||null,
-    lottery_sales: parseFloat(document.getElementById('dr-lottery').value)||null,
-    lottery_payout: parseFloat(document.getElementById('dr-lottery-payout').value)||null,
-    notes: document.getElementById('dr-notes').value.trim()||null,
-    entered_by: document.getElementById('dr-by').value.trim()||null,
-  };
-  Object.keys(data).forEach(k => data[k]===null && delete data[k]);
-  try {
-    await apiPost('/api/daily-reports', data);
-    fb.innerHTML='<div class="alert alert-green">Report saved successfully.</div>';
-    loadDailyHistory();
-  } catch(e){ fb.innerHTML=`<div class="alert alert-gold">Error: ${e.message}</div>`; }
-  btn.disabled=false; btn.textContent='Save report';
-}
-
-async function loadDailyHistory() {
-  try {
-    const now = new Date();
-    const data = await apiGet(`/api/daily-reports?month=${now.getMonth()+1}&year=${now.getFullYear()}`);
-    const tbody = document.getElementById('dr-history');
-    if(!data.length){ tbody.innerHTML='<tr><td colspan="7" style="text-align:center;color:var(--faint);padding:16px">No reports this month</td></tr>'; return; }
-    tbody.innerHTML = data.map(r=>`<tr>
-      <td class="mono" style="font-weight:500">${r.report_date}</td>
-      <td class="mono">${r.net_sales?'$'+parseFloat(r.net_sales).toFixed(2):'—'}</td>
-      <td class="mono muted">${r.cash_sales?'$'+parseFloat(r.cash_sales).toFixed(2):'—'}</td>
-      <td class="mono muted">${r.card_sales?'$'+parseFloat(r.card_sales).toFixed(2):'—'}</td>
-      <td class="mono muted">${r.machine_income?'$'+parseFloat(r.machine_income).toFixed(2):'—'}</td>
-      <td class="mono muted">${r.lottery_sales&&r.lottery_payout?'$'+(parseFloat(r.lottery_sales)-parseFloat(r.lottery_payout)).toFixed(2):'—'}</td>
-      <td class="muted" style="font-size:12px">${r.entered_by||'—'}</td>
-    </tr>`).join('');
-  } catch(e){ console.error(e); }
+    const orders=await apiGet('/api/orders');const tbody=g('orders-tbody');
+    if(!orders.length){tbody.innerHTML='<tr><td colspan="7"><div class="empty">No orders yet</div></td></tr>';return;}
+    tbody.innerHTML=orders.map(o=>`<tr><td style="font-weight:500">${o.order_name||'—'}</td><td>${catBadge(o.order_type)}</td><td class="mono muted">${o.order_date||'—'}</td><td class="mono muted">${o.delivery_date||'—'}</td><td>${statusBadge(o.status)}</td><td class="mono">${o.total_items||'—'}</td><td class="mono">${o.estimated_cost?'$'+parseFloat(o.estimated_cost).toFixed(2):'—'}</td></tr>`).join('');
+  } catch(e){console.error(e);}
 }
 
 // ── SETTINGS ──────────────────────────────────────────────────────────────────
 async function loadSettings() {
   try {
-    const store = await apiGet('/api/store');
-    ST.store = store;
-    document.getElementById('store-logo').innerHTML = store.store_name + ' <em>STORE MANAGER</em>';
-    document.getElementById('cfg-name').value = store.store_name||'';
-    document.getElementById('cfg-type').value = store.store_type||'';
-    document.getElementById('cfg-city').value = store.city||'';
-    document.getElementById('cfg-state').value = store.state||'';
-    document.getElementById('cfg-county').value = store.county_system||'';
-    document.getElementById('cfg-plan').value = store.plan||'';
-    document.getElementById('cfg-beer-dl').value = store.beer_order_deadline||'';
-    document.getElementById('cfg-beer-del').value = store.beer_delivery_day||'';
-    document.getElementById('cfg-wine-dl').value = store.wine_order_deadline||'';
-    document.getElementById('cfg-wine-del').value = store.wine_delivery_day||'';
-    document.getElementById('cfg-mt-beer').value = store.margin_beer ? store.margin_beer+'%' : '';
-    document.getElementById('cfg-mt-wine').value = store.margin_wine ? store.margin_wine+'%' : '';
-    document.getElementById('cfg-mt-cigar').value = store.margin_cigar ? store.margin_cigar+'%' : '';
-    document.getElementById('cfg-mt-tobacco').value = store.margin_tobacco ? store.margin_tobacco+'%' : '';
-    document.getElementById('cfg-mt-default').value = store.margin_default ? store.margin_default+'%' : '';
-  } catch(e){ console.error(e); }
+    const store=await apiGet('/api/store');
+    g('cfg-name').value=store.store_name||'';g('cfg-type').value=store.store_type||'';
+    g('cfg-city').value=store.city||'';g('cfg-county').value=store.county_system||'';
+    g('cfg-beer-dl').value=store.beer_order_deadline||'';g('cfg-wine-dl').value=store.wine_order_deadline||'';
+    if(store.store_name)g('store-logo').innerHTML=store.store_name+' <em>OWNER</em>';
+  } catch(e){console.error(e);}
 }
 
 async function testConnection() {
-  const btn = document.querySelector('[onclick="testConnection()"]');
-  btn.textContent='Testing...'; btn.disabled=true;
-  try {
-    await apiGet('/api/store');
-    document.getElementById('conn-result').innerHTML='<div class="alert alert-green">Connected — Supabase responding normally</div>';
-  } catch(e){
-    document.getElementById('conn-result').innerHTML=`<div class="alert alert-gold">Connection failed: ${e.message}</div>`;
-  }
-  btn.textContent='Test connection'; btn.disabled=false;
+  const btn=document.querySelector('[onclick="testConnection()"]');
+  btn.textContent='Testing...';btn.disabled=true;
+  try { await apiGet('/api/store'); g('conn-result').innerHTML='<div class="alert alert-green">Connected — all systems normal</div>'; }
+  catch(e){g('conn-result').innerHTML=`<div class="alert alert-gold">Failed: ${e.message}</div>`;}
+  btn.textContent='Test connection';btn.disabled=false;
 }
 
-// ── HELPERS ───────────────────────────────────────────────────────────────────
-const CAT_BADGE = { Beer:'badge-beer', Wine:'badge-wine', 'Single Beer':'badge-blue', 'Custom Beer':'badge-gold', Cigar:'badge-gold', Tobacco:'badge-gray', 'NA-Beer':'badge-gray', 'NA-Wine':'badge-gray', 'On Hold':'badge-gray', 'Active':'badge-green' };
-const STATUS_BADGE = { Active:'badge-green', 'On Hold':'badge-gold', Discontinued:'badge-red', Submitted:'badge-blue', Delivered:'badge-green', Draft:'badge-gray', Partial:'badge-gold' };
-
-function catBadge(cat) { return `<span class="badge ${CAT_BADGE[cat]||'badge-gray'}">${cat||'—'}</span>`; }
-function statusBadge(s) { return `<span class="badge ${STATUS_BADGE[s]||'badge-gray'}">${s||'—'}</span>`; }
-function openModal(id){ document.getElementById(id).classList.add('open'); }
-function closeModal(id){ document.getElementById(id).classList.remove('open'); }
+// ── BADGE HELPERS ─────────────────────────────────────────────────────────────
+const CB={Beer:'badge-beer',Wine:'badge-wine','Single Beer':'badge-blue','Custom Beer':'badge-gold',Cigar:'badge-gold',Tobacco:'badge-gray','NA-Beer':'badge-gray','NA-Wine':'badge-gray','On Hold':'badge-gray'};
+const SB2={Active:'badge-green','On Hold':'badge-gold',Discontinued:'badge-red',Submitted:'badge-blue',Delivered:'badge-green',Draft:'badge-gray',Partial:'badge-gold',Beer:'badge-beer',Wine:'badge-wine'};
+function catBadge(cat){return `<span class="badge ${CB[cat]||'badge-gray'}">${cat||'—'}</span>`;}
+function statusBadge(s){return `<span class="badge ${SB2[s]||'badge-gray'}">${s||'—'}</span>`;}
 
 // ── INIT ──────────────────────────────────────────────────────────────────────
 (async function init(){
+  initSelectors();
   try {
-    const store = await apiGet('/api/store');
-    ST.store = store;
-    if(store.store_name) document.getElementById('store-logo').innerHTML = store.store_name + ' <em>STORE MANAGER</em>';
-    setSync('ok', 'connected');
-    loadDashboard();
-  } catch(e){ setSync('err','connection error'); }
+    const store=await apiGet('/api/store');
+    if(store.store_name)g('store-logo').innerHTML=store.store_name+' <em>OWNER</em>';
+    setSync('ok','connected');
+  } catch(e){setSync('err','connection error');}
+  loadDashboard();
 })();
 </script>
 </body>
