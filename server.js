@@ -9,6 +9,10 @@ app.use(express.json({ limit: '10mb' }));
 const SUPABASE_URL = process.env.SUPABASE_URL || 'https://rlgsnznwdsfhpnsscrxs.supabase.co';
 const SUPABASE_KEY = process.env.SUPABASE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJsZ3Nuem53ZHNmaHBuc3NjcnhzIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NjA0MTExOCwiZXhwIjoyMDkxNjE3MTE4fQ.9bJxrUqpxa4gMqP5F4nJGH7Zp6IIZE8rNZQYk9p3FHM';
 const STORE_ID = parseInt(process.env.STORE_ID || '1');
+const SQUARE_TOKEN = process.env.SQUARE_TOKEN || 'EAAAl97orZ29ofOnCX88UeQ-WL96DpCM1BXg85gRiRO_0DWbkSEdaI_BbqyUiUxs';
+const SQUARE_LOCATION = process.env.SQUARE_LOCATION || '9RXJEVJ2DHQGG';
+const SQUARE_BASE = 'https://connect.squareup.com/v2';
+const SQUARE_VERSION = '2024-01-18';
 
 const sbHeaders = {
   'apikey': SUPABASE_KEY,
@@ -17,9 +21,19 @@ const sbHeaders = {
   'Prefer': 'return=representation'
 };
 
+const sqHeaders = {
+  'Authorization': `Bearer ${SQUARE_TOKEN}`,
+  'Content-Type': 'application/json',
+  'Square-Version': SQUARE_VERSION
+};
+
 async function sbFetch(url, options = {}) {
   const { default: fetch } = await import('node-fetch');
   return fetch(url, options);
+}
+async function sqFetch(url, options = {}) {
+  const { default: fetch } = await import('node-fetch');
+  return fetch(SQUARE_BASE + url, { ...options, headers: { ...sqHeaders, ...(options.headers||{}) } });
 }
 
 async function sbGet(table, params = '') {
@@ -28,7 +42,6 @@ async function sbGet(table, params = '') {
   if (!r.ok) throw new Error(`GET ${table}: ${r.status} ${await r.text()}`);
   return r.json();
 }
-
 async function sbGetAll(table, params = '') {
   let all = [], offset = 0;
   while (true) {
@@ -42,25 +55,18 @@ async function sbGetAll(table, params = '') {
   }
   return all;
 }
-
 async function sbPost(table, data, prefer = 'return=representation') {
   const url = `${SUPABASE_URL}/rest/v1/${table}`;
-  const r = await sbFetch(url, {
-    method: 'POST',
-    headers: { ...sbHeaders, 'Prefer': prefer },
-    body: JSON.stringify(data)
-  });
+  const r = await sbFetch(url, { method: 'POST', headers: { ...sbHeaders, 'Prefer': prefer }, body: JSON.stringify(data) });
   if (!r.ok) throw new Error(`POST ${table}: ${r.status} ${await r.text()}`);
   return prefer.includes('representation') ? r.json() : { ok: true };
 }
-
 async function sbPatch(table, id, data) {
   const url = `${SUPABASE_URL}/rest/v1/${table}?id=eq.${id}&store_id=eq.${STORE_ID}`;
   const r = await sbFetch(url, { method: 'PATCH', headers: sbHeaders, body: JSON.stringify(data) });
   if (!r.ok) throw new Error(`PATCH ${table}: ${r.status} ${await r.text()}`);
   return r.json();
 }
-
 async function sbCount(table, filter = '') {
   const url = `${SUPABASE_URL}/rest/v1/${table}?store_id=eq.${STORE_ID}&select=id&${filter}`;
   const r = await sbFetch(url, { headers: { ...sbHeaders, 'Prefer': 'count=exact' } });
@@ -71,9 +77,298 @@ async function sbCount(table, filter = '') {
 // ── PAGE ROUTES ───────────────────────────────────────────────────────────────
 app.get('/staff', (req, res) => res.sendFile(path.join(__dirname, 'public', 'staff.html')));
 app.get('/staff/reports', (req, res) => res.sendFile(path.join(__dirname, 'public', 'staff-reports.html')));
-app.get('/dashboard', (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
 app.get('/owner', (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
+app.get('/dashboard', (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
 app.use(express.static(path.join(__dirname, 'public')));
+
+// ── SQUARE API PROXY ──────────────────────────────────────────────────────────
+
+// Get sales summary for a specific date
+app.get('/api/square/day', async (req, res) => {
+  try {
+    const date = req.query.date || new Date().toISOString().slice(0, 10);
+    const startAt = `${date}T05:00:00Z`; // 1am ET = 5am UTC (adjust for DST)
+    const endAt = `${date}T04:59:59Z`;   // end of business day next day
+
+    // Use Reporting API for daily totals
+    const r = await sqFetch('/v1/settlements', {});
+
+    // Use Orders API to get day's orders
+    const ordersR = await sqFetch('/orders/search', {
+      method: 'POST',
+      body: JSON.stringify({
+        location_ids: [SQUARE_LOCATION],
+        query: {
+          filter: {
+            date_time_filter: {
+              created_at: { start_at: `${date}T00:00:00-05:00`, end_at: `${date}T23:59:59-05:00` }
+            },
+            state_filter: { states: ['COMPLETED'] }
+          },
+          sort: { sort_field: 'CREATED_AT', sort_order: 'ASC' }
+        },
+        limit: 500
+      })
+    });
+    const ordersData = await ordersR.json();
+    const orders = ordersData.orders || [];
+
+    // Aggregate totals
+    let netSales = 0, grossSales = 0, tax = 0, cashTotal = 0, cardTotal = 0, txnCount = orders.length;
+    const categoryMap = {};
+
+    for (const order of orders) {
+      const net = (order.net_amounts?.total_money?.amount || 0) / 100;
+      const gross = (order.total_money?.amount || 0) / 100;
+      const taxAmt = (order.total_tax_money?.amount || 0) / 100;
+      netSales += net;
+      grossSales += gross;
+      tax += taxAmt;
+
+      // Payment breakdown
+      for (const tender of (order.tenders || [])) {
+        const tamt = (tender.amount_money?.amount || 0) / 100;
+        if (tender.type === 'CASH') cashTotal += tamt;
+        else cardTotal += tamt;
+      }
+
+      // Category breakdown from line items
+      for (const item of (order.line_items || [])) {
+        const cat = item.variation_name || item.name || 'Other';
+        // Try to get category from catalog data
+        categoryMap[cat] = (categoryMap[cat] || 0) + ((item.gross_sales_money?.amount || 0) / 100);
+      }
+    }
+
+    const categories = Object.entries(categoryMap)
+      .map(([name, netSales]) => ({ name, netSales: parseFloat(netSales.toFixed(2)) }))
+      .sort((a, b) => b.netSales - a.netSales)
+      .slice(0, 10);
+
+    res.json({
+      date,
+      netSales: parseFloat(netSales.toFixed(2)),
+      grossSales: parseFloat(grossSales.toFixed(2)),
+      tax: parseFloat(tax.toFixed(2)),
+      cash: parseFloat(cashTotal.toFixed(2)),
+      card: parseFloat(cardTotal.toFixed(2)),
+      transactions: txnCount,
+      categories
+    });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// Get sales for a date range with category breakdown
+app.get('/api/square/range', async (req, res) => {
+  try {
+    const { start, end } = req.query;
+    if (!start || !end) return res.status(400).json({ error: 'start and end required' });
+
+    const allOrders = [];
+    let cursor = null;
+
+    // Paginate through all orders
+    do {
+      const body = {
+        location_ids: [SQUARE_LOCATION],
+        query: {
+          filter: {
+            date_time_filter: {
+              created_at: { start_at: `${start}T00:00:00-05:00`, end_at: `${end}T23:59:59-05:00` }
+            },
+            state_filter: { states: ['COMPLETED'] }
+          }
+        },
+        limit: 500,
+        ...(cursor && { cursor })
+      };
+      const r = await sqFetch('/orders/search', { method: 'POST', body: JSON.stringify(body) });
+      const data = await r.json();
+      if (data.errors) throw new Error(JSON.stringify(data.errors));
+      allOrders.push(...(data.orders || []));
+      cursor = data.cursor;
+    } while (cursor);
+
+    // Group by date
+    const byDate = {};
+    for (const order of allOrders) {
+      const date = order.created_at.slice(0, 10);
+      if (!byDate[date]) byDate[date] = { date, netSales: 0, grossSales: 0, tax: 0, cash: 0, card: 0, transactions: 0, categories: {} };
+      const d = byDate[date];
+      d.netSales += (order.net_amounts?.total_money?.amount || 0) / 100;
+      d.grossSales += (order.total_money?.amount || 0) / 100;
+      d.tax += (order.total_tax_money?.amount || 0) / 100;
+      d.transactions++;
+      for (const tender of (order.tenders || [])) {
+        const tamt = (tender.amount_money?.amount || 0) / 100;
+        if (tender.type === 'CASH') d.cash += tamt;
+        else d.card += tamt;
+      }
+    }
+
+    const days = Object.values(byDate).map(d => ({
+      ...d,
+      netSales: parseFloat(d.netSales.toFixed(2)),
+      grossSales: parseFloat(d.grossSales.toFixed(2)),
+      tax: parseFloat(d.tax.toFixed(2)),
+      cash: parseFloat(d.cash.toFixed(2)),
+      card: parseFloat(d.card.toFixed(2)),
+    })).sort((a, b) => a.date.localeCompare(b.date));
+
+    res.json({ days, totalOrders: allOrders.length });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// Get category sales for a date range using Square's Reporting API
+app.get('/api/square/categories', async (req, res) => {
+  try {
+    const { start, end } = req.query;
+
+    // Square doesn't have a direct category summary endpoint via Orders
+    // Use the Item Sales report via the Reporting API
+    const r = await sqFetch(`/reports/item-sales?location_ids=${SQUARE_LOCATION}&begin_time=${start}T00:00:00-05:00&end_time=${end}T23:59:59-05:00&sort_order=DESC`);
+    if (!r.ok) {
+      const txt = await r.text();
+      return res.status(r.status).json({ error: txt });
+    }
+    const data = await r.json();
+    res.json(data);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// ── SQUARE SYNC — Pull sales data and store in Supabase ───────────────────────
+app.post('/api/square/sync', async (req, res) => {
+  try {
+    const { start, end } = req.body;
+    const startDate = start || new Date(Date.now() - 86400000).toISOString().slice(0,10);
+    const endDate = end || new Date().toISOString().slice(0,10);
+
+    console.log(`Square sync: ${startDate} → ${endDate}`);
+
+    const allOrders = [];
+    let cursor = null;
+    let pageCount = 0;
+
+    do {
+      const body = {
+        location_ids: [SQUARE_LOCATION],
+        query: {
+          filter: {
+            date_time_filter: {
+              created_at: { start_at: `${startDate}T00:00:00-05:00`, end_at: `${endDate}T23:59:59-05:00` }
+            },
+            state_filter: { states: ['COMPLETED'] }
+          }
+        },
+        limit: 500,
+        ...(cursor && { cursor })
+      };
+      const r = await sqFetch('/orders/search', { method: 'POST', body: JSON.stringify(body) });
+      const data = await r.json();
+      if (data.errors) throw new Error(data.errors[0]?.detail || JSON.stringify(data.errors));
+      allOrders.push(...(data.orders || []));
+      cursor = data.cursor;
+      pageCount++;
+      if (pageCount > 50) break; // Safety limit
+    } while (cursor);
+
+    console.log(`Fetched ${allOrders.length} orders`);
+
+    // Aggregate by date
+    const byDate = {};
+    const categoryByDate = {};
+
+    for (const order of allOrders) {
+      // Square timestamps are in UTC, convert to ET
+      const utcDate = new Date(order.created_at);
+      // ET is UTC-5 (EST) or UTC-4 (EDT) — use simple offset
+      const etOffset = -5 * 60 * 60 * 1000;
+      const etDate = new Date(utcDate.getTime() + etOffset);
+      const date = etDate.toISOString().slice(0, 10);
+
+      if (!byDate[date]) byDate[date] = { date, netSales: 0, grossSales: 0, tax: 0, cash: 0, card: 0, transactions: 0 };
+      if (!categoryByDate[date]) categoryByDate[date] = {};
+
+      const d = byDate[date];
+      d.netSales += (order.net_amounts?.total_money?.amount || 0) / 100;
+      d.grossSales += (order.total_money?.amount || 0) / 100;
+      d.tax += (order.total_tax_money?.amount || 0) / 100;
+      d.transactions++;
+
+      for (const tender of (order.tenders || [])) {
+        const tamt = (tender.amount_money?.amount || 0) / 100;
+        if (tender.type === 'CASH') d.cash += tamt;
+        else d.card += tamt;
+      }
+
+      // Line items → categories
+      for (const item of (order.line_items || [])) {
+        const cat = item.catalog_object_id ? 'cat_' + item.catalog_object_id : (item.name || 'Other');
+        const amt = (item.gross_sales_money?.amount || 0) / 100;
+        categoryByDate[date][cat] = (categoryByDate[date][cat] || { name: item.name || cat, amount: 0 });
+        categoryByDate[date][cat].amount += amt;
+      }
+    }
+
+    // Upsert into square_daily_sales table
+    const rows = Object.values(byDate).map(d => ({
+      store_id: STORE_ID,
+      sale_date: d.date,
+      net_sales: parseFloat(d.netSales.toFixed(2)),
+      gross_sales: parseFloat(d.grossSales.toFixed(2)),
+      tax: parseFloat(d.tax.toFixed(2)),
+      cash_amount: parseFloat(d.cash.toFixed(2)),
+      card_amount: parseFloat(d.card.toFixed(2)),
+      transaction_count: d.transactions,
+      categories: categoryByDate[d.date] || {},
+      synced_at: new Date().toISOString()
+    }));
+
+    if (rows.length > 0) {
+      const upsertR = await sbFetch(`${SUPABASE_URL}/rest/v1/square_daily_sales`, {
+        method: 'POST',
+        headers: { ...sbHeaders, 'Prefer': 'return=minimal,resolution=merge-duplicates' },
+        body: JSON.stringify(rows)
+      });
+      if (!upsertR.ok) {
+        const errText = await upsertR.text();
+        throw new Error(`Supabase upsert failed: ${errText}`);
+      }
+    }
+
+    res.json({ success: true, datesProcessed: rows.length, ordersProcessed: allOrders.length, dateRange: `${startDate} → ${endDate}` });
+  } catch (e) {
+    console.error('Square sync error:', e);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// Get stored Square data for a date
+app.get('/api/square/stored/day', async (req, res) => {
+  try {
+    const date = req.query.date || new Date().toISOString().slice(0, 10);
+    const r = await sbFetch(`${SUPABASE_URL}/rest/v1/square_daily_sales?store_id=eq.${STORE_ID}&sale_date=eq.${date}&limit=1`, { headers: sbHeaders });
+    const data = await r.json();
+    res.json(data[0] || null);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// Get stored Square data for a month
+app.get('/api/square/stored/month', async (req, res) => {
+  try {
+    const { month, year } = req.query;
+    const from = `${year}-${String(month).padStart(2,'0')}-01`;
+    const to = `${year}-${String(month).padStart(2,'0')}-31`;
+    const r = await sbFetch(`${SUPABASE_URL}/rest/v1/square_daily_sales?store_id=eq.${STORE_ID}&sale_date=gte.${from}&sale_date=lte.${to}&order=sale_date.asc`, { headers: sbHeaders });
+    res.json(await r.json());
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
 
 // ── STORE ─────────────────────────────────────────────────────────────────────
 app.get('/api/store', async (req, res) => {
@@ -87,16 +382,15 @@ app.get('/api/store', async (req, res) => {
 // ── DASHBOARD ─────────────────────────────────────────────────────────────────
 app.get('/api/dashboard', async (req, res) => {
   try {
-    const [totalItems, activeItems, beerItems, wineItems, lowInv, recentOrders, priceChanges] = await Promise.all([
+    const [totalItems, activeItems, beerItems, wineItems, lowInv, priceChanges] = await Promise.all([
       sbCount('items'),
       sbCount('items', 'status=eq.Active'),
       sbCount('items', 'status=eq.Active&category=in.(Beer,Single Beer,Custom Beer,NA-Beer)'),
       sbCount('items', 'status=eq.Active&category=in.(Wine,NA-Wine)'),
       sbGet('items', 'status=eq.Active&inventory=lte.2&inventory=gte.0&order=inventory.asc&limit=10&select=id,gg_name,category,inventory,abs_code'),
-      sbGet('orders', 'order=created_at.desc&limit=5&select=id,order_name,order_type,order_date,status,total_items,estimated_cost'),
       sbGet('price_history', 'order=created_at.desc&limit=10&select=id,gg_name,abs_code,field_changed,old_value,new_value,change_pct,change_date'),
     ]);
-    res.json({ totalItems, activeItems, beerItems, wineItems, lowInv, recentOrders, priceChanges });
+    res.json({ totalItems, activeItems, beerItems, wineItems, lowInv, priceChanges });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
@@ -155,7 +449,6 @@ app.get('/api/vendors', async (req, res) => {
   try { res.json(await sbGet('vendors', 'order=vendor_name.asc')); }
   catch (e) { res.status(500).json({ error: e.message }); }
 });
-
 app.post('/api/vendors', async (req, res) => {
   try {
     const result = await sbPost('vendors', { ...req.body, store_id: STORE_ID });
@@ -168,7 +461,6 @@ app.get('/api/orders', async (req, res) => {
   try { res.json(await sbGet('orders', 'order=created_at.desc&limit=50')); }
   catch (e) { res.status(500).json({ error: e.message }); }
 });
-
 app.post('/api/orders', async (req, res) => {
   try {
     const { order, lines } = req.body;
@@ -179,7 +471,6 @@ app.post('/api/orders', async (req, res) => {
     res.json(saved);
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
-
 app.get('/api/orders/:id/lines', async (req, res) => {
   try {
     const r = await sbFetch(`${SUPABASE_URL}/rest/v1/order_lines?order_id=eq.${req.params.id}&order=gg_name.asc`, { headers: sbHeaders });
@@ -270,8 +561,40 @@ app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
+// ── NIGHTLY SYNC (called by cron or manually) ─────────────────────────────────
+async function runNightlySync() {
+  try {
+    const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0,10);
+    const { default: fetch } = await import('node-fetch');
+    const r = await fetch(`http://localhost:${PORT}/api/square/sync`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ start: yesterday, end: yesterday })
+    });
+    const result = await r.json();
+    console.log('Nightly sync result:', result);
+  } catch (e) {
+    console.error('Nightly sync failed:', e.message);
+  }
+}
+
+// Schedule nightly sync at 2am ET
+function scheduleSyncs() {
+  const now = new Date();
+  const nextSync = new Date();
+  nextSync.setHours(7, 0, 0, 0); // 2am ET = 7am UTC
+  if (nextSync <= now) nextSync.setDate(nextSync.getDate() + 1);
+  const msUntilSync = nextSync - now;
+  console.log(`Next sync scheduled in ${Math.round(msUntilSync/1000/60)} minutes`);
+  setTimeout(() => {
+    runNightlySync();
+    setInterval(runNightlySync, 24 * 60 * 60 * 1000); // then every 24h
+  }, msUntilSync);
+}
+
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`Grape & Grain running on port ${PORT}`);
-  console.log(`Owner: /owner | Staff: /staff | Store: ${STORE_ID}`);
+  console.log(`Square: location ${SQUARE_LOCATION}`);
+  scheduleSyncs();
 });
