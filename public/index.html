@@ -841,7 +841,7 @@ function initSelectors() {
 let dashMonth = new Date().getMonth() + 1;
 let dashYear = new Date().getFullYear();
 let allPayments = [];
-let squareToken = null; // Set when Square API is connected
+const SQUARE_ENABLED = true; // Token is server-side in env vars
 const CAT_COLORS = ['#6b1f3a','#8b5e1a','#2d6a4f','#1a3a5c','#5c3a1a'];
 
 // ── DASHBOARD MAIN ────────────────────────────────────────────────────────────
@@ -869,7 +869,7 @@ async function loadDailySnapshot() {
 
   // Try Square API first
   let squareData = null;
-  if (squareToken) {
+  if (SQUARE_ENABLED) {
     squareData = await fetchSquareDay(date);
   }
 
@@ -912,9 +912,29 @@ async function loadDailySnapshot() {
 }
 
 async function fetchSquareDay(date) {
-  // Placeholder — will be wired up when Square credentials are provided
-  // Returns: { netSales, cash, card, transactions, categories: [{name, netSales}] }
-  return null;
+  try {
+    // First try live Square pull
+    const r = await fetch('/api/square/day?date=' + date);
+    if (!r.ok) throw new Error('Square API error');
+    const data = await r.json();
+    if (data.error) throw new Error(data.error);
+    // Convert categories from object to array
+    const cats = Object.entries(data.categories || {})
+      .map(([name, netSales]) => ({ name, netSales }))
+      .sort((a,b) => b.netSales - a.netSales);
+    return { ...data, categories: cats };
+  } catch(e) {
+    // Fall back to stored data
+    try {
+      const r2 = await fetch('/api/square/stored/day?date=' + date);
+      const stored = await r2.json();
+      if (!stored) return null;
+      const cats = Object.entries(stored.categories || {})
+        .map(([k, v]) => ({ name: v.name || k, netSales: v.amount || 0 }))
+        .sort((a,b) => b.netSales - a.netSales);
+      return { ...stored, netSales: stored.net_sales, cash: stored.cash_amount, card: stored.card_amount, transactions: stored.transaction_count, categories: cats };
+    } catch(e2) { return null; }
+  }
 }
 
 function renderSnapCategories(categories) {
@@ -982,7 +1002,7 @@ async function loadMonthlySummary() {
   await loadCategoryTracker();
 
   // Month categories (Square or placeholder)
-  if (squareToken) {
+  if (SQUARE_ENABLED) {
     // Will be filled by Square API
   } else {
     g('month-categories').innerHTML = `<div style="display:flex;align-items:center;gap:10px;padding:10px 0">
@@ -1110,7 +1130,7 @@ async function loadCategoryTracker() {
   const isCurrentMonth = now.getMonth()+1===dashMonth && now.getFullYear()===dashYear;
   const daysElapsed = isCurrentMonth ? now.getDate() : daysInMonth;
 
-  if (squareToken) {
+  if (SQUARE_ENABLED) {
     // Will pull from Square API
     g('cat-tracker').innerHTML = '<div class="empty">Square category data loading...</div>';
     return;
@@ -1151,6 +1171,85 @@ async function loadCategoryTracker() {
         <div class="ct-est-label">Est. month-end</div>
       </div>`;
     }).join('')}</div>`;
+}
+
+
+// ── SQUARE MONTH CATEGORIES ───────────────────────────────────────────────────
+async function loadMonthCategories(from, to, daysElapsed, daysInMonth) {
+  try {
+    const r = await fetch(`/api/square/stored/month?month=${dashMonth}&year=${dashYear}`);
+    const days = await r.json();
+    if (!days || !days.length) {
+      g('month-categories').innerHTML = '<div class="empty" style="padding:8px 0">No Square data yet — run a sync to load category data</div>';
+      return;
+    }
+    // Aggregate categories across all days
+    const catMap = {};
+    for (const day of days) {
+      for (const [k, v] of Object.entries(day.categories || {})) {
+        const name = v.name || k;
+        catMap[name] = (catMap[name] || 0) + (v.amount || 0);
+      }
+    }
+    const top5 = Object.entries(catMap).sort((a,b)=>b[1]-a[1]).slice(0,5).map(([name,net])=>({name,netSales:parseFloat(net.toFixed(2))}));
+    const maxV = Math.max(...top5.map(c=>c.netSales), 1);
+    g('month-categories').innerHTML = top5.length
+      ? top5.map((c,i)=>`<div class="cat-bar-row"><div class="cat-bar-label" title="${c.name}">${c.name}</div><div class="cat-bar-track"><div class="cat-bar-fill" style="width:${(c.netSales/maxV*100).toFixed(1)}%;background:${CAT_COLORS[i]}">${c.netSales>100?fmt(c.netSales):''}</div></div><div class="cat-bar-val">${fmt(c.netSales)}</div></div>`).join('')
+      : '<div class="empty" style="padding:8px 0">No category data this month</div>';
+  } catch(e) {
+    g('month-categories').innerHTML = '<div class="empty" style="padding:8px 0">Could not load category data</div>';
+  }
+}
+
+async function loadSquareCategoryTracker(from, daysElapsed, daysInMonth) {
+  try {
+    const r = await fetch(`/api/square/stored/month?month=${dashMonth}&year=${dashYear}`);
+    const days = await r.json();
+    if (!days || !days.length) {
+      g('cat-tracker').innerHTML = '<div style="display:flex;align-items:center;gap:12px;padding:12px"><div style="font-size:13px;color:var(--muted)">No Square data stored yet.</div><button class="btn btn-sm btn-primary" onclick="runSquareSync()">Sync now →</button></div>';
+      return;
+    }
+    const catMap = {};
+    for (const day of days) {
+      for (const [k, v] of Object.entries(day.categories || {})) {
+        const name = v.name || k;
+        catMap[name] = (catMap[name] || 0) + (v.amount || 0);
+      }
+    }
+    const top5 = Object.entries(catMap).sort((a,b)=>b[1]-a[1]).slice(0,5);
+    if (!top5.length) { g('cat-tracker').innerHTML = '<div class="empty">No category data</div>'; return; }
+    g('cat-tracker').innerHTML = `<div class="cat-tracker-grid">${top5.map(([name, actual], i) => {
+      const avgDay = daysElapsed > 0 ? actual/daysElapsed : 0;
+      const est = avgDay * daysInMonth;
+      const pct = Math.min(100, daysElapsed/daysInMonth*100);
+      return `<div class="cat-tracker-card">
+        <div class="ct-rank">#${i+1}</div>
+        <div class="ct-name" title="${name}">${name}</div>
+        <div class="ct-actual">${fmt(actual)}</div>
+        <div class="ct-label">Actual MTD</div>
+        <div class="ct-bar"><div class="ct-bar-fill" style="width:${pct.toFixed(1)}%;background:${CAT_COLORS[i]}"></div></div>
+        <hr class="ct-divider">
+        <div class="ct-est">${fmt(est)}</div>
+        <div class="ct-est-label">Est. month-end</div>
+      </div>`;
+    }).join('')}</div>`;
+  } catch(e) {
+    g('cat-tracker').innerHTML = '<div class="empty">Could not load category tracker</div>';
+  }
+}
+
+async function runSquareSync(start, end) {
+  const btn = event?.target;
+  if (btn) { btn.disabled = true; btn.textContent = 'Syncing...'; }
+  try {
+    const body = start && end ? { start, end } : {};
+    const r = await fetch('/api/square/sync', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
+    const result = await r.json();
+    if (result.error) throw new Error(result.error);
+    alert(`Sync complete: ${result.datesProcessed} days, ${result.ordersProcessed} orders`);
+    loadDashboard();
+  } catch(e) { alert('Sync failed: ' + e.message); }
+  if (btn) { btn.disabled = false; btn.textContent = 'Sync now →'; }
 }
 
 // ── WEEKLY BARS ────────────────────────────────────────────────────────────────
