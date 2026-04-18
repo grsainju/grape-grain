@@ -71,6 +71,7 @@ async function sbCount(table, filter = '') {
 // ── PAGE ROUTES ───────────────────────────────────────────────────────────────
 app.get('/staff', (req, res) => res.sendFile(path.join(__dirname, 'public', 'staff.html')));
 app.get('/staff/reports', (req, res) => res.sendFile(path.join(__dirname, 'public', 'staff-reports.html')));
+app.get('/dashboard', (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
 app.get('/owner', (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
 app.use(express.static(path.join(__dirname, 'public')));
 
