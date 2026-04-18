@@ -364,7 +364,8 @@ app.get('/api/square/stored/month', async (req, res) => {
   try {
     const { month, year } = req.query;
     const from = `${year}-${String(month).padStart(2,'0')}-01`;
-    const to = `${year}-${String(month).padStart(2,'0')}-31`;
+    const daysInMonth = new Date(parseInt(year), parseInt(month), 0).getDate();
+    const to = `${year}-${String(month).padStart(2,'0')}-${daysInMonth}`;
     const r = await sbFetch(`${SUPABASE_URL}/rest/v1/square_daily_sales?store_id=eq.${STORE_ID}&sale_date=gte.${from}&sale_date=lte.${to}&order=sale_date.asc`, { headers: sbHeaders });
     res.json(await r.json());
   } catch (e) { res.status(500).json({ error: e.message }); }
@@ -495,7 +496,8 @@ app.get('/api/daily-reports', async (req, res) => {
     let params = `order=report_date.desc&limit=${limit}`;
     if (month && year) {
       const from = `${year}-${String(month).padStart(2,'0')}-01`;
-      const to = `${year}-${String(month).padStart(2,'0')}-31`;
+      const daysInM = new Date(parseInt(year), parseInt(month), 0).getDate();
+      const to = `${year}-${String(month).padStart(2,'0')}-${daysInM}`;
       params += `&report_date=gte.${from}&report_date=lte.${to}`;
     }
     res.json(await sbGet('gg_daily_reports', params));
