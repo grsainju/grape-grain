@@ -745,16 +745,16 @@ td{padding:9px 14px;vertical-align:middle}
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
           <div>
             <div style="font-size:11px;font-family:var(--mono);color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:.05em">Category Sales CSV</div>
-            <div style="border:1px dashed var(--border2);border-radius:6px;padding:12px;text-align:center;cursor:pointer;background:var(--surface)" onclick="document.getElementById('csv-cat').click()">
-              <div style="font-size:13px;color:var(--muted)" id="csv-cat-label">Click to upload</div>
-            </div>
+            <label for="csv-cat" style="display:block;border:1px dashed var(--border2);border-radius:6px;padding:16px 12px;text-align:center;cursor:pointer;background:var(--surface);transition:all .15s" onmouseover="this.style.borderColor='var(--gold)';this.style.background='var(--gold-bg)'" onmouseout="this.style.borderColor='var(--border2)';this.style.background='var(--surface)'">
+              <div style="font-size:13px;color:var(--muted)" id="csv-cat-label">📂 Click to upload</div>
+            </label>
             <input type="file" id="csv-cat" accept=".csv" style="display:none" onchange="handleCSVUpload('category',this)">
           </div>
           <div>
             <div style="font-size:11px;font-family:var(--mono);color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:.05em">Item Sales CSV</div>
-            <div style="border:1px dashed var(--border2);border-radius:6px;padding:12px;text-align:center;cursor:pointer;background:var(--surface)" onclick="document.getElementById('csv-item').click()">
-              <div style="font-size:13px;color:var(--muted)" id="csv-item-label">Click to upload</div>
-            </div>
+            <label for="csv-item" style="display:block;border:1px dashed var(--border2);border-radius:6px;padding:16px 12px;text-align:center;cursor:pointer;background:var(--surface);transition:all .15s" onmouseover="this.style.borderColor='var(--gold)';this.style.background='var(--gold-bg)'" onmouseout="this.style.borderColor='var(--border2)';this.style.background='var(--surface)'">
+              <div style="font-size:13px;color:var(--muted)" id="csv-item-label">📂 Click to upload</div>
+            </label>
             <input type="file" id="csv-item" accept=".csv" style="display:none" onchange="handleCSVUpload('item',this)">
           </div>
         </div>
