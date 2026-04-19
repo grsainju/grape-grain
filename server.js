@@ -175,8 +175,7 @@ app.get('/api/square/day', async (req, res) => {
           .map(([name, netSales]) => ({ name, netSales: parseFloat(netSales.toFixed(2)) }));
 
         // Get Square processing fees from Payments API
-        // Fees: Square processing fees require paginating through all payments
-        // Fees are stored as negative amounts in processing_fee array
+        // Fees: Square processing fees from Payments API
         let totalFees = 0;
         try {
           let feesCursor = null;
@@ -186,15 +185,20 @@ app.get('/api/square/day', async (req, res) => {
             const paymentsR = await sqFetch(feesUrl);
             const paymentsData = await paymentsR.json();
             for (const p of (paymentsData.payments || [])) {
+              // processing_fee is array of fee objects, amount is in cents
+              // type=INITIAL is the actual fee charge
               if (Array.isArray(p.processing_fee)) {
                 for (const f of p.processing_fee) {
-                  totalFees += Math.abs((f.amount_money?.amount || 0)) / 100;
+                  if (f.type === 'INITIAL') {
+                    totalFees += Math.abs((f.amount_money?.amount || 0)) / 100;
+                  }
                 }
               }
             }
             feesCursor = paymentsData.cursor;
             feesPage++;
           } while (feesCursor && feesPage < 10);
+          console.log(`Fees total: $${totalFees.toFixed(2)}`);
         } catch(e) { console.log('Fees fetch error:', e.message); }
 
         return res.json({
