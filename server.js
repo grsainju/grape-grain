@@ -150,7 +150,8 @@ app.get('/api/square/day', async (req, res) => {
           liveGross += (order.total_money?.amount || 0) / 100;
           liveTax += (order.total_tax_money?.amount || 0) / 100;
           liveDisc += (order.total_discount_money?.amount || 0) / 100;
-          liveRet += Math.abs((order.net_amounts?.discount_money?.amount || 0)) / 100;
+          // Returns come from return_amounts on the order (refunded items)
+          liveRet += (order.return_amounts?.total_money?.amount || 0) / 100;
           for (const tender of (order.tenders || [])) {
             const ta = (tender.amount_money?.amount || 0) / 100;
             if (tender.type === 'CASH') liveCash += ta; else liveCard += ta;
@@ -174,15 +175,26 @@ app.get('/api/square/day', async (req, res) => {
           .map(([name, netSales]) => ({ name, netSales: parseFloat(netSales.toFixed(2)) }));
 
         // Get Square processing fees from Payments API
+        // Fees: Square processing fees require paginating through all payments
+        // Fees are stored as negative amounts in processing_fee array
         let totalFees = 0;
         try {
-          const paymentsR = await sqFetch(
-            `/payments?location_id=${SQUARE_LOCATION}&begin_time=${date}T00:00:00-05:00&end_time=${date}T23:59:59-05:00&limit=200`
-          );
-          const paymentsData = await paymentsR.json();
-          for (const p of (paymentsData.payments || [])) {
-            totalFees += (p.processing_fee?.reduce((a,f) => a + Math.abs(f.amount_money?.amount||0), 0) || 0) / 100;
-          }
+          let feesCursor = null;
+          let feesPage = 0;
+          do {
+            const feesUrl = `/payments?location_id=${SQUARE_LOCATION}&begin_time=${date}T00:00:00-05:00&end_time=${date}T23:59:59-05:00&limit=100${feesCursor ? '&cursor=' + feesCursor : ''}`;
+            const paymentsR = await sqFetch(feesUrl);
+            const paymentsData = await paymentsR.json();
+            for (const p of (paymentsData.payments || [])) {
+              if (Array.isArray(p.processing_fee)) {
+                for (const f of p.processing_fee) {
+                  totalFees += Math.abs((f.amount_money?.amount || 0)) / 100;
+                }
+              }
+            }
+            feesCursor = paymentsData.cursor;
+            feesPage++;
+          } while (feesCursor && feesPage < 10);
         } catch(e) { console.log('Fees fetch error:', e.message); }
 
         return res.json({
@@ -320,7 +332,7 @@ app.get('/api/square/range', async (req, res) => {
       d.grossSales += (order.total_money?.amount || 0) / 100;
       d.tax += (order.total_tax_money?.amount || 0) / 100;
       d.discounts += (order.total_discount_money?.amount || 0) / 100;
-      d.returns += Math.abs((order.net_amounts?.discount_money?.amount || 0)) / 100;
+      d.returns += (order.return_amounts?.total_money?.amount || 0) / 100;
       // Square processing fees are not in orders API — tracked separately
       d.transactions++;
       for (const tender of (order.tenders || [])) {
@@ -403,7 +415,7 @@ app.post('/api/square/sync', async (req, res) => {
       d.grossSales += (order.total_money?.amount || 0) / 100;
       d.tax += (order.total_tax_money?.amount || 0) / 100;
       d.discounts += (order.total_discount_money?.amount || 0) / 100;
-      d.returns += Math.abs((order.net_amounts?.discount_money?.amount || 0)) / 100;
+      d.returns += (order.return_amounts?.total_money?.amount || 0) / 100;
       // Square processing fees are not in orders API — tracked separately
       d.transactions++;
 
@@ -1076,26 +1088,29 @@ app.get('/api/square/debug-order', async (req, res) => {
     if (!order) return res.json({ error: 'No orders today', count: 0 });
 
     // Show all money-related fields
+    // Also fetch payment for this order to see fees
+    let paymentFees = null;
+    if (order.tenders?.[0]?.payment_id) {
+      const pr = await sqFetch(`/payments/${order.tenders[0].payment_id}`);
+      const pd = await pr.json();
+      paymentFees = pd.payment?.processing_fee;
+    }
+
     res.json({
-      id: order.id,
+      order_id: order.id,
       total_money: order.total_money,
       net_amounts: order.net_amounts,
       total_tax_money: order.total_tax_money,
       total_discount_money: order.total_discount_money,
-      total_tip_money: order.total_tip_money,
-      total_service_charge_money: order.total_service_charge_money,
       return_amounts: order.return_amounts,
-      tenders_count: order.tenders?.length,
-      first_tender: order.tenders?.[0],
       line_items_count: order.line_items?.length,
-      first_item: order.line_items?.[0] ? {
+      first_item_money: order.line_items?.[0] ? {
         name: order.line_items[0].name,
-        catalog_object_id: order.line_items[0].catalog_object_id,
         gross_sales_money: order.line_items[0].gross_sales_money,
         total_discount_money: order.line_items[0].total_discount_money,
-        variation_total_price_money: order.line_items[0].variation_total_price_money,
+        catalog_object_id: order.line_items[0].catalog_object_id,
       } : null,
-      // Also get a payment to see fees
+      payment_processing_fee: paymentFees,
     });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
