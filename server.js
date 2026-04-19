@@ -107,6 +107,91 @@ app.get('/api/square/day', async (req, res) => {
       })();
     }
 
+    // For today: also do a live category pull from Orders API using catalog
+    if (isToday) {
+      try {
+        // Load catalog item→category map from Supabase
+        const itemMapR = await sbFetch(
+          `${SUPABASE_URL}/rest/v1/square_items?store_id=eq.${STORE_ID}&select=id,category_name&limit=5000`,
+          { headers: sbHeaders }
+        );
+        const itemMapRows = await itemMapR.json();
+        const itemCatMap = {};
+        itemMapRows.forEach(r => { if (r.id && r.category_name) itemCatMap[r.id] = r.category_name; });
+
+        // Pull today's orders live
+        const ordersR = await sqFetch('/orders/search', {
+          method: 'POST',
+          body: JSON.stringify({
+            location_ids: [SQUARE_LOCATION],
+            query: {
+              filter: {
+                date_time_filter: {
+                  created_at: {
+                    start_at: `${date}T00:00:00-05:00`,
+                    end_at: `${date}T23:59:59-05:00`
+                  }
+                },
+                state_filter: { states: ['COMPLETED'] }
+              }
+            },
+            limit: 500
+          })
+        });
+        const ordersData = await ordersR.json();
+        const orders = ordersData.orders || [];
+
+        // Aggregate by category using catalog map
+        const liveCatMap = {};
+        let liveScratch = 0, liveGross = 0, liveTax = 0, liveDisc = 0, liveRet = 0, liveTxns = orders.length;
+        let liveCash = 0, liveCard = 0;
+
+        for (const order of orders) {
+          liveGross += (order.total_money?.amount || 0) / 100;
+          liveTax += (order.total_tax_money?.amount || 0) / 100;
+          liveDisc += (order.total_discount_money?.amount || 0) / 100;
+          liveRet += Math.abs((order.net_amounts?.discount_money?.amount || 0)) / 100;
+          for (const tender of (order.tenders || [])) {
+            const ta = (tender.amount_money?.amount || 0) / 100;
+            if (tender.type === 'CASH') liveCash += ta; else liveCard += ta;
+          }
+          for (const item of (order.line_items || [])) {
+            const varId = item.catalog_object_id;
+            const catName = (varId && itemCatMap[varId]) || 'Other';
+            const amt = (item.gross_sales_money?.amount || 0) / 100;
+            if (amt <= 0) continue;
+            if (catName === 'Scratch Lotto') { liveScratch += amt; continue; }
+            liveCatMap[catName] = (liveCatMap[catName] || 0) + amt;
+          }
+        }
+
+        const liveNetSales = liveGross - liveTax - liveScratch;
+        const liveCats = Object.entries(liveCatMap)
+          .sort((a,b) => b[1]-a[1])
+          .slice(0,5)
+          .map(([name, netSales]) => ({ name, netSales: parseFloat(netSales.toFixed(2)) }));
+
+        return res.json({
+          date,
+          netSales: parseFloat(liveNetSales.toFixed(2)),
+          grossSales: parseFloat(liveGross.toFixed(2)),
+          tax: parseFloat(liveTax.toFixed(2)),
+          discounts: parseFloat(liveDisc.toFixed(2)),
+          returns: parseFloat(liveRet.toFixed(2)),
+          scratchLotto: parseFloat(liveScratch.toFixed(2)),
+          cash: parseFloat(liveCash.toFixed(2)),
+          card: parseFloat(liveCard.toFixed(2)),
+          transactions: liveTxns,
+          categories: liveCats,
+          syncedAt: new Date().toISOString(),
+          isLive: true
+        });
+      } catch(e) {
+        console.log('Live category pull failed, using stored:', e.message);
+        // Fall through to stored data
+      }
+    }
+
     // Return stored data (most recent sync)
     const storedR = await sbFetch(`${SUPABASE_URL}/rest/v1/square_daily_sales?store_id=eq.${STORE_ID}&sale_date=eq.${date}&limit=1`, { headers: sbHeaders });
     const stored = await storedR.json();
@@ -122,18 +207,35 @@ app.get('/api/square/day', async (req, res) => {
       return res.json({ date, netSales: 0, transactions: 0, categories: [], synced_at: null, noData: true });
     }
 
-    // Build category list from stored categories JSONB
-    // Exclude Scratch Lotto from net sales calculation
-    const cats = row.categories || {};
+    // Get categories from imported CSV data (most accurate)
+    const catSalesR = await sbFetch(
+      `${SUPABASE_URL}/rest/v1/square_category_sales?store_id=eq.${STORE_ID}&sale_date=eq.${date}&order=gross_sales.desc`,
+      { headers: sbHeaders }
+    );
+    const catSales = await catSalesR.json();
+
     let scratchTotal = 0;
     const catList = [];
-    for (const [k, v] of Object.entries(cats)) {
-      const name = v.name || k;
-      const amt = parseFloat(v.amount || 0);
-      if (name === 'Scratch Lotto') { scratchTotal += amt; continue; }
-      catList.push({ name, netSales: amt });
+
+    if (catSales && catSales.length > 0) {
+      // Use imported CSV categories — exact match to Square dashboard
+      for (const cat of catSales) {
+        const amt = parseFloat(cat.gross_sales || 0);
+        if (cat.category === 'Scratch Lotto') { scratchTotal += amt; continue; }
+        catList.push({ name: cat.category, netSales: amt });
+      }
+    } else {
+      // Fall back to JSONB categories from order sync
+      const cats = row.categories || {};
+      for (const [k, v] of Object.entries(cats)) {
+        const name = v.name || k;
+        const amt = parseFloat(v.amount || 0);
+        if (name === 'Scratch Lotto') { scratchTotal += amt; continue; }
+        // Only include if name looks like a category (not an item name)
+        catList.push({ name, netSales: amt });
+      }
+      catList.sort((a,b) => b.netSales - a.netSales);
     }
-    catList.sort((a,b) => b.netSales - a.netSales);
 
     // Net Sales = Gross Sales - Tax - Scratch Lotto
     const grossSales = parseFloat(row.gross_sales || 0);
