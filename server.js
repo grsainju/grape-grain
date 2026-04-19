@@ -83,77 +83,71 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 // ── SQUARE API PROXY ──────────────────────────────────────────────────────────
 
-// Get sales summary for a specific date
+// Get live sales summary for a specific date
+// Triggers background sync then returns stored+live data
 app.get('/api/square/day', async (req, res) => {
   try {
-    const date = req.query.date || new Date().toISOString().slice(0, 10);
-    const startAt = `${date}T05:00:00Z`; // 1am ET = 5am UTC (adjust for DST)
-    const endAt = `${date}T04:59:59Z`;   // end of business day next day
+    const date = req.query.date || new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' });
+    const isToday = date === new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' });
 
-    // Use Reporting API for daily totals
-    const r = await sqFetch('/v1/settlements', {});
-
-    // Use Orders API to get day's orders
-    const ordersR = await sqFetch('/orders/search', {
-      method: 'POST',
-      body: JSON.stringify({
-        location_ids: [SQUARE_LOCATION],
-        query: {
-          filter: {
-            date_time_filter: {
-              created_at: { start_at: `${date}T00:00:00-05:00`, end_at: `${date}T23:59:59-05:00` }
-            },
-            state_filter: { states: ['COMPLETED'] }
-          },
-          sort: { sort_field: 'CREATED_AT', sort_order: 'ASC' }
-        },
-        limit: 500
-      })
-    });
-    const ordersData = await ordersR.json();
-    const orders = ordersData.orders || [];
-
-    // Aggregate totals
-    let netSales = 0, grossSales = 0, tax = 0, cashTotal = 0, cardTotal = 0, txnCount = orders.length;
-    const categoryMap = {};
-
-    for (const order of orders) {
-      const net = (order.net_amounts?.total_money?.amount || 0) / 100;
-      const gross = (order.total_money?.amount || 0) / 100;
-      const taxAmt = (order.total_tax_money?.amount || 0) / 100;
-      netSales += net;
-      grossSales += gross;
-      tax += taxAmt;
-
-      // Payment breakdown
-      for (const tender of (order.tenders || [])) {
-        const tamt = (tender.amount_money?.amount || 0) / 100;
-        if (tender.type === 'CASH') cashTotal += tamt;
-        else cardTotal += tamt;
-      }
-
-      // Category breakdown from line items
-      for (const item of (order.line_items || [])) {
-        const cat = item.variation_name || item.name || 'Other';
-        // Try to get category from catalog data
-        categoryMap[cat] = (categoryMap[cat] || 0) + ((item.gross_sales_money?.amount || 0) / 100);
-      }
+    // For today: run a fresh sync in background, return stored data immediately
+    // For past dates: just return stored data
+    if (isToday) {
+      // Trigger sync in background (don't await)
+      (async () => {
+        try {
+          const body = { start: date, end: date };
+          const { default: fetch } = await import('node-fetch');
+          await fetch(`http://localhost:${process.env.PORT || 3000}/api/square/sync`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body)
+          });
+        } catch(e) { console.log('Background sync error:', e.message); }
+      })();
     }
 
-    const categories = Object.entries(categoryMap)
-      .map(([name, netSales]) => ({ name, netSales: parseFloat(netSales.toFixed(2)) }))
-      .sort((a, b) => b.netSales - a.netSales)
-      .slice(0, 10);
+    // Return stored data (most recent sync)
+    const storedR = await sbFetch(`${SUPABASE_URL}/rest/v1/square_daily_sales?store_id=eq.${STORE_ID}&sale_date=eq.${date}&limit=1`, { headers: sbHeaders });
+    const stored = await storedR.json();
+    const row = stored[0];
+
+    if (!row) {
+      // No stored data — do a direct sync and return
+      const syncR = await sbFetch(`http://localhost:${process.env.PORT || 3000}/api/square/sync`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ start: date, end: date })
+      }).catch(() => null);
+      return res.json({ date, netSales: 0, transactions: 0, categories: [], synced_at: null, noData: true });
+    }
+
+    // Build category list from stored categories JSONB
+    // Exclude Scratch Lotto from net sales calculation
+    const cats = row.categories || {};
+    let scratchTotal = 0;
+    const catList = [];
+    for (const [k, v] of Object.entries(cats)) {
+      const name = v.name || k;
+      const amt = parseFloat(v.amount || 0);
+      if (name === 'Scratch Lotto') { scratchTotal += amt; continue; }
+      catList.push({ name, netSales: amt });
+    }
+    catList.sort((a,b) => b.netSales - a.netSales);
+
+    // Net sales = gross_sales - scratch lotto
+    const netSales = parseFloat(row.gross_sales || 0) - scratchTotal;
 
     res.json({
       date,
       netSales: parseFloat(netSales.toFixed(2)),
-      grossSales: parseFloat(grossSales.toFixed(2)),
-      tax: parseFloat(tax.toFixed(2)),
-      cash: parseFloat(cashTotal.toFixed(2)),
-      card: parseFloat(cardTotal.toFixed(2)),
-      transactions: txnCount,
-      categories
+      grossSales: parseFloat(row.gross_sales || 0),
+      scratchLotto: parseFloat(scratchTotal.toFixed(2)),
+      cash: parseFloat(row.cash_amount || 0),
+      card: parseFloat(row.card_amount || 0),
+      transactions: row.transaction_count || 0,
+      categories: catList.slice(0, 5),
+      syncedAt: row.synced_at
     });
   } catch (e) {
     res.status(500).json({ error: e.message });
@@ -940,6 +934,57 @@ app.get('/api/square/catalog/raw', async (req, res) => {
       categories_field: items[0]?.item_data?.categories,
       category_id_field: items[0]?.item_data?.category_id,
       reporting_category: items[0]?.item_data?.reporting_category,
+    });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+
+// Monthly net sales excluding Scratch Lotto
+app.get('/api/sales/monthly/net', async (req, res) => {
+  try {
+    const { month, year } = req.query;
+    const daysInMonth = new Date(parseInt(year), parseInt(month), 0).getDate();
+    const from = `${year}-${String(month).padStart(2,'0')}-01`;
+    const to = `${year}-${String(month).padStart(2,'0')}-${daysInMonth}`;
+
+    const r = await sbFetch(`${SUPABASE_URL}/rest/v1/square_daily_sales?store_id=eq.${STORE_ID}&sale_date=gte.${from}&sale_date=lte.${to}&select=sale_date,gross_sales,categories,transaction_count,synced_at&order=sale_date.asc`, { headers: sbHeaders });
+    const rows = await r.json();
+
+    // Also check imported category sales for more accurate data
+    const catR = await sbFetch(`${SUPABASE_URL}/rest/v1/square_category_sales?store_id=eq.${STORE_ID}&sale_date=gte.${from}&sale_date=lte.${to}&select=sale_date,category,gross_sales`, { headers: sbHeaders });
+    const catRows = await catR.json();
+
+    let netSales = 0, scratchTotal = 0, transactions = 0;
+    const useImported = catRows.length > 0;
+
+    if (useImported) {
+      // Use imported CSV data — more accurate
+      for (const row of catRows) {
+        const amt = parseFloat(row.gross_sales || 0);
+        if (row.category === 'Scratch Lotto') scratchTotal += amt;
+        else netSales += amt;
+      }
+      transactions = rows.reduce((a,r) => a + (r.transaction_count||0), 0);
+    } else {
+      // Fall back to order sync data
+      for (const row of rows) {
+        const gross = parseFloat(row.gross_sales || 0);
+        const cats = row.categories || {};
+        const scratch = Object.entries(cats).filter(([k,v])=>(v.name||k)==='Scratch Lotto').reduce((a,[k,v])=>a+parseFloat(v.amount||0),0);
+        scratchTotal += scratch;
+        netSales += gross - scratch;
+        transactions += row.transaction_count || 0;
+      }
+    }
+
+    res.json({
+      month: parseInt(month), year: parseInt(year),
+      netSales: parseFloat(netSales.toFixed(2)),
+      scratchLotto: parseFloat(scratchTotal.toFixed(2)),
+      grossSales: parseFloat((netSales + scratchTotal).toFixed(2)),
+      days: rows.length,
+      transactions,
+      useImported
     });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
