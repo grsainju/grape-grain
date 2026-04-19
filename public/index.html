@@ -395,7 +395,13 @@ td{padding:9px 14px;vertical-align:middle}
     </div>
     <div style="margin-bottom:14px">
       <div id="snap-net" style="font-family:var(--font-display);font-size:36px;font-weight:600;color:#c8a96e;margin-bottom:2px">—</div>
-      <div id="snap-pulled-at" style="font-size:12px;font-family:var(--mono);color:rgba(255,255,255,.4)">Loading...</div>
+      <div id="snap-pulled-at" style="font-size:12px;font-family:var(--mono);color:rgba(255,255,255,.4);margin-bottom:10px">Loading...</div>
+      <div style="display:flex;gap:20px;flex-wrap:wrap">
+        <div><div id="snap-tax" style="font-family:var(--mono);font-size:13px;font-weight:500;color:rgba(255,255,255,.6)">—</div><div style="font-size:10px;font-family:var(--mono);color:rgba(255,255,255,.35);text-transform:uppercase;letter-spacing:.05em">Tax</div></div>
+        <div><div id="snap-discounts" style="font-family:var(--mono);font-size:13px;font-weight:500;color:rgba(255,255,255,.6)">—</div><div style="font-size:10px;font-family:var(--mono);color:rgba(255,255,255,.35);text-transform:uppercase;letter-spacing:.05em">Discounts</div></div>
+        <div><div id="snap-returns" style="font-family:var(--mono);font-size:13px;font-weight:500;color:rgba(255,255,255,.6)">—</div><div style="font-size:10px;font-family:var(--mono);color:rgba(255,255,255,.35);text-transform:uppercase;letter-spacing:.05em">Returns</div></div>
+        <div><div id="snap-scratch-lotto" style="font-family:var(--mono);font-size:13px;font-weight:500;color:rgba(255,255,255,.6)">—</div><div style="font-size:10px;font-family:var(--mono);color:rgba(255,255,255,.35);text-transform:uppercase;letter-spacing:.05em">Scratch Lotto</div></div>
+      </div>
     </div>
     <div>
       <div style="font-size:10px;font-family:var(--mono);color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px">Top 5 categories today</div>
@@ -416,6 +422,7 @@ td{padding:9px 14px;vertical-align:middle}
     <div class="month-metrics">
       <div class="month-card"><div class="month-val gold" id="ms-net">—</div><div class="month-label">Total Net Sales</div><div class="month-sub" id="ms-net-sub">—</div></div>
       <div class="month-card"><div class="month-val red" id="ms-purchase">—</div><div class="month-label">Total Purchase</div><div class="month-sub"><span id="ms-purchase-sub">—</span> <button class="inline-edit-btn" onclick="openPurchaseModal()" title="Edit">✎</button></div></div>
+      <div class="month-card"><div class="month-val" id="ms-tax" style="color:var(--muted)">—</div><div class="month-label">Tax Collected</div><div class="month-sub">Excluded from net</div></div>
       <div class="month-card"><div class="month-val green" id="ms-margin">—</div><div class="month-label">Profit Margin</div><div class="month-sub">(Net &#8722; Purchase) &#247; Net</div></div>
       <div class="month-card"><div class="month-val" id="ms-avg-sale">—</div><div class="month-label">Avg Daily Sale</div><div class="month-sub" id="ms-avg-sale-sub">—</div></div>
     </div>
@@ -423,6 +430,11 @@ td{padding:9px 14px;vertical-align:middle}
       <div class="est-card"><div class="est-icon">📈</div><div><div class="est-val" id="ms-est-sale">—</div><div class="est-label">Est. Monthly Sale</div><div class="est-sub">Avg daily sale × days in month</div></div></div>
       <div class="est-card"><div class="est-icon">📦</div><div><div class="est-val" id="ms-est-purchase">—</div><div class="est-label">Est. Monthly Purchase</div><div class="est-sub">Avg daily purchase × days in month</div></div></div>
       <div class="est-card"><div class="est-icon">📅</div><div><div class="est-val" id="ms-days">—</div><div class="est-label">Days Reported</div><div class="est-sub" id="ms-days-sub">—</div></div></div>
+    </div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;padding:12px 0;border-top:1px solid var(--border);margin-top:4px">
+      <div style="flex:1;min-width:100px;padding:10px 12px;background:var(--surface2);border-radius:6px;border:1px solid var(--border)"><div style="font-family:var(--mono);font-size:14px;font-weight:500;color:var(--muted)" id="ms-discounts">—</div><div style="font-size:10px;font-family:var(--mono);color:var(--faint);text-transform:uppercase;letter-spacing:.05em;margin-top:2px">Discounts</div></div>
+      <div style="flex:1;min-width:100px;padding:10px 12px;background:var(--surface2);border-radius:6px;border:1px solid var(--border)"><div style="font-family:var(--mono);font-size:14px;font-weight:500;color:var(--muted)" id="ms-returns">—</div><div style="font-size:10px;font-family:var(--mono);color:var(--faint);text-transform:uppercase;letter-spacing:.05em;margin-top:2px">Returns</div></div>
+      <div style="flex:1;min-width:100px;padding:10px 12px;background:var(--surface2);border-radius:6px;border:1px solid var(--border)"><div style="font-family:var(--mono);font-size:14px;font-weight:500;color:var(--muted)" id="ms-scratch">—</div><div style="font-size:10px;font-family:var(--mono);color:var(--faint);text-transform:uppercase;letter-spacing:.05em;margin-top:2px">Scratch Lotto</div></div>
     </div>
     <div style="margin-top:14px">
       <div class="sub-label">Top 5 categories this month</div>
@@ -937,7 +949,7 @@ async function loadDailySnapshot() {
       return;
     }
 
-    // Net sales (already excludes Scratch Lotto from server)
+    // Net Sales = Gross - Tax - Scratch (already calculated server-side)
     g('snap-net').textContent = fmt(data.netSales);
 
     // Pulled at time
@@ -945,7 +957,13 @@ async function loadDailySnapshot() {
     const dateLabel = new Date(date + 'T12:00:00').toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric',year:'numeric'});
     g('snap-pulled-at').textContent = `${dateLabel} · Pulled at ${pulledAt.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit',timeZone:'America/New_York'})} EST`;
 
-    // Categories (already excludes Scratch Lotto from server)
+    // Supporting stats
+    g('snap-tax').textContent = fmt(data.tax || 0);
+    g('snap-discounts').textContent = fmt(data.discounts || 0);
+    g('snap-returns').textContent = fmt(data.returns || 0);
+    g('snap-scratch-lotto').textContent = fmt(data.scratchLotto || 0);
+
+    // Categories
     renderSnapCategories(data.categories || []);
 
   } catch(e) {
@@ -1037,6 +1055,10 @@ async function loadMonthlySummary() {
   g('ms-est-purchase').textContent = totalPurchase > 0 ? fmt(estPurchase) : '—';
   g('ms-days').textContent = days;
   g('ms-days-sub').textContent = 'of ' + daysInMonth + ' days this month';
+  if (g('ms-tax')) g('ms-tax').textContent = fmt(monthly.tax || 0);
+  if (g('ms-discounts')) g('ms-discounts').textContent = fmt(monthly.discounts || 0);
+  if (g('ms-returns')) g('ms-returns').textContent = fmt(monthly.returns || 0);
+  if (g('ms-scratch')) g('ms-scratch').textContent = fmt(monthly.scratchLotto || 0);
 
   ST.dashMonth = dashMonth; ST.dashYear = dashYear;
   ST.currentPurchase = purchases[0] || null;
