@@ -985,59 +985,47 @@ function changeMonth(dir) {
 
 async function loadMonthlySummary() {
   const daysInMonth = new Date(dashYear, dashMonth, 0).getDate();
-  const from = `${dashYear}-${String(dashMonth).padStart(2,'0')}-01`;
-  const to = `${dashYear}-${String(dashMonth).padStart(2,'0')}-${daysInMonth}`;
   const monthName = new Date(dashYear,dashMonth-1,1).toLocaleString('en-US',{month:'long'});
   g('month-label').textContent = monthName + ' ' + dashYear;
 
-  // Load daily reports for month
-  const reports = await sbGet('gg_daily_reports',`store_id=eq.${SID}&report_date=gte.${from}&report_date=lte.${to}&order=report_date.asc`);
-  const days = reports.length;
-  const netSales = reports.reduce((a,r)=>a+parseFloat(r.cash_sales||0),0);
-  const avgSale = days > 0 ? netSales / days : 0;
+  // Load from Square stored data
+  const r = await fetch(`/api/square/stored/month?month=${dashMonth}&year=${dashYear}`);
+  const squareDays = await r.json();
+  const days = squareDays.length;
+  const netSales = squareDays.reduce((a,d)=>a+parseFloat(d.net_sales||0),0);
+  const now = new Date();
+  const isCurrentMonth = now.getMonth()+1===dashMonth && now.getFullYear()===dashYear;
+  const daysElapsed = isCurrentMonth ? now.getDate() : daysInMonth;
+  const avgSale = daysElapsed > 0 ? netSales / daysElapsed : 0;
   const estSale = avgSale * daysInMonth;
 
-  // Load purchase for this month (from monthly_purchases table or manual)
+  // Load purchase for this month (manual entry)
   const purchases = await sbGet('monthly_purchases',`month=eq.${dashMonth}&year=eq.${dashYear}&store_id=eq.${SID}&limit=1`).catch(()=>[]);
   const totalPurchase = purchases[0] ? parseFloat(purchases[0].amount||0) : 0;
-  const avgPurchase = days > 0 ? totalPurchase / days : 0;
+  const avgPurchase = daysElapsed > 0 ? totalPurchase / daysElapsed : 0;
   const estPurchase = avgPurchase * daysInMonth;
-
-  // Margin = (Net - Purchase) / Net
   const margin = netSales > 0 ? ((netSales - totalPurchase) / netSales * 100) : 0;
 
   g('ms-net').textContent = fmt(netSales);
-  g('ms-net-sub').textContent = days + ' days of data';
+  g('ms-net-sub').textContent = days + ' days of Square data';
   g('ms-purchase').textContent = fmt(totalPurchase);
   g('ms-purchase-sub').textContent = totalPurchase > 0 ? 'entered manually' : 'click ✎ to enter';
   g('ms-margin').textContent = margin.toFixed(1) + '%';
   g('ms-margin').className = 'month-val ' + (margin >= 20 ? 'green' : margin >= 10 ? '' : 'red');
   g('ms-avg-sale').textContent = fmt(avgSale);
-  g('ms-avg-sale-sub').textContent = days + ' days reported';
+  g('ms-avg-sale-sub').textContent = daysElapsed + ' days elapsed';
   g('ms-est-sale').textContent = fmt(estSale);
   g('ms-est-purchase').textContent = totalPurchase > 0 ? fmt(estPurchase) : '—';
   g('ms-days').textContent = days;
   g('ms-days-sub').textContent = 'of ' + daysInMonth + ' days this month';
 
-  // Store for purchase modal
   ST.dashMonth = dashMonth; ST.dashYear = dashYear;
   ST.currentPurchase = purchases[0] || null;
 
-  // Top 5 categories from Square or daily reports
-  await loadCategoryTracker();
-
-  // Month categories (Square or placeholder)
-  if (SQUARE_ENABLED) {
-    // Will be filled by Square API
-  } else {
-    g('month-categories').innerHTML = `<div style="display:flex;align-items:center;gap:10px;padding:10px 0">
-      <div style="font-size:13px;color:var(--muted)">Connect Square API to see monthly category breakdown</div>
-      <button class="btn btn-sm btn-gold" onclick="nav('settings')">Connect Square →</button>
-    </div>`;
-  }
+  await loadMonthCategories(null, null, daysElapsed, daysInMonth, squareDays);
+  await loadCategoryTracker(daysElapsed, daysInMonth, squareDays);
 }
 
-// Purchase modal
 function openPurchaseModal() {
   const monthName = new Date(dashYear,dashMonth-1,1).toLocaleString('en-US',{month:'long'});
   g('purchase-modal-label').textContent = `Enter total purchases for ${monthName} ${dashYear}`;
@@ -1045,6 +1033,7 @@ function openPurchaseModal() {
   g('purchase-notes').value = ST.currentPurchase ? (ST.currentPurchase.notes||'') : '';
   openModal('purchase-modal');
 }
+
 
 async function savePurchase() {
   const amount = parseFloat(g('purchase-amount').value)||0;
