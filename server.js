@@ -218,7 +218,8 @@ app.get('/api/square/day', async (req, res) => {
           isLive: true
         });
       } catch(e) {
-        console.log('Live category pull failed, using stored:', e.message);
+        console.log(`[LIVE] Live pull FAILED: ${e.message}`);
+        console.log(`[LIVE] Stack: ${e.stack?.substring(0,300)}`);
         // Fall through to stored data
       }
     }
