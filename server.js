@@ -558,6 +558,188 @@ app.get('/api/stats/categories', async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+
+// ── SQUARE CATALOG SYNC ───────────────────────────────────────────────────────
+
+// Sync catalog: categories + items → Supabase
+app.post('/api/square/sync-catalog', async (req, res) => {
+  try {
+    console.log('Starting catalog sync...');
+    const { default: fetch } = await import('node-fetch');
+
+    // Step 1: Pull all catalog objects (CATEGORY + ITEM_VARIATION)
+    const allObjects = [];
+    let cursor = null;
+    let page = 0;
+
+    do {
+      const url = `${SQUARE_BASE}/catalog/list?types=CATEGORY,ITEM,ITEM_VARIATION${cursor ? '&cursor=' + cursor : ''}`;
+      const r = await fetch(url, { headers: sqHeaders });
+      const data = await r.json();
+      if (data.errors) throw new Error(data.errors[0]?.detail || JSON.stringify(data.errors));
+      allObjects.push(...(data.objects || []));
+      cursor = data.cursor;
+      page++;
+      if (page > 100) break; // safety
+    } while (cursor);
+
+    console.log(`Fetched ${allObjects.length} catalog objects`);
+
+    // Step 2: Separate categories and items
+    const categories = allObjects.filter(o => o.type === 'CATEGORY' && !o.is_deleted);
+    const items = allObjects.filter(o => o.type === 'ITEM' && !o.is_deleted);
+
+    // Step 3: Build category map
+    const catMap = {};
+    categories.forEach(c => {
+      catMap[c.id] = {
+        id: c.id,
+        store_id: STORE_ID,
+        name: c.category_data?.name || 'Unknown',
+        ordinal: c.category_data?.ordinal || 0,
+        updated_at: new Date().toISOString()
+      };
+    });
+
+    // Step 4: Upsert categories
+    if (categories.length > 0) {
+      const catRows = Object.values(catMap);
+      const catR = await sbFetch(`${SUPABASE_URL}/rest/v1/square_categories?on_conflict=id`, {
+        method: 'POST',
+        headers: { ...sbHeaders, 'Prefer': 'return=minimal,resolution=merge-duplicates' },
+        body: JSON.stringify(catRows)
+      });
+      if (!catR.ok) throw new Error('Category upsert failed: ' + await catR.text());
+    }
+
+    // Step 5: Build item rows (one row per variation)
+    const itemRows = [];
+    for (const item of items) {
+      const categoryId = item.item_data?.category_id || null;
+      const categoryName = categoryId ? (catMap[categoryId]?.name || null) : null;
+      const name = item.item_data?.name || 'Unknown';
+      const description = item.item_data?.description || null;
+      const variations = item.item_data?.variations || [];
+
+      if (variations.length === 0) {
+        // Item with no variations
+        itemRows.push({
+          id: item.id,
+          store_id: STORE_ID,
+          name,
+          category_id: categoryId,
+          category_name: categoryName,
+          description,
+          sku: null,
+          upc: null,
+          price_cents: null,
+          price: null,
+          variation_name: null,
+          is_deleted: false,
+          updated_at: new Date().toISOString()
+        });
+      } else {
+        for (const v of variations) {
+          if (v.is_deleted) continue;
+          const vData = v.item_variation_data || {};
+          const priceCents = vData.price_money?.amount || null;
+          itemRows.push({
+            id: v.id,
+            store_id: STORE_ID,
+            name,
+            category_id: categoryId,
+            category_name: categoryName,
+            description,
+            sku: vData.sku || null,
+            upc: vData.upc || null,
+            price_cents: priceCents,
+            price: priceCents ? parseFloat((priceCents / 100).toFixed(2)) : null,
+            variation_name: variations.length > 1 ? (vData.name || null) : null,
+            is_deleted: false,
+            updated_at: new Date().toISOString()
+          });
+        }
+      }
+    }
+
+    console.log(`Upserting ${itemRows.length} item variations...`);
+
+    // Step 6: Upsert items in batches of 200
+    const batchSize = 200;
+    for (let i = 0; i < itemRows.length; i += batchSize) {
+      const batch = itemRows.slice(i, i + batchSize);
+      const itemR = await sbFetch(`${SUPABASE_URL}/rest/v1/square_items?on_conflict=id`, {
+        method: 'POST',
+        headers: { ...sbHeaders, 'Prefer': 'return=minimal,resolution=merge-duplicates' },
+        body: JSON.stringify(batch)
+      });
+      if (!itemR.ok) throw new Error('Item upsert failed: ' + await itemR.text());
+    }
+
+    // Step 7: Re-aggregate daily sales by category using the new catalog
+    // Build item_id → category_name map from what we just inserted
+    const itemCatMap = {};
+    itemRows.forEach(r => { itemCatMap[r.id] = r.category_name || 'Other'; });
+
+    // Re-process square_daily_sales categories JSONB
+    const salesR = await sbFetch(`${SUPABASE_URL}/rest/v1/square_daily_sales?store_id=eq.${STORE_ID}&select=id,sale_date,categories`, { headers: sbHeaders });
+    const salesRows = await salesR.json();
+
+    let reprocessed = 0;
+    for (const row of salesRows) {
+      const rawCats = row.categories || {};
+      const newCats = {};
+      for (const [itemId, itemData] of Object.entries(rawCats)) {
+        const catName = itemCatMap[itemId] || itemData.category_name || 'Other';
+        if (!newCats[catName]) newCats[catName] = { name: catName, amount: 0 };
+        newCats[catName].amount += parseFloat(itemData.amount || 0);
+      }
+      // Update this row
+      await sbFetch(`${SUPABASE_URL}/rest/v1/square_daily_sales?id=eq.${row.id}`, {
+        method: 'PATCH',
+        headers: sbHeaders,
+        body: JSON.stringify({ categories: newCats })
+      });
+      reprocessed++;
+    }
+
+    res.json({
+      success: true,
+      categories: categories.length,
+      items: items.length,
+      variations: itemRows.length,
+      salesRowsReprocessed: reprocessed
+    });
+
+  } catch (e) {
+    console.error('Catalog sync error:', e);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// Get all categories from Square catalog
+app.get('/api/square/categories', async (req, res) => {
+  try {
+    const r = await sbFetch(`${SUPABASE_URL}/rest/v1/square_categories?store_id=eq.${STORE_ID}&order=name.asc`, { headers: sbHeaders });
+    res.json(await r.json());
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// Search Square items
+app.get('/api/square/items', async (req, res) => {
+  try {
+    const { search, category, limit = 50, offset = 0 } = req.query;
+    let params = `store_id=eq.${STORE_ID}&is_deleted=eq.false&limit=${limit}&offset=${offset}&order=name.asc`;
+    if (category) params += `&category_name=eq.${encodeURIComponent(category)}`;
+    if (search) params += `&name=ilike.*${encodeURIComponent(search)}*`;
+    const url = `${SUPABASE_URL}/rest/v1/square_items?${params}`;
+    const r = await sbFetch(url, { headers: { ...sbHeaders, 'Prefer': 'count=exact' } });
+    const data = await r.json();
+    const total = parseInt((r.headers.get('content-range') || '*/0').split('/')[1]) || 0;
+    res.json({ items: data, total });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 // ── CATCH ALL ─────────────────────────────────────────────────────────────────
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
