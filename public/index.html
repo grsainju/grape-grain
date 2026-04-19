@@ -174,6 +174,12 @@ td{padding:9px 14px;vertical-align:middle}
 .modal-body{padding:20px 22px}
 .modal-footer{padding:14px 22px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:10px}
 
+/* SNAP CATEGORY BARS */
+.snap-cat-row{display:flex;align-items:center;gap:10px;margin-bottom:6px}
+.snap-cat-label{width:110px;font-size:12px;color:rgba(255,255,255,.6);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex-shrink:0}
+.snap-cat-track{flex:1;background:rgba(255,255,255,.08);border-radius:2px;height:20px;overflow:hidden}
+.snap-cat-fill{height:100%;border-radius:2px;display:flex;align-items:center;padding:0 8px;font-size:11px;font-family:var(--mono);color:#fff;transition:width .5s}
+.snap-cat-val{width:65px;font-family:var(--mono);font-size:11px;color:rgba(255,255,255,.5);text-align:right}
 /* UPLOAD */
 .upload-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin-bottom:20px}
 .upload-box{border:1px dashed var(--border2);border-radius:10px;padding:18px 14px;cursor:pointer;transition:all .15s;text-align:center}
@@ -373,25 +379,27 @@ td{padding:9px 14px;vertical-align:middle}
   </div>
 
   <!-- SECTION 1: DAILY SNAPSHOT -->
-  <div class="dash-section">
-    <div class="dash-section-header">
-      <div class="dash-section-title">Daily Snapshot</div>
+  <div style="background:#1a1714;border-radius:10px;padding:16px 20px;margin-bottom:16px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px">
       <div style="display:flex;align-items:center;gap:10px">
-        <input type="date" id="snap-date" style="padding:5px 10px;border:1px solid var(--border2);border-radius:5px;font-family:var(--mono);font-size:12px;background:var(--surface);color:var(--text)" onchange="loadDailySnapshot()">
-        <div id="snap-source" class="source-pill">loading...</div>
+        <div style="font-size:11px;font-family:var(--mono);color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:.08em">Daily Snapshot</div>
+        <div id="snap-live-pill" style="display:flex;align-items:center;gap:5px;background:rgba(106,191,138,.15);border:1px solid rgba(106,191,138,.4);border-radius:4px;padding:2px 8px">
+          <div id="snap-live-dot" style="width:7px;height:7px;border-radius:50%;background:#6abf8a"></div>
+          <div style="font-size:10px;font-family:var(--mono);color:#6abf8a;font-weight:600">LIVE</div>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <input type="date" id="snap-date" style="padding:5px 10px;border:1px solid rgba(255,255,255,.2);border-radius:5px;font-family:var(--mono);font-size:12px;background:rgba(255,255,255,.08);color:#faf9f7" onchange="loadDailySnapshot()">
+        <button onclick="loadDailySnapshot()" style="background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.2);border-radius:5px;padding:5px 10px;color:#faf9f7;cursor:pointer;font-size:14px" title="Refresh">↻</button>
       </div>
     </div>
-    <div class="snap-grid">
-      <div class="snap-card accent"><div class="snap-val" id="snap-net">—</div><div class="snap-label">Net Sales</div></div>
-      <div class="snap-card"><div class="snap-val" id="snap-cash">—</div><div class="snap-label">Cash</div></div>
-      <div class="snap-card"><div class="snap-val" id="snap-card-val">—</div><div class="snap-label">Card / Debit</div></div>
-      <div class="snap-card"><div class="snap-val" id="snap-txn">—</div><div class="snap-label">Transactions</div></div>
-      <div class="snap-card"><div class="snap-val" id="snap-scratch">—</div><div class="snap-label">Scratch Sold</div><div class="snap-sub">From daily report</div></div>
-      <div class="snap-card"><div class="snap-val" id="snap-deposit" style="color:var(--green)">—</div><div class="snap-label">Bank Deposit</div><div class="snap-sub">From daily report</div></div>
+    <div style="margin-bottom:14px">
+      <div id="snap-net" style="font-family:var(--font-display);font-size:36px;font-weight:600;color:#c8a96e;margin-bottom:2px">—</div>
+      <div id="snap-pulled-at" style="font-size:12px;font-family:var(--mono);color:rgba(255,255,255,.4)">Loading...</div>
     </div>
-    <div style="margin-top:14px">
-      <div class="sub-label">Top 5 categories today</div>
-      <div id="snap-categories"><div class="loading">Loading...</div></div>
+    <div>
+      <div style="font-size:10px;font-family:var(--mono);color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px">Top 5 categories today</div>
+      <div id="snap-categories"><div style="color:rgba(255,255,255,.3);font-size:13px">Loading...</div></div>
     </div>
   </div>
 
@@ -915,51 +923,34 @@ async function loadDashboard() {
 // ── SECTION 1: DAILY SNAPSHOT ─────────────────────────────────────────────────
 async function loadDailySnapshot() {
   const date = g('snap-date').value || TODAY;
-  g('snap-source').textContent = 'loading...';
-  g('snap-source').className = 'source-pill';
+  g('snap-net').textContent = '...';
+  g('snap-pulled-at').textContent = 'Pulling from Square...';
 
-  // Try Square API first
-  let squareData = null;
-  if (SQUARE_ENABLED) {
-    squareData = await fetchSquareDay(date);
-  }
+  try {
+    const r = await fetch('/api/square/day?date=' + date);
+    const data = await r.json();
 
-  if (squareData && !squareData.error) {
-    g('snap-net').textContent = fmt(squareData.netSales);
-    g('snap-source').textContent = 'Square live';
-    g('snap-source').className = 'source-pill';
-    renderSnapCategories(squareData.categories || []);
-  } else {
-    // Try stored Square data for that date
-    try {
-      const storedR = await fetch('/api/square/stored/day?date=' + date);
-      const stored = await storedR.json();
-      if (stored && stored.net_sales) {
-        g('snap-net').textContent = fmt(stored.net_sales);
-        g('snap-source').textContent = 'Square (stored)';
-        g('snap-source').className = 'source-pill';
-        const cats = Object.entries(stored.categories || {})
-          .map(([k,v])=>({name:v.name||k, netSales:v.amount||0}))
-          .sort((a,b)=>b.netSales-a.netSales);
-        renderSnapCategories(cats);
-      } else {
-        g('snap-net').textContent = '—';
-        g('snap-source').textContent = 'no data';
-        g('snap-source').className = 'source-pill manual';
-        g('snap-categories').innerHTML = '<div class="empty" style="padding:12px 0">No Square data for this date</div>';
-      }
-    } catch(e) {
+    if (data.error || data.noData) {
       g('snap-net').textContent = '—';
-      g('snap-source').className = 'source-pill manual';
+      g('snap-pulled-at').textContent = 'No data for this date';
+      g('snap-categories').innerHTML = '<div style="color:rgba(255,255,255,.3);font-size:13px">No sales data</div>';
+      return;
     }
-  }
 
-  // Always load scratch/deposit from daily report
-  const reports = await sbGet('gg_daily_reports',`store_id=eq.${SID}&report_date=eq.${date}&limit=1`);
-  const rep = reports[0];
-  if (rep) {
-    g('snap-scratch').textContent = fmt(rep.total_scratch_sold);
-    g('snap-deposit').textContent = fmt(rep.bank_deposit);
+    // Net sales (already excludes Scratch Lotto from server)
+    g('snap-net').textContent = fmt(data.netSales);
+
+    // Pulled at time
+    const pulledAt = data.syncedAt ? new Date(data.syncedAt) : new Date();
+    const dateLabel = new Date(date + 'T12:00:00').toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric',year:'numeric'});
+    g('snap-pulled-at').textContent = `${dateLabel} · Pulled at ${pulledAt.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit',timeZone:'America/New_York'})} EST`;
+
+    // Categories (already excludes Scratch Lotto from server)
+    renderSnapCategories(data.categories || []);
+
+  } catch(e) {
+    g('snap-net').textContent = '—';
+    g('snap-pulled-at').textContent = 'Error loading data';
   }
 }
 
@@ -1015,11 +1006,12 @@ async function loadMonthlySummary() {
   const monthName = new Date(dashYear,dashMonth-1,1).toLocaleString('en-US',{month:'long'});
   g('month-label').textContent = monthName + ' ' + dashYear;
 
-  // Load from Square stored data
-  const r = await fetch(`/api/square/stored/month?month=${dashMonth}&year=${dashYear}`);
-  const squareDays = await r.json();
-  const days = squareDays.length;
-  const netSales = squareDays.reduce((a,d)=>a+parseFloat(d.net_sales||0),0);
+  // Use new endpoint that excludes Scratch Lotto
+  const r = await fetch(`/api/sales/monthly/net?month=${dashMonth}&year=${dashYear}`);
+  const monthly = await r.json();
+  const squareDays = await (await fetch(`/api/square/stored/month?month=${dashMonth}&year=${dashYear}`)).json();
+  const days = monthly.days || squareDays.length;
+  const netSales = monthly.netSales || 0;
   const now = new Date();
   const isCurrentMonth = now.getMonth()+1===dashMonth && now.getFullYear()===dashYear;
   const daysElapsed = isCurrentMonth ? now.getDate() : daysInMonth;
@@ -1049,8 +1041,8 @@ async function loadMonthlySummary() {
   ST.dashMonth = dashMonth; ST.dashYear = dashYear;
   ST.currentPurchase = purchases[0] || null;
 
-  await loadMonthCategories(null, null, daysElapsed, daysInMonth, squareDays);
-  await loadCategoryTracker(daysElapsed, daysInMonth, squareDays);
+  await loadMonthCategories(null, null, daysElapsed, daysInMonth, squareDays||[]);
+  await loadCategoryTracker(daysElapsed, daysInMonth, squareDays||[]);
 }
 
 function openPurchaseModal() {
