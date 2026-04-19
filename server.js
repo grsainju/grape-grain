@@ -268,12 +268,10 @@ app.post('/api/square/sync', async (req, res) => {
     const categoryByDate = {};
 
     for (const order of allOrders) {
-      // Square timestamps are in UTC, convert to ET
+      // Square timestamps are in UTC, convert to EST (UTC-5)
+      // Using America/New_York for proper DST handling
       const utcDate = new Date(order.created_at);
-      // ET is UTC-5 (EST) or UTC-4 (EDT) — use simple offset
-      const etOffset = -5 * 60 * 60 * 1000;
-      const etDate = new Date(utcDate.getTime() + etOffset);
-      const date = etDate.toISOString().slice(0, 10);
+      const date = utcDate.toLocaleDateString('en-CA', { timeZone: 'America/New_York' });
 
       if (!byDate[date]) byDate[date] = { date, netSales: 0, grossSales: 0, tax: 0, cash: 0, card: 0, transactions: 0 };
       if (!categoryByDate[date]) categoryByDate[date] = {};
@@ -743,6 +741,190 @@ app.get('/api/square/items', async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+
+
+// ── CSV IMPORT ENDPOINTS ──────────────────────────────────────────────────────
+
+// Parse Square CSV wide format → array of {date, name, value} rows
+function parseSquareCSV(csvText) {
+  const lines = csvText.trim().split('\n');
+  const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g, ''));
+  // First column is the label (Category or Item Name), rest are dates
+  const dateColumns = headers.slice(1); // may include Item Variation, Category for items
+  const rows = [];
+
+  for (let i = 1; i < lines.length; i++) {
+    const line = lines[i];
+    if (!line.trim()) continue;
+    // Parse CSV respecting quotes
+    const cells = [];
+    let cur = '', inQ = false;
+    for (const ch of line) {
+      if (ch === '"') inQ = !inQ;
+      else if (ch === ',' && !inQ) { cells.push(cur.trim()); cur = ''; }
+      else cur += ch;
+    }
+    cells.push(cur.trim());
+    rows.push(cells.map(c => c.replace(/^"|"$/g, '')));
+  }
+  return { headers, rows };
+}
+
+function parseMoney(str) {
+  if (!str) return 0;
+  const n = parseFloat(str.replace(/[$,]/g, ''));
+  return isNaN(n) ? 0 : n;
+}
+
+function parseSquareDate(str) {
+  // MM/DD/YYYY → YYYY-MM-DD
+  const m = str.trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (!m) return null;
+  return `${m[3]}-${m[1].padStart(2,'0')}-${m[2].padStart(2,'0')}`;
+}
+
+// Import Category Sales CSV
+app.post('/api/import/category-sales', async (req, res) => {
+  try {
+    const { csv } = req.body;
+    if (!csv) return res.status(400).json({ error: 'No CSV data provided' });
+
+    const { headers, rows } = parseSquareCSV(csv);
+    // headers[0] = 'Category', rest are dates like '01/01/2026'
+    const dateHeaders = headers.slice(1).filter(h => h.match(/\d{1,2}\/\d{1,2}\/\d{4}/));
+
+    const toInsert = [];
+    for (const row of rows) {
+      const category = row[0];
+      if (!category || category === 'Total') continue;
+      for (let i = 0; i < dateHeaders.length; i++) {
+        const dateStr = parseSquareDate(dateHeaders[i]);
+        if (!dateStr) continue;
+        const gross = parseMoney(row[i + 1]);
+        if (gross === 0) continue; // skip zero rows
+        toInsert.push({
+          store_id: STORE_ID,
+          sale_date: dateStr,
+          category: category.trim(),
+          gross_sales: gross
+        });
+      }
+    }
+
+    if (!toInsert.length) return res.json({ inserted: 0, message: 'No data to insert' });
+
+    // Upsert in batches of 500
+    let inserted = 0;
+    for (let i = 0; i < toInsert.length; i += 500) {
+      const batch = toInsert.slice(i, i + 500);
+      const r = await sbFetch(`${SUPABASE_URL}/rest/v1/square_category_sales?on_conflict=store_id,sale_date,category`, {
+        method: 'POST',
+        headers: { ...sbHeaders, 'Prefer': 'return=minimal,resolution=merge-duplicates' },
+        body: JSON.stringify(batch)
+      });
+      if (!r.ok) throw new Error('Insert failed: ' + await r.text());
+      inserted += batch.length;
+    }
+
+    // Get date range imported
+    const dates = toInsert.map(r => r.sale_date).sort();
+    res.json({ success: true, inserted, dateRange: `${dates[0]} → ${dates[dates.length-1]}`, categories: [...new Set(toInsert.map(r=>r.category))].length });
+  } catch(e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// Import Item Sales CSV
+app.post('/api/import/item-sales', async (req, res) => {
+  try {
+    const { csv } = req.body;
+    if (!csv) return res.status(400).json({ error: 'No CSV data provided' });
+
+    const { headers, rows } = parseSquareCSV(csv);
+    // headers: Item Name, Item Variation, Category, 01/01/2026, 01/02/2026, ...
+    const dateStartIdx = headers.findIndex(h => h.match(/\d{1,2}\/\d{1,2}\/\d{4}/));
+    if (dateStartIdx === -1) return res.status(400).json({ error: 'No date columns found' });
+    const dateHeaders = headers.slice(dateStartIdx);
+
+    const toInsert = [];
+    for (const row of rows) {
+      const itemName = row[0];
+      const variation = row[1] || 'Regular';
+      const category = row[2] || 'Other';
+      if (!itemName || itemName === 'Total') continue;
+      for (let i = 0; i < dateHeaders.length; i++) {
+        const dateStr = parseSquareDate(dateHeaders[i]);
+        if (!dateStr) continue;
+        const gross = parseMoney(row[dateStartIdx + i]);
+        if (gross === 0) continue;
+        toInsert.push({
+          store_id: STORE_ID,
+          sale_date: dateStr,
+          item_name: itemName.trim(),
+          item_variation: variation.trim(),
+          category: category.trim(),
+          gross_sales: gross
+        });
+      }
+    }
+
+    if (!toInsert.length) return res.json({ inserted: 0, message: 'No data to insert' });
+
+    let inserted = 0;
+    for (let i = 0; i < toInsert.length; i += 500) {
+      const batch = toInsert.slice(i, i + 500);
+      const r = await sbFetch(`${SUPABASE_URL}/rest/v1/square_item_sales?on_conflict=store_id,sale_date,item_name,item_variation`, {
+        method: 'POST',
+        headers: { ...sbHeaders, 'Prefer': 'return=minimal,resolution=merge-duplicates' },
+        body: JSON.stringify(batch)
+      });
+      if (!r.ok) throw new Error('Insert failed: ' + await r.text());
+      inserted += batch.length;
+    }
+
+    const dates = toInsert.map(r => r.sale_date).sort();
+    res.json({ success: true, inserted, dateRange: `${dates[0]} → ${dates[dates.length-1]}`, items: [...new Set(toInsert.map(r=>r.item_name))].length });
+  } catch(e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// Get category sales for month (from imported CSV data)
+app.get('/api/sales/categories/month', async (req, res) => {
+  try {
+    const { month, year } = req.query;
+    const daysInMonth = new Date(parseInt(year), parseInt(month), 0).getDate();
+    const from = `${year}-${String(month).padStart(2,'0')}-01`;
+    const to = `${year}-${String(month).padStart(2,'0')}-${daysInMonth}`;
+    const r = await sbFetch(`${SUPABASE_URL}/rest/v1/square_category_sales?store_id=eq.${STORE_ID}&sale_date=gte.${from}&sale_date=lte.${to}&order=sale_date.asc`, { headers: sbHeaders });
+    const rows = await r.json();
+    // Aggregate by category
+    const catMap = {};
+    for (const row of rows) {
+      catMap[row.category] = (catMap[row.category]||0) + parseFloat(row.gross_sales||0);
+    }
+    const sorted = Object.entries(catMap).sort((a,b)=>b[1]-a[1]).map(([category,gross_sales])=>({category, gross_sales: parseFloat(gross_sales.toFixed(2))}));
+    res.json({ categories: sorted, dateRange: `${from} → ${to}` });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// Get daily category totals for a month (for weekly bars)
+app.get('/api/sales/daily/month', async (req, res) => {
+  try {
+    const { month, year } = req.query;
+    const daysInMonth = new Date(parseInt(year), parseInt(month), 0).getDate();
+    const from = `${year}-${String(month).padStart(2,'0')}-01`;
+    const to = `${year}-${String(month).padStart(2,'0')}-${daysInMonth}`;
+    const r = await sbFetch(`${SUPABASE_URL}/rest/v1/square_category_sales?store_id=eq.${STORE_ID}&sale_date=gte.${from}&sale_date=lte.${to}&select=sale_date,gross_sales&order=sale_date.asc`, { headers: sbHeaders });
+    const rows = await r.json();
+    // Aggregate by date
+    const dateMap = {};
+    for (const row of rows) {
+      dateMap[row.sale_date] = (dateMap[row.sale_date]||0) + parseFloat(row.gross_sales||0);
+    }
+    res.json(Object.entries(dateMap).map(([date,gross])=>({date, gross_sales: parseFloat(gross.toFixed(2))})));
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
 
 // Debug: show raw Square catalog structure for first item
 app.get('/api/square/catalog/raw', async (req, res) => {
