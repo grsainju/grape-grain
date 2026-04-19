@@ -331,7 +331,7 @@ app.post('/api/square/sync', async (req, res) => {
     }));
 
     if (rows.length > 0) {
-      const upsertR = await sbFetch(`${SUPABASE_URL}/rest/v1/square_daily_sales`, {
+      const upsertR = await sbFetch(`${SUPABASE_URL}/rest/v1/square_daily_sales?on_conflict=store_id,sale_date`, {
         method: 'POST',
         headers: { ...sbHeaders, 'Prefer': 'return=minimal,resolution=merge-duplicates' },
         body: JSON.stringify(rows)
