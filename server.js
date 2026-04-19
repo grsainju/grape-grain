@@ -1053,6 +1053,73 @@ app.get('/api/sales/daily/month', async (req, res) => {
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
+
+// Debug: show raw Square order structure for money fields
+app.get('/api/square/debug-order', async (req, res) => {
+  try {
+    const today = new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' });
+    const r = await sqFetch('/orders/search', {
+      method: 'POST',
+      body: JSON.stringify({
+        location_ids: [SQUARE_LOCATION],
+        query: {
+          filter: {
+            date_time_filter: { created_at: { start_at: `${today}T00:00:00-05:00`, end_at: `${today}T23:59:59-05:00` } },
+            state_filter: { states: ['COMPLETED'] }
+          }
+        },
+        limit: 2
+      })
+    });
+    const data = await r.json();
+    const order = data.orders?.[0];
+    if (!order) return res.json({ error: 'No orders today', count: 0 });
+
+    // Show all money-related fields
+    res.json({
+      id: order.id,
+      total_money: order.total_money,
+      net_amounts: order.net_amounts,
+      total_tax_money: order.total_tax_money,
+      total_discount_money: order.total_discount_money,
+      total_tip_money: order.total_tip_money,
+      total_service_charge_money: order.total_service_charge_money,
+      return_amounts: order.return_amounts,
+      tenders_count: order.tenders?.length,
+      first_tender: order.tenders?.[0],
+      line_items_count: order.line_items?.length,
+      first_item: order.line_items?.[0] ? {
+        name: order.line_items[0].name,
+        catalog_object_id: order.line_items[0].catalog_object_id,
+        gross_sales_money: order.line_items[0].gross_sales_money,
+        total_discount_money: order.line_items[0].total_discount_money,
+        variation_total_price_money: order.line_items[0].variation_total_price_money,
+      } : null,
+      // Also get a payment to see fees
+    });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// Debug: show raw payment with fees
+app.get('/api/square/debug-payment', async (req, res) => {
+  try {
+    const today = new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' });
+    const r = await sqFetch(`/payments?location_id=${SQUARE_LOCATION}&begin_time=${today}T00:00:00-05:00&end_time=${today}T23:59:59-05:00&limit=2`);
+    const data = await r.json();
+    const payment = data.payments?.[0];
+    res.json({
+      total: data.payments?.length,
+      first_payment: payment ? {
+        id: payment.id,
+        amount_money: payment.amount_money,
+        processing_fee: payment.processing_fee,
+        total_money: payment.total_money,
+        approved_money: payment.approved_money,
+      } : null
+    });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
 // Debug: show raw Square catalog structure for first item
 app.get('/api/square/catalog/raw', async (req, res) => {
   try {
