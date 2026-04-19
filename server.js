@@ -135,13 +135,20 @@ app.get('/api/square/day', async (req, res) => {
     }
     catList.sort((a,b) => b.netSales - a.netSales);
 
-    // Net sales = gross_sales - scratch lotto
-    const netSales = parseFloat(row.gross_sales || 0) - scratchTotal;
+    // Net Sales = Gross Sales - Tax - Scratch Lotto
+    const grossSales = parseFloat(row.gross_sales || 0);
+    const tax = parseFloat(row.tax || 0);
+    const discounts = parseFloat(row.discounts || 0);
+    const returns = parseFloat(row.returns || 0);
+    const netSales = grossSales - tax - scratchTotal;
 
     res.json({
       date,
       netSales: parseFloat(netSales.toFixed(2)),
-      grossSales: parseFloat(row.gross_sales || 0),
+      grossSales: parseFloat(grossSales.toFixed(2)),
+      tax: parseFloat(tax.toFixed(2)),
+      discounts: parseFloat(discounts.toFixed(2)),
+      returns: parseFloat(returns.toFixed(2)),
       scratchLotto: parseFloat(scratchTotal.toFixed(2)),
       cash: parseFloat(row.cash_amount || 0),
       card: parseFloat(row.card_amount || 0),
@@ -194,6 +201,9 @@ app.get('/api/square/range', async (req, res) => {
       d.netSales += (order.net_amounts?.total_money?.amount || 0) / 100;
       d.grossSales += (order.total_money?.amount || 0) / 100;
       d.tax += (order.total_tax_money?.amount || 0) / 100;
+      d.discounts += (order.total_discount_money?.amount || 0) / 100;
+      d.returns += Math.abs((order.net_amounts?.discount_money?.amount || 0)) / 100;
+      // Square processing fees are not in orders API — tracked separately
       d.transactions++;
       for (const tender of (order.tenders || [])) {
         const tamt = (tender.amount_money?.amount || 0) / 100;
@@ -267,13 +277,16 @@ app.post('/api/square/sync', async (req, res) => {
       const utcDate = new Date(order.created_at);
       const date = utcDate.toLocaleDateString('en-CA', { timeZone: 'America/New_York' });
 
-      if (!byDate[date]) byDate[date] = { date, netSales: 0, grossSales: 0, tax: 0, cash: 0, card: 0, transactions: 0 };
+      if (!byDate[date]) byDate[date] = { date, netSales: 0, grossSales: 0, tax: 0, cash: 0, card: 0, transactions: 0, discounts: 0, returns: 0, fees: 0 };
       if (!categoryByDate[date]) categoryByDate[date] = {};
 
       const d = byDate[date];
       d.netSales += (order.net_amounts?.total_money?.amount || 0) / 100;
       d.grossSales += (order.total_money?.amount || 0) / 100;
       d.tax += (order.total_tax_money?.amount || 0) / 100;
+      d.discounts += (order.total_discount_money?.amount || 0) / 100;
+      d.returns += Math.abs((order.net_amounts?.discount_money?.amount || 0)) / 100;
+      // Square processing fees are not in orders API — tracked separately
       d.transactions++;
 
       for (const tender of (order.tenders || [])) {
@@ -306,6 +319,8 @@ app.post('/api/square/sync', async (req, res) => {
       tax: parseFloat(d.tax.toFixed(2)),
       cash_amount: parseFloat(d.cash.toFixed(2)),
       card_amount: parseFloat(d.card.toFixed(2)),
+      discounts: parseFloat(d.discounts.toFixed(2)),
+      returns: parseFloat(d.returns.toFixed(2)),
       transaction_count: d.transactions,
       categories: categoryByDate[d.date] || {},
       synced_at: new Date().toISOString()
@@ -977,11 +992,25 @@ app.get('/api/sales/monthly/net', async (req, res) => {
       }
     }
 
+    // Also aggregate tax, discounts, returns from order sync data
+    let totalTax = 0, totalDiscounts = 0, totalReturns = 0;
+    for (const row of rows) {
+      totalTax += parseFloat(row.tax || 0);
+      totalDiscounts += parseFloat(row.discounts || 0);
+      totalReturns += parseFloat(row.returns || 0);
+    }
+    // Recalculate net: gross - tax - scratch
+    const grossSalesMonth = parseFloat((netSales + scratchTotal).toFixed(2));
+    const netSalesMonth = parseFloat((grossSalesMonth - totalTax - scratchTotal).toFixed(2));
+
     res.json({
       month: parseInt(month), year: parseInt(year),
-      netSales: parseFloat(netSales.toFixed(2)),
+      netSales: netSalesMonth,
+      grossSales: grossSalesMonth,
+      tax: parseFloat(totalTax.toFixed(2)),
+      discounts: parseFloat(totalDiscounts.toFixed(2)),
+      returns: parseFloat(totalReturns.toFixed(2)),
       scratchLotto: parseFloat(scratchTotal.toFixed(2)),
-      grossSales: parseFloat((netSales + scratchTotal).toFixed(2)),
       days: rows.length,
       transactions,
       useImported
