@@ -402,11 +402,7 @@ td{padding:9px 14px;vertical-align:middle}
         <div id="snap-net" style="font-family:var(--font-display);font-size:40px;font-weight:600;color:#c8a96e;line-height:1;margin-bottom:4px">—</div>
         <div style="font-size:11px;font-family:var(--mono);color:rgba(255,255,255,.35);margin-bottom:16px">Net Sales (excl. tax &amp; scratch)</div>
         <!-- Stats row -->
-        <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px">
-          <div style="padding:10px;background:rgba(255,255,255,.05);border-radius:6px;border:1px solid rgba(255,255,255,.08)">
-            <div id="snap-tax" style="font-family:var(--mono);font-size:14px;font-weight:500;color:#e8e4dc">—</div>
-            <div style="font-size:10px;font-family:var(--mono);color:rgba(255,255,255,.35);text-transform:uppercase;letter-spacing:.06em;margin-top:2px">Tax</div>
-          </div>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px">
           <div style="padding:10px;background:rgba(255,255,255,.05);border-radius:6px;border:1px solid rgba(255,255,255,.08)">
             <div id="snap-discounts" style="font-family:var(--mono);font-size:14px;font-weight:500;color:#e8e4dc">—</div>
             <div style="font-size:10px;font-family:var(--mono);color:rgba(255,255,255,.35);text-transform:uppercase;letter-spacing:.06em;margin-top:2px">Discounts</div>
@@ -416,8 +412,8 @@ td{padding:9px 14px;vertical-align:middle}
             <div style="font-size:10px;font-family:var(--mono);color:rgba(255,255,255,.35);text-transform:uppercase;letter-spacing:.06em;margin-top:2px">Returns</div>
           </div>
           <div style="padding:10px;background:rgba(255,255,255,.05);border-radius:6px;border:1px solid rgba(255,255,255,.08)">
-            <div id="snap-scratch-lotto" style="font-family:var(--mono);font-size:14px;font-weight:500;color:#e8e4dc">—</div>
-            <div style="font-size:10px;font-family:var(--mono);color:rgba(255,255,255,.35);text-transform:uppercase;letter-spacing:.06em;margin-top:2px">Scratch Lotto</div>
+            <div id="snap-fees" style="font-family:var(--mono);font-size:14px;font-weight:500;color:#e8e4dc">—</div>
+            <div style="font-size:10px;font-family:var(--mono);color:rgba(255,255,255,.35);text-transform:uppercase;letter-spacing:.06em;margin-top:2px">Fees</div>
           </div>
         </div>
       </div>
@@ -978,10 +974,9 @@ async function loadDailySnapshot() {
     g('snap-pulled-at').textContent = `${dateLabel} · Pulled at ${pulledAt.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit',timeZone:'America/New_York'})} EST`;
 
     // Supporting stats
-    g('snap-tax').textContent = fmt(data.tax || 0);
     g('snap-discounts').textContent = fmt(data.discounts || 0);
     g('snap-returns').textContent = fmt(data.returns || 0);
-    g('snap-scratch-lotto').textContent = fmt(data.scratchLotto || 0);
+    if (g('snap-fees')) g('snap-fees').textContent = fmt(data.fees || 0);
 
     // Categories
     renderSnapCategories(data.categories || []);
