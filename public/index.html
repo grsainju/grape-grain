@@ -736,18 +736,45 @@ td{padding:9px 14px;vertical-align:middle}
   </div>
   <div class="card">
     <div class="card-title">Square integration</div>
-    <div style="display:flex;flex-direction:column;gap:14px">
+    <div style="display:flex;flex-direction:column;gap:12px">
+
+      <!-- CSV Import -->
+      <div style="padding:14px;background:var(--surface2);border-radius:8px;border:1px solid var(--border)">
+        <div style="font-size:13px;font-weight:500;margin-bottom:4px">Import CSV from Square</div>
+        <div style="font-size:12px;color:var(--muted);margin-bottom:12px">Export Category Sales or Item Sales from Square dashboard → upload here. Any date range works — re-importing same dates overwrites.</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          <div>
+            <div style="font-size:11px;font-family:var(--mono);color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:.05em">Category Sales CSV</div>
+            <div style="border:1px dashed var(--border2);border-radius:6px;padding:12px;text-align:center;cursor:pointer;background:var(--surface)" onclick="document.getElementById('csv-cat').click()">
+              <div style="font-size:13px;color:var(--muted)" id="csv-cat-label">Click to upload</div>
+            </div>
+            <input type="file" id="csv-cat" accept=".csv" style="display:none" onchange="handleCSVUpload('category',this)">
+          </div>
+          <div>
+            <div style="font-size:11px;font-family:var(--mono);color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:.05em">Item Sales CSV</div>
+            <div style="border:1px dashed var(--border2);border-radius:6px;padding:12px;text-align:center;cursor:pointer;background:var(--surface)" onclick="document.getElementById('csv-item').click()">
+              <div style="font-size:13px;color:var(--muted)" id="csv-item-label">Click to upload</div>
+            </div>
+            <input type="file" id="csv-item" accept=".csv" style="display:none" onchange="handleCSVUpload('item',this)">
+          </div>
+        </div>
+        <div id="import-status" style="margin-top:10px;font-size:12px;font-family:var(--mono);color:var(--muted)"></div>
+      </div>
+
+      <!-- Catalog Sync -->
       <div style="display:flex;align-items:center;justify-content:space-between;padding:12px;background:var(--surface2);border-radius:8px;border:1px solid var(--border)">
         <div>
           <div style="font-size:13px;font-weight:500">Catalog sync</div>
-          <div style="font-size:12px;color:var(--muted);margin-top:2px">Pull all categories and items from Square — run once, then after any catalog changes</div>
+          <div style="font-size:12px;color:var(--muted);margin-top:2px">Pull all categories and items — run after catalog changes in Square</div>
         </div>
         <button class="btn btn-primary" onclick="runCatalogSync()">Sync catalog</button>
       </div>
+
+      <!-- Order Sync -->
       <div style="display:flex;align-items:center;justify-content:space-between;padding:12px;background:var(--surface2);border-radius:8px;border:1px solid var(--border)">
         <div>
-          <div style="font-size:13px;font-weight:500">Sales sync</div>
-          <div style="font-size:12px;color:var(--muted);margin-top:2px">Pull sales data for a date range — nightly sync runs automatically at 2am</div>
+          <div style="font-size:13px;font-weight:500">Order sync (daily totals)</div>
+          <div style="font-size:12px;color:var(--muted);margin-top:2px">Pull daily net sales — nightly sync runs at 2am EST automatically</div>
         </div>
         <div style="display:flex;gap:8px;align-items:center">
           <input type="date" id="sync-start" style="padding:6px 10px;border:1px solid var(--border2);border-radius:5px;font-family:var(--mono);font-size:12px">
@@ -1153,12 +1180,23 @@ async function loadCategoryTracker(daysElapsed, daysInMonth, squareDays) {
 
 async function loadMonthCategories(from, to, daysElapsed, daysInMonth, squareDays) {
   try {
-    const days = squareDays || (await (await fetch(`/api/square/stored/month?month=${dashMonth}&year=${dashYear}`)).json());
-    if (!days || !days.length) {
-      g('month-categories').innerHTML = '<div class="empty" style="padding:8px 0">No Square data yet — run a sync to load category data</div>';
+    // Try imported CSV data first (most accurate)
+    const r = await fetch(`/api/sales/categories/month?month=${dashMonth}&year=${dashYear}`);
+    const imported = await r.json();
+    if (imported.categories && imported.categories.length) {
+      const top5 = imported.categories.slice(0,5);
+      const maxV = Math.max(...top5.map(c=>c.gross_sales), 1);
+      g('month-categories').innerHTML = top5.map((c,i)=>`
+        <div class="cat-bar-row">
+          <div class="cat-bar-label" title="${c.category}">${c.category}</div>
+          <div class="cat-bar-track"><div class="cat-bar-fill" style="width:${(c.gross_sales/maxV*100).toFixed(1)}%;background:${CAT_COLORS[i]}">${c.gross_sales>100?fmt(c.gross_sales):''}</div></div>
+          <div class="cat-bar-val">${fmt(c.gross_sales)}</div>
+        </div>`).join('');
       return;
     }
-    // Aggregate categories across all days
+    // Fall back to order sync data
+    const days = squareDays || (await (await fetch(`/api/square/stored/month?month=${dashMonth}&year=${dashYear}`)).json());
+    if (!days || !days.length) { g('month-categories').innerHTML = '<div class="empty" style="padding:8px 0">No data — import CSV or run sync</div>'; return; }
     const catMap = {};
     for (const day of days) {
       for (const [k, v] of Object.entries(day.categories || {})) {
@@ -1168,9 +1206,7 @@ async function loadMonthCategories(from, to, daysElapsed, daysInMonth, squareDay
     }
     const top5 = Object.entries(catMap).sort((a,b)=>b[1]-a[1]).slice(0,5).map(([name,net])=>({name,netSales:parseFloat(net.toFixed(2))}));
     const maxV = Math.max(...top5.map(c=>c.netSales), 1);
-    g('month-categories').innerHTML = top5.length
-      ? top5.map((c,i)=>`<div class="cat-bar-row"><div class="cat-bar-label" title="${c.name}">${c.name}</div><div class="cat-bar-track"><div class="cat-bar-fill" style="width:${(c.netSales/maxV*100).toFixed(1)}%;background:${CAT_COLORS[i]}">${c.netSales>100?fmt(c.netSales):''}</div></div><div class="cat-bar-val">${fmt(c.netSales)}</div></div>`).join('')
-      : '<div class="empty" style="padding:8px 0">No category data this month</div>';
+    g('month-categories').innerHTML = top5.map((c,i)=>`<div class="cat-bar-row"><div class="cat-bar-label" title="${c.name}">${c.name}</div><div class="cat-bar-track"><div class="cat-bar-fill" style="width:${(c.netSales/maxV*100).toFixed(1)}%;background:${CAT_COLORS[i]}">${c.netSales>100?fmt(c.netSales):''}</div></div><div class="cat-bar-val">${fmt(c.netSales)}</div></div>`).join('');
   } catch(e) {
     g('month-categories').innerHTML = '<div class="empty" style="padding:8px 0">Could not load category data</div>';
   }
@@ -1178,19 +1214,29 @@ async function loadMonthCategories(from, to, daysElapsed, daysInMonth, squareDay
 
 async function loadSquareCategoryTracker(daysElapsed, daysInMonth, squareDays) {
   try {
-    const days = squareDays || (await (await fetch(`/api/square/stored/month?month=${dashMonth}&year=${dashYear}`)).json());
-    if (!days || !days.length) {
-      g('cat-tracker').innerHTML = '<div style="display:flex;align-items:center;gap:12px;padding:12px"><div style="font-size:13px;color:var(--muted)">No Square data stored yet.</div><button class="btn btn-sm btn-primary" onclick="runSquareSync()">Sync now →</button></div>';
-      return;
-    }
-    const catMap = {};
-    for (const day of days) {
-      for (const [k, v] of Object.entries(day.categories || {})) {
-        const name = v.name || k;
-        catMap[name] = (catMap[name] || 0) + (v.amount || 0);
+    // Try imported CSV data first
+    const r = await fetch(`/api/sales/categories/month?month=${dashMonth}&year=${dashYear}`);
+    const imported = await r.json();
+    let top5 = [];
+
+    if (imported.categories && imported.categories.length) {
+      top5 = imported.categories.slice(0,5).map(c=>([c.category, c.gross_sales]));
+    } else {
+      // Fall back to order sync
+      const days = squareDays || (await (await fetch(`/api/square/stored/month?month=${dashMonth}&year=${dashYear}`)).json());
+      if (!days || !days.length) {
+        g('cat-tracker').innerHTML = `<div style="display:flex;align-items:center;gap:12px;padding:12px"><div style="font-size:13px;color:var(--muted)">No data — import CSV from Settings.</div></div>`;
+        return;
       }
+      const catMap = {};
+      for (const day of days) {
+        for (const [k,v] of Object.entries(day.categories||{})) {
+          const name = v.name||k; catMap[name]=(catMap[name]||0)+(v.amount||0);
+        }
+      }
+      top5 = Object.entries(catMap).sort((a,b)=>b[1]-a[1]).slice(0,5);
     }
-    const top5 = Object.entries(catMap).sort((a,b)=>b[1]-a[1]).slice(0,5);
+
     if (!top5.length) { g('cat-tracker').innerHTML = '<div class="empty">No category data</div>'; return; }
     g('cat-tracker').innerHTML = `<div class="cat-tracker-grid">${top5.map(([name, actual], i) => {
       const avgDay = daysElapsed > 0 ? actual/daysElapsed : 0;
@@ -1213,6 +1259,41 @@ async function loadSquareCategoryTracker(daysElapsed, daysInMonth, squareDays) {
 }
 
 
+
+
+async function handleCSVUpload(type, input) {
+  const file = input.files[0];
+  if (!file) return;
+  const labelEl = document.getElementById(`csv-${type}-label`);
+  const statusEl = document.getElementById('import-status');
+  labelEl.textContent = file.name;
+  statusEl.textContent = 'Reading file...';
+
+  const reader = new FileReader();
+  reader.onload = async (e) => {
+    const csv = e.target.result;
+    statusEl.textContent = 'Uploading...';
+    try {
+      const endpoint = type === 'category' ? '/api/import/category-sales' : '/api/import/item-sales';
+      const r = await fetch(endpoint, {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ csv })
+      });
+      const result = await r.json();
+      if (result.error) throw new Error(result.error);
+      const count = result.categories || result.items || 0;
+      statusEl.textContent = `✓ ${type === 'category' ? 'Category' : 'Item'} import complete: ${result.inserted} rows, ${count} ${type === 'category' ? 'categories' : 'items'}, ${result.dateRange}`;
+      statusEl.style.color = 'var(--green)';
+      // Reload dashboard if we're on it
+      if (document.getElementById('page-dashboard').classList.contains('active')) loadDashboard();
+    } catch(e) {
+      statusEl.textContent = '✗ Import failed: ' + e.message;
+      statusEl.style.color = 'var(--red)';
+    }
+  };
+  reader.readAsText(file);
+}
 
 async function runManualSync() {
   const start = document.getElementById('sync-start').value;
@@ -1266,12 +1347,20 @@ async function loadWeeklyBars() {
   const dow = now.getDay();
   const monday = new Date(now); monday.setDate(now.getDate()-(dow===0?6:dow-1));
   const dates = Array.from({length:7},(_,i)=>{const d=new Date(monday);d.setDate(monday.getDate()+i);return d.toISOString().slice(0,10);});
-  // Use Square stored data for weekly bars
-  const sqR = await fetch(`/api/square/stored/month?month=${now.getMonth()+1}&year=${now.getFullYear()}`);
+  // Try imported daily data first
+  const sqR = await fetch(`/api/sales/daily/month?month=${now.getMonth()+1}&year=${now.getFullYear()}`);
   const sqDays = await sqR.json();
-  const sqMap={};sqDays.forEach(d=>sqMap[d.sale_date]=d);
+  const sqMap={};
+  if (Array.isArray(sqDays) && sqDays.length) {
+    sqDays.forEach(d=>sqMap[d.date]=d);
+  } else {
+    // Fall back to order sync data
+    const sqR2 = await fetch(`/api/square/stored/month?month=${now.getMonth()+1}&year=${now.getFullYear()}`);
+    const sqDays2 = await sqR2.json();
+    if (Array.isArray(sqDays2)) sqDays2.forEach(d=>sqMap[d.sale_date]={date:d.sale_date,gross_sales:d.net_sales});
+  }
   const days=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
-  const vals=dates.map((d,i)=>({d,label:days[i],net:parseFloat(sqMap[d]?.net_sales||0),isToday:d===TODAY,has:!!sqMap[d]}));
+  const vals=dates.map((d,i)=>({d,label:days[i],net:parseFloat(sqMap[d]?.gross_sales||sqMap[d]?.net_sales||0),isToday:d===TODAY,has:!!sqMap[d]}));
   const maxV=Math.max(...vals.map(v=>v.net),1);
   g('weekly-bars').innerHTML=`<div class="bar-chart">${vals.map(v=>`<div class="bar-row"><div class="bar-label" style="${v.isToday?'color:var(--gold);font-weight:600':''}">${v.label}</div><div class="bar-track"><div class="bar-fill" style="width:${v.net>0?(v.net/maxV*100).toFixed(1):0}%;background:${v.isToday?'#8b6914':'#2d6a4f'}">${v.net>150?fmt(v.net):''}</div></div><div class="bar-val">${v.has?fmt(v.net):'<span style="color:var(--faint)">—</span>'}</div></div>`).join('')}</div>`;
 }
