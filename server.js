@@ -92,20 +92,18 @@ app.get('/api/square/day', async (req, res) => {
 
     // For today: run a fresh sync in background, return stored data immediately
     // For past dates: just return stored data
-    if (isToday) {
-      // Trigger sync in background (don't await)
-      (async () => {
-        try {
-          const body = { start: date, end: date };
-          const { default: fetch } = await import('node-fetch');
-          await fetch(`http://localhost:${process.env.PORT || 3000}/api/square/sync`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(body)
-          });
-        } catch(e) { console.log('Background sync error:', e.message); }
-      })();
-    }
+    // Trigger background sync to keep stored data fresh (don't await)
+    (async () => {
+      try {
+        const body = { start: date, end: date };
+        const { default: fetch } = await import('node-fetch');
+        await fetch(`http://localhost:${process.env.PORT || 3000}/api/square/sync`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body)
+        });
+      } catch(e) { console.log('Background sync error:', e.message); }
+    })();
 
     // For today: also do a live category pull from Orders API using catalog
     if (isToday) {
@@ -217,11 +215,11 @@ app.get('/api/square/day', async (req, res) => {
           syncedAt: new Date().toISOString(),
           isLive: true
         });
-      } catch(e) {
-        console.log(`[LIVE] Live pull FAILED: ${e.message}`);
-        console.log(`[LIVE] Stack: ${e.stack?.substring(0,300)}`);
-        // Fall through to stored data
-      }
+    } catch(e) {
+      console.log(`[LIVE] Live pull FAILED: ${e.message}`);
+      console.log(`[LIVE] Stack: ${e.stack?.substring(0,300)}`);
+      // Fall through to stored data below
+    }
     }
 
     // Return stored data (most recent sync)
