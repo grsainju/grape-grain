@@ -873,32 +873,33 @@ async function loadDailySnapshot() {
     squareData = await fetchSquareDay(date);
   }
 
-  if (squareData) {
+  if (squareData && !squareData.error) {
     g('snap-net').textContent = fmt(squareData.netSales);
-    g('snap-cash').textContent = fmt(squareData.cash);
-    g('snap-card-val').textContent = fmt(squareData.card);
-    g('snap-txn').textContent = squareData.transactions || '—';
     g('snap-source').textContent = 'Square live';
     g('snap-source').className = 'source-pill';
     renderSnapCategories(squareData.categories || []);
   } else {
-    // Fall back to daily report
-    g('snap-source').textContent = 'daily report';
-    g('snap-source').className = 'source-pill manual';
-    const reports = await sbGet('gg_daily_reports',`store_id=eq.${SID}&report_date=eq.${date}&limit=1`);
-    const rep = reports[0] || null;
-    if (rep) {
-      g('snap-net').textContent = fmt(rep.cash_sales);
-      g('snap-cash').textContent = fmt(rep.cash_sales);
-      g('snap-card-val').textContent = '—';
-      g('snap-txn').textContent = '—';
-      g('snap-scratch').textContent = fmt(rep.total_scratch_sold);
-      g('snap-deposit').textContent = fmt(rep.bank_deposit);
-      g('snap-categories').innerHTML = '<div class="empty" style="padding:12px">Connect Square API to see category breakdown</div>';
-    } else {
-      ['snap-net','snap-cash','snap-card-val','snap-txn','snap-scratch','snap-deposit'].forEach(id=>g(id).textContent='—');
-      g('snap-source').textContent = 'no report';
-      g('snap-categories').innerHTML = '<div class="empty" style="padding:12px">No report for this date</div>';
+    // Try stored Square data for that date
+    try {
+      const storedR = await fetch('/api/square/stored/day?date=' + date);
+      const stored = await storedR.json();
+      if (stored && stored.net_sales) {
+        g('snap-net').textContent = fmt(stored.net_sales);
+        g('snap-source').textContent = 'Square (stored)';
+        g('snap-source').className = 'source-pill';
+        const cats = Object.entries(stored.categories || {})
+          .map(([k,v])=>({name:v.name||k, netSales:v.amount||0}))
+          .sort((a,b)=>b.netSales-a.netSales);
+        renderSnapCategories(cats);
+      } else {
+        g('snap-net').textContent = '—';
+        g('snap-source').textContent = 'no data';
+        g('snap-source').className = 'source-pill manual';
+        g('snap-categories').innerHTML = '<div class="empty" style="padding:12px 0">No Square data for this date</div>';
+      }
+    } catch(e) {
+      g('snap-net').textContent = '—';
+      g('snap-source').className = 'source-pill manual';
     }
   }
 
@@ -1175,10 +1176,9 @@ async function loadCategoryTracker() {
 
 
 // ── SQUARE MONTH CATEGORIES ───────────────────────────────────────────────────
-async function loadMonthCategories(from, to, daysElapsed, daysInMonth) {
+async function loadMonthCategories(from, to, daysElapsed, daysInMonth, squareDays) {
   try {
-    const r = await fetch(`/api/square/stored/month?month=${dashMonth}&year=${dashYear}`);
-    const days = await r.json();
+    const days = squareDays || (await (await fetch(`/api/square/stored/month?month=${dashMonth}&year=${dashYear}`)).json());
     if (!days || !days.length) {
       g('month-categories').innerHTML = '<div class="empty" style="padding:8px 0">No Square data yet — run a sync to load category data</div>';
       return;
@@ -1201,10 +1201,9 @@ async function loadMonthCategories(from, to, daysElapsed, daysInMonth) {
   }
 }
 
-async function loadSquareCategoryTracker(from, daysElapsed, daysInMonth) {
+async function loadSquareCategoryTracker(daysElapsed, daysInMonth, squareDays) {
   try {
-    const r = await fetch(`/api/square/stored/month?month=${dashMonth}&year=${dashYear}`);
-    const days = await r.json();
+    const days = squareDays || (await (await fetch(`/api/square/stored/month?month=${dashMonth}&year=${dashYear}`)).json());
     if (!days || !days.length) {
       g('cat-tracker').innerHTML = '<div style="display:flex;align-items:center;gap:12px;padding:12px"><div style="font-size:13px;color:var(--muted)">No Square data stored yet.</div><button class="btn btn-sm btn-primary" onclick="runSquareSync()">Sync now →</button></div>';
       return;
@@ -1258,10 +1257,12 @@ async function loadWeeklyBars() {
   const dow = now.getDay();
   const monday = new Date(now); monday.setDate(now.getDate()-(dow===0?6:dow-1));
   const dates = Array.from({length:7},(_,i)=>{const d=new Date(monday);d.setDate(monday.getDate()+i);return d.toISOString().slice(0,10);});
-  const reports = await sbGet('gg_daily_reports',`store_id=eq.${SID}&report_date=gte.${dates[0]}&report_date=lte.${dates[6]}&order=report_date.asc`);
-  const rm={};reports.forEach(r=>rm[r.report_date]=r);
+  // Use Square stored data for weekly bars
+  const sqR = await fetch(`/api/square/stored/month?month=${now.getMonth()+1}&year=${now.getFullYear()}`);
+  const sqDays = await sqR.json();
+  const sqMap={};sqDays.forEach(d=>sqMap[d.sale_date]=d);
   const days=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
-  const vals=dates.map((d,i)=>({d,label:days[i],net:parseFloat(rm[d]?.cash_sales||0),isToday:d===TODAY,has:!!rm[d]}));
+  const vals=dates.map((d,i)=>({d,label:days[i],net:parseFloat(sqMap[d]?.net_sales||0),isToday:d===TODAY,has:!!sqMap[d]}));
   const maxV=Math.max(...vals.map(v=>v.net),1);
   g('weekly-bars').innerHTML=`<div class="bar-chart">${vals.map(v=>`<div class="bar-row"><div class="bar-label" style="${v.isToday?'color:var(--gold);font-weight:600':''}">${v.label}</div><div class="bar-track"><div class="bar-fill" style="width:${v.net>0?(v.net/maxV*100).toFixed(1):0}%;background:${v.isToday?'#8b6914':'#2d6a4f'}">${v.net>150?fmt(v.net):''}</div></div><div class="bar-val">${v.has?fmt(v.net):'<span style="color:var(--faint)">—</span>'}</div></div>`).join('')}</div>`;
 }
