@@ -290,12 +290,18 @@ app.post('/api/square/sync', async (req, res) => {
         else d.card += tamt;
       }
 
-      // Line items → categories
+      // Line items → store by catalog_object_id (variation ID) for category mapping
       for (const item of (order.line_items || [])) {
-        const cat = item.catalog_object_id ? 'cat_' + item.catalog_object_id : (item.name || 'Other');
+        const varId = item.catalog_object_id || null;
+        const itemName = item.name || 'Unknown';
         const amt = (item.gross_sales_money?.amount || 0) / 100;
-        categoryByDate[date][cat] = (categoryByDate[date][cat] || { name: item.name || cat, amount: 0 });
-        categoryByDate[date][cat].amount += amt;
+        if (amt <= 0) continue;
+        // Key by variation ID so catalog sync can map to category
+        const key = varId || ('name_' + itemName.substring(0, 40));
+        if (!categoryByDate[date][key]) {
+          categoryByDate[date][key] = { name: itemName, amount: 0, variation_id: varId };
+        }
+        categoryByDate[date][key].amount += amt;
       }
     }
 
@@ -669,25 +675,35 @@ app.post('/api/square/sync-catalog', async (req, res) => {
     itemRows.forEach(r => { itemCatMap[r.id] = r.category_name || 'Other'; });
 
     // Re-process square_daily_sales categories JSONB
-    const salesR = await sbFetch(`${SUPABASE_URL}/rest/v1/square_daily_sales?store_id=eq.${STORE_ID}&select=id,sale_date,categories`, { headers: sbHeaders });
-    const salesRows = await salesR.json();
-
+    // Paginate through all rows
     let reprocessed = 0;
-    for (const row of salesRows) {
-      const rawCats = row.categories || {};
-      const newCats = {};
-      for (const [itemId, itemData] of Object.entries(rawCats)) {
-        const catName = itemCatMap[itemId] || itemData.category_name || 'Other';
-        if (!newCats[catName]) newCats[catName] = { name: catName, amount: 0 };
-        newCats[catName].amount += parseFloat(itemData.amount || 0);
+    let salesOffset = 0;
+    while (true) {
+      const salesR = await sbFetch(`${SUPABASE_URL}/rest/v1/square_daily_sales?store_id=eq.${STORE_ID}&select=id,sale_date,categories&limit=100&offset=${salesOffset}`, { headers: sbHeaders });
+      const salesRows = await salesR.json();
+      if (!salesRows.length) break;
+
+      for (const row of salesRows) {
+        const rawCats = row.categories || {};
+        const newCats = {};
+        for (const [key, itemData] of Object.entries(rawCats)) {
+          const amt = parseFloat(itemData.amount || 0);
+          if (amt <= 0) continue;
+          const varId = itemData.variation_id || key;
+          // Look up category by variation ID
+          const catName = itemCatMap[varId] || itemCatMap[key] || 'Other';
+          if (!newCats[catName]) newCats[catName] = { name: catName, amount: 0 };
+          newCats[catName].amount += amt;
+        }
+        await sbFetch(`${SUPABASE_URL}/rest/v1/square_daily_sales?id=eq.${row.id}`, {
+          method: 'PATCH',
+          headers: sbHeaders,
+          body: JSON.stringify({ categories: newCats })
+        });
+        reprocessed++;
       }
-      // Update this row
-      await sbFetch(`${SUPABASE_URL}/rest/v1/square_daily_sales?id=eq.${row.id}`, {
-        method: 'PATCH',
-        headers: sbHeaders,
-        body: JSON.stringify({ categories: newCats })
-      });
-      reprocessed++;
+      if (salesRows.length < 100) break;
+      salesOffset += 100;
     }
 
     res.json({
