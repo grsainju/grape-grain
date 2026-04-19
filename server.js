@@ -157,9 +157,11 @@ app.get('/api/square/day', async (req, res) => {
           }
           for (const item of (order.line_items || [])) {
             const varId = item.catalog_object_id;
-            const catName = (varId && itemCatMap[varId]) || 'Other';
+            const catName = (varId && itemCatMap[varId]) ? itemCatMap[varId] : null;
             const amt = (item.gross_sales_money?.amount || 0) / 100;
             if (amt <= 0) continue;
+            // Skip if no category mapping — don't lump into "Other"
+            if (!catName) continue;
             if (catName === 'Scratch Lotto') { liveScratch += amt; continue; }
             liveCatMap[catName] = (liveCatMap[catName] || 0) + amt;
           }
@@ -171,6 +173,18 @@ app.get('/api/square/day', async (req, res) => {
           .slice(0,5)
           .map(([name, netSales]) => ({ name, netSales: parseFloat(netSales.toFixed(2)) }));
 
+        // Get Square processing fees from Payments API
+        let totalFees = 0;
+        try {
+          const paymentsR = await sqFetch(
+            `/payments?location_id=${SQUARE_LOCATION}&begin_time=${date}T00:00:00-05:00&end_time=${date}T23:59:59-05:00&limit=200`
+          );
+          const paymentsData = await paymentsR.json();
+          for (const p of (paymentsData.payments || [])) {
+            totalFees += (p.processing_fee?.reduce((a,f) => a + Math.abs(f.amount_money?.amount||0), 0) || 0) / 100;
+          }
+        } catch(e) { console.log('Fees fetch error:', e.message); }
+
         return res.json({
           date,
           netSales: parseFloat(liveNetSales.toFixed(2)),
@@ -178,6 +192,7 @@ app.get('/api/square/day', async (req, res) => {
           tax: parseFloat(liveTax.toFixed(2)),
           discounts: parseFloat(liveDisc.toFixed(2)),
           returns: parseFloat(liveRet.toFixed(2)),
+          fees: parseFloat(totalFees.toFixed(2)),
           scratchLotto: parseFloat(liveScratch.toFixed(2)),
           cash: parseFloat(liveCash.toFixed(2)),
           card: parseFloat(liveCard.toFixed(2)),
@@ -225,13 +240,14 @@ app.get('/api/square/day', async (req, res) => {
         catList.push({ name: cat.category, netSales: amt });
       }
     } else {
-      // Fall back to JSONB categories from order sync
+      // Fall back to JSONB categories from order sync — filter out Other and items
       const cats = row.categories || {};
+      const knownCats = new Set(['Beer','Wine','Single Beer','Custom Beer','Cigar','Tobacco','Drinks','Snacks','Candy','Misc.','Household','NA-Beer','NA-Wine','Scratch Lotto','Draft Beer','Hot Food','Meds','Old Products','Old Lotto','On Hold','Discount Wines','Not Available']);
       for (const [k, v] of Object.entries(cats)) {
         const name = v.name || k;
         const amt = parseFloat(v.amount || 0);
         if (name === 'Scratch Lotto') { scratchTotal += amt; continue; }
-        // Only include if name looks like a category (not an item name)
+        if (name === 'Other' || !knownCats.has(name)) continue; // skip items/other
         catList.push({ name, netSales: amt });
       }
       catList.sort((a,b) => b.netSales - a.netSales);
