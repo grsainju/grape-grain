@@ -223,24 +223,7 @@ app.get('/api/square/range', async (req, res) => {
   }
 });
 
-// Get category sales for a date range using Square's Reporting API
-app.get('/api/square/categories', async (req, res) => {
-  try {
-    const { start, end } = req.query;
-
-    // Square doesn't have a direct category summary endpoint via Orders
-    // Use the Item Sales report via the Reporting API
-    const r = await sqFetch(`/reports/item-sales?location_ids=${SQUARE_LOCATION}&begin_time=${start}T00:00:00-05:00&end_time=${end}T23:59:59-05:00&sort_order=DESC`);
-    if (!r.ok) {
-      const txt = await r.text();
-      return res.status(r.status).json({ error: txt });
-    }
-    const data = await r.json();
-    res.json(data);
-  } catch (e) {
-    res.status(500).json({ error: e.message });
-  }
-});
+// (old categories route removed — use /api/square/categories from catalog)
 
 // ── SQUARE SYNC — Pull sales data and store in Supabase ───────────────────────
 app.post('/api/square/sync', async (req, res) => {
@@ -615,7 +598,11 @@ app.post('/api/square/sync-catalog', async (req, res) => {
     // Step 5: Build item rows (one row per variation)
     const itemRows = [];
     for (const item of items) {
-      const categoryId = item.item_data?.category_id || null;
+      // Square newer API: categories is an array; older API: category_id string
+      const categoriesArr = item.item_data?.categories || [];
+      const categoryId = categoriesArr.length > 0 
+        ? categoriesArr[0].id 
+        : (item.item_data?.category_id || item.item_data?.reporting_category?.id || null);
       const categoryName = categoryId ? (catMap[categoryId]?.name || null) : null;
       const name = item.item_data?.name || 'Unknown';
       const description = item.item_data?.description || null;
