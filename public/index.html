@@ -1136,59 +1136,21 @@ async function deletePayment(id) {
 }
 
 // ── SECTION 4: CATEGORY TRACKER ───────────────────────────────────────────────
-async function loadCategoryTracker() {
-  const daysInMonth = new Date(dashYear, dashMonth, 0).getDate();
-  const from = `${dashYear}-${String(dashMonth).padStart(2,'0')}-01`;
-  const to = `${dashYear}-${String(dashMonth).padStart(2,'0')}-${daysInMonth}`;
-  const now = new Date();
-  const isCurrentMonth = now.getMonth()+1===dashMonth && now.getFullYear()===dashYear;
-  const daysElapsed = isCurrentMonth ? now.getDate() : daysInMonth;
-
+async function loadCategoryTracker(daysElapsed, daysInMonth, squareDays) {
+  if (!daysInMonth) {
+    daysInMonth = new Date(dashYear, dashMonth, 0).getDate();
+    const now = new Date();
+    const isCurrentMonth = now.getMonth()+1===dashMonth && now.getFullYear()===dashYear;
+    daysElapsed = isCurrentMonth ? now.getDate() : daysInMonth;
+  }
   if (SQUARE_ENABLED) {
-    // Will pull from Square API
-    g('cat-tracker').innerHTML = '<div class="empty">Square category data loading...</div>';
+    await loadSquareCategoryTracker(daysElapsed, daysInMonth, squareDays);
     return;
   }
-
-  // Without Square — show scratch breakdown from daily reports as proxy
-  const reports = await sbGet('gg_daily_reports',`store_id=eq.${SID}&report_date=gte.${from}&report_date=lte.${to}&order=report_date.asc`);
-  if (!reports.length) { g('cat-tracker').innerHTML = '<div class="empty">No report data this month. Connect Square API for category tracking.</div>'; return; }
-
-  const ids = reports.map(r=>r.id).join(',');
-  const lines = await sbGet('scratch_inventory_lines',`report_id=in.(${ids})&select=face_value,dollar_sold`);
-
-  // Group scratch by denomination as proxy categories
-  const dm = {};
-  lines.forEach(l=>{const k='$'+parseFloat(l.face_value).toFixed(0)+' tickets';dm[k]=(dm[k]||0)+parseFloat(l.dollar_sold||0);});
-  const netSales = reports.reduce((a,r)=>a+parseFloat(r.cash_sales||0),0);
-  if (netSales > 0) dm['Net Sales Total'] = netSales;
-
-  const sorted = Object.entries(dm).sort((a,b)=>b[1]-a[1]).slice(0,5);
-  if (!sorted.length) { g('cat-tracker').innerHTML = '<div class="empty">No data yet this month</div>'; return; }
-
-  g('cat-tracker').innerHTML = `
-    <div style="margin-bottom:10px;padding:8px 12px;background:var(--blue-bg);border:1px solid var(--blue-border);border-radius:6px;font-size:12px;color:var(--blue)">
-      Showing scratch ticket data as proxy. Connect Square API for full category breakdown by product category.
-    </div>
-    <div class="cat-tracker-grid">${sorted.map(([ name, actual ],i)=>{
-      const avgDay = daysElapsed > 0 ? actual/daysElapsed : 0;
-      const est = avgDay * daysInMonth;
-      const pct = Math.min(100, (daysElapsed/daysInMonth*100));
-      return `<div class="cat-tracker-card">
-        <div class="ct-rank">#${i+1}</div>
-        <div class="ct-name" title="${name}">${name}</div>
-        <div class="ct-actual">${fmt(actual)}</div>
-        <div class="ct-label">Actual MTD</div>
-        <div class="ct-bar"><div class="ct-bar-fill" style="width:${pct.toFixed(1)}%;background:${CAT_COLORS[i]}"></div></div>
-        <hr class="ct-divider">
-        <div class="ct-est">${fmt(est)}</div>
-        <div class="ct-est-label">Est. month-end</div>
-      </div>`;
-    }).join('')}</div>`;
+  g('cat-tracker').innerHTML = '<div class="empty">No category data — connect Square API</div>';
 }
 
 
-// ── SQUARE MONTH CATEGORIES ───────────────────────────────────────────────────
 async function loadMonthCategories(from, to, daysElapsed, daysInMonth, squareDays) {
   try {
     const days = squareDays || (await (await fetch(`/api/square/stored/month?month=${dashMonth}&year=${dashYear}`)).json());
