@@ -1014,14 +1014,21 @@ async function fetchSquareDay(date) {
 }
 
 function renderSnapCategories(categories) {
-  if (!categories.length) { g('snap-categories').innerHTML = '<div class="empty" style="padding:12px">No category data</div>'; return; }
+  if (!categories || !categories.length) {
+    g('snap-categories').innerHTML = '<div style="color:rgba(255,255,255,.3);font-size:13px;font-family:var(--mono)">No category data</div>';
+    return;
+  }
   const top5 = categories.slice(0,5);
-  const maxV = Math.max(...top5.map(c=>c.netSales),1);
-  g('snap-categories').innerHTML = top5.map((c,i)=>`
-    <div class="cat-bar-row">
-      <div class="cat-bar-label" title="${c.name}">${c.name}</div>
-      <div class="cat-bar-track"><div class="cat-bar-fill" style="width:${(c.netSales/maxV*100).toFixed(1)}%;background:${CAT_COLORS[i]}">${c.netSales>100?fmt(c.netSales):''}</div></div>
-      <div class="cat-bar-val">${fmt(c.netSales)}</div>
+  const maxV = Math.max(...top5.map(c=>c.netSales), 1);
+  g('snap-categories').innerHTML = top5.map((c,i) => `
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:7px">
+      <div style="width:90px;font-size:12px;color:rgba(255,255,255,.65);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex-shrink:0" title="${c.name}">${c.name}</div>
+      <div style="flex:1;background:rgba(255,255,255,.08);border-radius:2px;height:22px;overflow:hidden">
+        <div style="height:100%;width:${(c.netSales/maxV*100).toFixed(1)}%;background:${CAT_COLORS[i]};border-radius:2px;display:flex;align-items:center;padding:0 8px;font-size:11px;font-family:var(--mono);color:#fff">
+          ${c.netSales > 100 ? fmt(c.netSales) : ''}
+        </div>
+      </div>
+      <div style="width:65px;font-family:var(--mono);font-size:11px;color:rgba(255,255,255,.5);text-align:right">${fmt(c.netSales)}</div>
     </div>`).join('');
 }
 
