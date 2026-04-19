@@ -748,14 +748,14 @@ td{padding:9px 14px;vertical-align:middle}
             <label for="csv-cat" style="display:block;border:1px dashed var(--border2);border-radius:6px;padding:16px 12px;text-align:center;cursor:pointer;background:var(--surface);transition:all .15s" onmouseover="this.style.borderColor='var(--gold)';this.style.background='var(--gold-bg)'" onmouseout="this.style.borderColor='var(--border2)';this.style.background='var(--surface)'">
               <div style="font-size:13px;color:var(--muted)" id="csv-cat-label">📂 Click to upload</div>
             </label>
-            <input type="file" id="csv-cat" accept=".csv" style="display:none" onchange="handleCSVUpload('category',this)">
+            <input type="file" id="csv-cat" accept=".csv" style="display:none">
           </div>
           <div>
             <div style="font-size:11px;font-family:var(--mono);color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:.05em">Item Sales CSV</div>
             <label for="csv-item" style="display:block;border:1px dashed var(--border2);border-radius:6px;padding:16px 12px;text-align:center;cursor:pointer;background:var(--surface);transition:all .15s" onmouseover="this.style.borderColor='var(--gold)';this.style.background='var(--gold-bg)'" onmouseout="this.style.borderColor='var(--border2)';this.style.background='var(--surface)'">
               <div style="font-size:13px;color:var(--muted)" id="csv-item-label">📂 Click to upload</div>
             </label>
-            <input type="file" id="csv-item" accept=".csv" style="display:none" onchange="handleCSVUpload('item',this)">
+            <input type="file" id="csv-item" accept=".csv" style="display:none">
           </div>
         </div>
         <div id="import-status" style="margin-top:10px;font-size:12px;font-family:var(--mono);color:var(--muted)"></div>
@@ -1263,11 +1263,12 @@ async function loadSquareCategoryTracker(daysElapsed, daysInMonth, squareDays) {
 
 async function handleCSVUpload(type, input) {
   const file = input.files[0];
-  if (!file) return;
-  const labelEl = document.getElementById(`csv-${type}-label`);
+  if (!file) { console.log('No file selected'); return; }
+  const typeKey = type === 'category' ? 'cat' : 'item';
+  const labelEl = document.getElementById('csv-' + typeKey + '-label');
   const statusEl = document.getElementById('import-status');
-  labelEl.textContent = file.name;
-  statusEl.textContent = 'Reading file...';
+  if (labelEl) labelEl.textContent = '📄 ' + file.name;
+  if (statusEl) { statusEl.textContent = 'Reading file...'; statusEl.style.color = 'var(--muted)'; }
 
   const reader = new FileReader();
   reader.onload = async (e) => {
@@ -1702,6 +1703,14 @@ function statusBadge(s){return `<span class="badge ${SB2[s]||'badge-gray'}">${s|
     setSync('ok','connected');
   } catch(e){setSync('err','connection error');}
   loadDashboard();
+
+  // File upload event listeners — more reliable than onchange attribute
+  document.getElementById('csv-cat').addEventListener('change', function() {
+    handleCSVUpload('category', this);
+  });
+  document.getElementById('csv-item').addEventListener('change', function() {
+    handleCSVUpload('item', this);
+  });
 })();
 </script>
 </body>
