@@ -727,6 +727,25 @@ app.get('/api/square/items', async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+
+// Debug: show raw Square catalog structure for first item
+app.get('/api/square/catalog/raw', async (req, res) => {
+  try {
+    const r = await sqFetch('/catalog/list?types=ITEM&limit=2');
+    const data = await r.json();
+    const items = data.objects || [];
+    // Return full raw structure of first item
+    res.json({
+      count: items.length,
+      first: items[0] || null,
+      item_data_keys: items[0] ? Object.keys(items[0].item_data || {}) : [],
+      categories_field: items[0]?.item_data?.categories,
+      category_id_field: items[0]?.item_data?.category_id,
+      reporting_category: items[0]?.item_data?.reporting_category,
+    });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
 // ── CATCH ALL ─────────────────────────────────────────────────────────────────
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
