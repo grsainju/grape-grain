@@ -734,6 +734,30 @@ td{padding:9px 14px;vertical-align:middle}
     <button class="btn btn-primary" onclick="testConnection()">Test connection</button>
     <div id="conn-result" style="margin-top:12px"></div>
   </div>
+  <div class="card">
+    <div class="card-title">Square integration</div>
+    <div style="display:flex;flex-direction:column;gap:14px">
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:12px;background:var(--surface2);border-radius:8px;border:1px solid var(--border)">
+        <div>
+          <div style="font-size:13px;font-weight:500">Catalog sync</div>
+          <div style="font-size:12px;color:var(--muted);margin-top:2px">Pull all categories and items from Square — run once, then after any catalog changes</div>
+        </div>
+        <button class="btn btn-primary" onclick="runCatalogSync()">Sync catalog</button>
+      </div>
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:12px;background:var(--surface2);border-radius:8px;border:1px solid var(--border)">
+        <div>
+          <div style="font-size:13px;font-weight:500">Sales sync</div>
+          <div style="font-size:12px;color:var(--muted);margin-top:2px">Pull sales data for a date range — nightly sync runs automatically at 2am</div>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <input type="date" id="sync-start" style="padding:6px 10px;border:1px solid var(--border2);border-radius:5px;font-family:var(--mono);font-size:12px">
+          <input type="date" id="sync-end" style="padding:6px 10px;border:1px solid var(--border2);border-radius:5px;font-family:var(--mono);font-size:12px">
+          <button class="btn btn-gold" onclick="runManualSync()">Sync</button>
+        </div>
+      </div>
+      <div id="sync-status" style="font-size:12px;color:var(--muted);font-family:var(--mono)"></div>
+    </div>
+  </div>
 </div>
 
 </div><!-- /main -->
@@ -1235,6 +1259,40 @@ async function loadSquareCategoryTracker(daysElapsed, daysInMonth, squareDays) {
   } catch(e) {
     g('cat-tracker').innerHTML = '<div class="empty">Could not load category tracker</div>';
   }
+}
+
+
+
+async function runManualSync() {
+  const start = document.getElementById('sync-start').value;
+  const end = document.getElementById('sync-end').value;
+  if (!start || !end) { alert('Please select start and end dates'); return; }
+  const btn = event?.target;
+  if (btn) { btn.disabled = true; btn.textContent = 'Syncing...'; }
+  document.getElementById('sync-status').textContent = 'Syncing ' + start + ' → ' + end + '...';
+  try {
+    const r = await fetch('/api/square/sync', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ start, end }) });
+    const result = await r.json();
+    if (result.error) throw new Error(result.error);
+    document.getElementById('sync-status').textContent = `✓ Sync complete: ${result.datesProcessed} days, ${result.ordersProcessed} orders`;
+    loadDashboard();
+  } catch(e) {
+    document.getElementById('sync-status').textContent = '✗ Failed: ' + e.message;
+  }
+  if (btn) { btn.disabled = false; btn.textContent = 'Sync'; }
+}
+
+async function runCatalogSync() {
+  const btn = event?.target;
+  if (btn) { btn.disabled = true; btn.textContent = 'Syncing catalog...'; }
+  try {
+    const r = await fetch('/api/square/sync-catalog', { method: 'POST', headers: {'Content-Type':'application/json'} });
+    const result = await r.json();
+    if (result.error) throw new Error(result.error);
+    alert(`Catalog sync complete!\n${result.categories} categories\n${result.variations} items\n${result.salesRowsReprocessed} sales days re-categorized`);
+    loadDashboard();
+  } catch(e) { alert('Catalog sync failed: ' + e.message); }
+  if (btn) { btn.disabled = false; btn.textContent = 'Sync catalog'; }
 }
 
 async function runSquareSync(start, end) {
