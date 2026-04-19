@@ -379,33 +379,53 @@ td{padding:9px 14px;vertical-align:middle}
   </div>
 
   <!-- SECTION 1: DAILY SNAPSHOT -->
-  <div style="background:#1a1714;border-radius:10px;padding:16px 20px;margin-bottom:16px">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px">
+  <div style="background:#1a1714;border-radius:12px;margin-bottom:16px;overflow:hidden">
+    <!-- Header bar -->
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 20px;border-bottom:1px solid rgba(255,255,255,.08)">
       <div style="display:flex;align-items:center;gap:10px">
-        <div style="font-size:11px;font-family:var(--mono);color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:.08em">Daily Snapshot</div>
-        <div id="snap-live-pill" style="display:flex;align-items:center;gap:5px;background:rgba(106,191,138,.15);border:1px solid rgba(106,191,138,.4);border-radius:4px;padding:2px 8px">
-          <div id="snap-live-dot" style="width:7px;height:7px;border-radius:50%;background:#6abf8a"></div>
-          <div style="font-size:10px;font-family:var(--mono);color:#6abf8a;font-weight:600">LIVE</div>
-        </div>
+        <span style="font-size:11px;font-family:var(--mono);color:rgba(255,255,255,.45);text-transform:uppercase;letter-spacing:.1em;font-weight:500">Daily Snapshot</span>
+        <span style="display:inline-flex;align-items:center;gap:4px;background:rgba(106,191,138,.2);border:1px solid rgba(106,191,138,.35);border-radius:3px;padding:2px 8px">
+          <span style="width:6px;height:6px;border-radius:50%;background:#6abf8a;display:inline-block"></span>
+          <span style="font-size:10px;font-family:var(--mono);color:#6abf8a;font-weight:700;letter-spacing:.06em">LIVE</span>
+        </span>
       </div>
       <div style="display:flex;align-items:center;gap:8px">
-        <input type="date" id="snap-date" style="padding:5px 10px;border:1px solid rgba(255,255,255,.2);border-radius:5px;font-family:var(--mono);font-size:12px;background:rgba(255,255,255,.08);color:#faf9f7" onchange="loadDailySnapshot()">
-        <button onclick="loadDailySnapshot()" style="background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.2);border-radius:5px;padding:5px 10px;color:#faf9f7;cursor:pointer;font-size:14px" title="Refresh">↻</button>
+        <input type="date" id="snap-date" onchange="loadDailySnapshot()" style="padding:5px 10px;border:1px solid rgba(255,255,255,.15);border-radius:5px;font-family:var(--mono);font-size:12px;background:rgba(255,255,255,.07);color:#e8e4dc;outline:none">
+        <button onclick="loadDailySnapshot()" title="Refresh" style="width:30px;height:30px;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.15);border-radius:5px;color:#e8e4dc;cursor:pointer;font-size:15px">↻</button>
       </div>
     </div>
-    <div style="margin-bottom:14px">
-      <div id="snap-net" style="font-family:var(--font-display);font-size:36px;font-weight:600;color:#c8a96e;margin-bottom:2px">—</div>
-      <div id="snap-pulled-at" style="font-size:12px;font-family:var(--mono);color:rgba(255,255,255,.4);margin-bottom:10px">Loading...</div>
-      <div style="display:flex;gap:20px;flex-wrap:wrap">
-        <div><div id="snap-tax" style="font-family:var(--mono);font-size:13px;font-weight:500;color:rgba(255,255,255,.6)">—</div><div style="font-size:10px;font-family:var(--mono);color:rgba(255,255,255,.35);text-transform:uppercase;letter-spacing:.05em">Tax</div></div>
-        <div><div id="snap-discounts" style="font-family:var(--mono);font-size:13px;font-weight:500;color:rgba(255,255,255,.6)">—</div><div style="font-size:10px;font-family:var(--mono);color:rgba(255,255,255,.35);text-transform:uppercase;letter-spacing:.05em">Discounts</div></div>
-        <div><div id="snap-returns" style="font-family:var(--mono);font-size:13px;font-weight:500;color:rgba(255,255,255,.6)">—</div><div style="font-size:10px;font-family:var(--mono);color:rgba(255,255,255,.35);text-transform:uppercase;letter-spacing:.05em">Returns</div></div>
-        <div><div id="snap-scratch-lotto" style="font-family:var(--mono);font-size:13px;font-weight:500;color:rgba(255,255,255,.6)">—</div><div style="font-size:10px;font-family:var(--mono);color:rgba(255,255,255,.35);text-transform:uppercase;letter-spacing:.05em">Scratch Lotto</div></div>
+    <!-- Main content -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:0">
+      <!-- Left: Net sales + stats -->
+      <div style="padding:20px;border-right:1px solid rgba(255,255,255,.08)">
+        <div id="snap-pulled-at" style="font-size:11px;font-family:var(--mono);color:rgba(255,255,255,.35);margin-bottom:8px">Loading...</div>
+        <div id="snap-net" style="font-family:var(--font-display);font-size:40px;font-weight:600;color:#c8a96e;line-height:1;margin-bottom:4px">—</div>
+        <div style="font-size:11px;font-family:var(--mono);color:rgba(255,255,255,.35);margin-bottom:16px">Net Sales (excl. tax &amp; scratch)</div>
+        <!-- Stats row -->
+        <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px">
+          <div style="padding:10px;background:rgba(255,255,255,.05);border-radius:6px;border:1px solid rgba(255,255,255,.08)">
+            <div id="snap-tax" style="font-family:var(--mono);font-size:14px;font-weight:500;color:#e8e4dc">—</div>
+            <div style="font-size:10px;font-family:var(--mono);color:rgba(255,255,255,.35);text-transform:uppercase;letter-spacing:.06em;margin-top:2px">Tax</div>
+          </div>
+          <div style="padding:10px;background:rgba(255,255,255,.05);border-radius:6px;border:1px solid rgba(255,255,255,.08)">
+            <div id="snap-discounts" style="font-family:var(--mono);font-size:14px;font-weight:500;color:#e8e4dc">—</div>
+            <div style="font-size:10px;font-family:var(--mono);color:rgba(255,255,255,.35);text-transform:uppercase;letter-spacing:.06em;margin-top:2px">Discounts</div>
+          </div>
+          <div style="padding:10px;background:rgba(255,255,255,.05);border-radius:6px;border:1px solid rgba(255,255,255,.08)">
+            <div id="snap-returns" style="font-family:var(--mono);font-size:14px;font-weight:500;color:#e8e4dc">—</div>
+            <div style="font-size:10px;font-family:var(--mono);color:rgba(255,255,255,.35);text-transform:uppercase;letter-spacing:.06em;margin-top:2px">Returns</div>
+          </div>
+          <div style="padding:10px;background:rgba(255,255,255,.05);border-radius:6px;border:1px solid rgba(255,255,255,.08)">
+            <div id="snap-scratch-lotto" style="font-family:var(--mono);font-size:14px;font-weight:500;color:#e8e4dc">—</div>
+            <div style="font-size:10px;font-family:var(--mono);color:rgba(255,255,255,.35);text-transform:uppercase;letter-spacing:.06em;margin-top:2px">Scratch Lotto</div>
+          </div>
+        </div>
       </div>
-    </div>
-    <div>
-      <div style="font-size:10px;font-family:var(--mono);color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px">Top 5 categories today</div>
-      <div id="snap-categories"><div style="color:rgba(255,255,255,.3);font-size:13px">Loading...</div></div>
+      <!-- Right: Top 5 categories -->
+      <div style="padding:20px">
+        <div style="font-size:10px;font-family:var(--mono);color:rgba(255,255,255,.35);text-transform:uppercase;letter-spacing:.1em;margin-bottom:14px">Top 5 Categories Today</div>
+        <div id="snap-categories"><div style="color:rgba(255,255,255,.25);font-size:13px;font-family:var(--mono)">Loading...</div></div>
+      </div>
     </div>
   </div>
 
@@ -1069,17 +1089,34 @@ async function loadMonthlySummary() {
 
 function openPurchaseModal() {
   const monthName = new Date(dashYear,dashMonth-1,1).toLocaleString('en-US',{month:'long'});
-  g('purchase-modal-label').textContent = `Enter total purchases for ${monthName} ${dashYear}`;
-  g('purchase-amount').value = ST.currentPurchase ? ST.currentPurchase.amount : '';
-  g('purchase-notes').value = ST.currentPurchase ? (ST.currentPurchase.notes||'') : '';
+  g('purchase-modal-label').textContent = `Purchases received in ${monthName} ${dashYear}`;
+  const p = ST.currentPurchase;
+  g('purchase-amount').value = p ? p.amount : '';
+  g('purchase-notes').value = p ? (p.notes||'') : '';
+  g('purchase-delivery-date').value = p ? (p.delivery_date||'') : '';
+  // Try to parse breakdown from notes if stored
+  g('purchase-beer').value = '';
+  g('purchase-wine').value = '';
+  g('purchase-falter').value = '';
+  g('purchase-other').value = '';
   openModal('purchase-modal');
+}
+
+function calcPurchaseTotal() {
+  const beer = parseFloat(g('purchase-beer').value)||0;
+  const wine = parseFloat(g('purchase-wine').value)||0;
+  const falter = parseFloat(g('purchase-falter').value)||0;
+  const other = parseFloat(g('purchase-other').value)||0;
+  const total = beer + wine + falter + other;
+  if (total > 0) g('purchase-amount').value = total.toFixed(2);
 }
 
 
 async function savePurchase() {
   const amount = parseFloat(g('purchase-amount').value)||0;
   const notes = g('purchase-notes').value.trim();
-  const data = { store_id:SID, month:dashMonth, year:dashYear, amount, notes:notes||null };
+  const deliveryDate = g('purchase-delivery-date').value||null;
+  const data = { store_id:SID, month:dashMonth, year:dashYear, amount, notes:notes||null, delivery_date:deliveryDate };
   try {
     const r = await fetch(`${SB}/rest/v1/monthly_purchases`, {
       method:'POST',
