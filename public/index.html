@@ -842,70 +842,76 @@ td{padding:9px 14px;vertical-align:middle}
 <div class="page" id="page-scratch">
   <div id="scratch-alert" style="margin-bottom:12px"></div>
   <div style="display:flex;gap:0;margin-bottom:20px;border-bottom:1px solid var(--border)">
-    <button class="scratch-tab active" onclick="showScratchTab('inventory',this)">Inventory</button>
-    <button class="scratch-tab" onclick="showScratchTab('delivery',this)">Record Delivery</button>
+    <button class="scratch-tab active" onclick="showScratchTab('boxes',this)">Box Assignments</button>
+    <button class="scratch-tab" onclick="showScratchTab('games',this)">Game Lookup</button>
     <button class="scratch-tab" onclick="showScratchTab('history',this)">Delivery History</button>
-    <button class="scratch-tab" onclick="showScratchTab('boxes',this)">Manage Boxes</button>
   </div>
 
-  <!-- INVENTORY -->
-  <div class="scratch-panel active" id="sp-inventory">
+  <!-- BOX ASSIGNMENTS TAB -->
+  <div class="scratch-panel active" id="sp-boxes">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:10px">
       <div style="display:flex;gap:10px;flex-wrap:wrap">
         <div style="background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:10px 16px">
           <div style="font-family:var(--mono);font-size:20px;font-weight:600;color:var(--accent)" id="sc-total-val">—</div>
-          <div style="font-size:10px;color:var(--muted);font-family:var(--mono);text-transform:uppercase;letter-spacing:.05em;margin-top:2px">Total Value</div>
+          <div style="font-size:10px;color:var(--muted);font-family:var(--mono);text-transform:uppercase;letter-spacing:.05em;margin-top:2px">Active Value</div>
         </div>
         <div style="background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:10px 16px">
           <div style="font-family:var(--mono);font-size:20px;font-weight:600;color:var(--accent)" id="sc-total-tix">—</div>
-          <div style="font-size:10px;color:var(--muted);font-family:var(--mono);text-transform:uppercase;letter-spacing:.05em;margin-top:2px">Total Tickets</div>
+          <div style="font-size:10px;color:var(--muted);font-family:var(--mono);text-transform:uppercase;letter-spacing:.05em;margin-top:2px">Active Tickets</div>
         </div>
         <div style="background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:10px 16px">
           <div style="font-family:var(--mono);font-size:20px;font-weight:600;color:#e05555" id="sc-low">—</div>
           <div style="font-size:10px;color:var(--muted);font-family:var(--mono);text-transform:uppercase;letter-spacing:.05em;margin-top:2px">Low Stock</div>
         </div>
       </div>
-      <input type="text" placeholder="Search box or game..." id="sc-search" oninput="renderScratchInv()" style="padding:7px 12px;border:1px solid var(--border);border-radius:5px;background:var(--surface);color:var(--text);font-size:13px;width:220px">
+      <button class="btn btn-primary" onclick="openScBoxModal(null)">+ Add box</button>
     </div>
     <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;overflow:hidden;overflow-x:auto">
-      <table style="width:100%;border-collapse:collapse;min-width:700px">
+      <table style="width:100%;border-collapse:collapse;min-width:750px">
         <thead><tr style="background:var(--surface2);border-bottom:1px solid var(--border)">
-          <th style="padding:10px 14px;text-align:left;font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;white-space:nowrap">Box</th>
-          <th style="padding:10px 14px;text-align:left;font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">Game</th>
-          <th style="padding:10px 14px;text-align:left;font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">Code</th>
-          <th style="padding:10px 14px;text-align:left;font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">Value</th>
-          <th style="padding:10px 14px;text-align:left;font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">Pack</th>
+          <th style="padding:10px 14px;text-align:left;font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">Box</th>
+          <th style="padding:10px 14px;text-align:left;font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">Game Code</th>
+          <th style="padding:10px 14px;text-align:left;font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">Game Name</th>
+          <th style="padding:10px 14px;text-align:left;font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">Face Value</th>
+          <th style="padding:10px 14px;text-align:left;font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">Pack Size</th>
           <th style="padding:10px 14px;text-align:left;font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">On Hand</th>
           <th style="padding:10px 14px;text-align:left;font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;min-width:120px">Stock</th>
           <th style="padding:10px 14px;text-align:left;font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">Value on Hand</th>
           <th style="padding:10px 14px"></th>
         </tr></thead>
-        <tbody id="sc-inv-tbody"><tr><td colspan="9" style="padding:30px;text-align:center;color:var(--muted)">Loading...</td></tr></tbody>
+        <tbody id="sc-boxes-tbody"><tr><td colspan="9" style="padding:30px;text-align:center;color:var(--muted)">Loading...</td></tr></tbody>
       </table>
     </div>
   </div>
 
-  <!-- DELIVERY -->
-  <div class="scratch-panel" id="sp-delivery">
-    <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:20px">
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px">
-        <div><label style="display:block;font-size:11px;font-family:var(--mono);color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">Delivery Date</label>
-          <input type="date" id="sc-del-date" style="width:100%;background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:8px 12px;border-radius:5px;font-size:13px"></div>
-        <div><label style="display:block;font-size:11px;font-family:var(--mono);color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">Notes (optional)</label>
-          <input type="text" id="sc-del-notes" placeholder="e.g. Monday delivery" style="width:100%;background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:8px 12px;border-radius:5px;font-size:13px"></div>
-      </div>
-      <div style="font-size:11px;font-family:var(--mono);color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px">Enter packs received per box</div>
-      <div id="sc-del-boxes" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px;margin-bottom:14px"></div>
-      <div id="sc-del-summary" style="display:none;background:rgba(200,169,110,.08);border:1px solid rgba(200,169,110,.2);border-radius:6px;padding:10px 14px;font-family:var(--mono);font-size:13px;color:#c8a96e;margin-bottom:14px"></div>
+  <!-- GAME LOOKUP TAB -->
+  <div class="scratch-panel" id="sp-games">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:10px">
+      <div style="font-size:13px;color:var(--muted)">All games from MD Lottery. Used to auto-fill face value and pack size when assigning a game to a box.</div>
       <div style="display:flex;gap:8px">
-        <button class="btn btn-primary" onclick="saveScratchDelivery()">Save Delivery</button>
-        <button class="btn" onclick="clearScratchDelivery()">Clear</button>
+        <input type="text" placeholder="Search code or name..." id="sc-game-search" oninput="renderGameLookup()"
+          style="padding:7px 12px;border:1px solid var(--border);border-radius:5px;background:var(--surface);color:var(--text);font-size:13px;width:220px">
+        <label class="btn btn-primary" style="cursor:pointer">
+          Import CSV
+          <input type="file" accept=".csv" id="sc-csv-input" style="display:none" onchange="importLotteryCSV(this)">
+        </label>
       </div>
-      <div id="sc-del-feedback" style="margin-top:10px"></div>
+    </div>
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;overflow:hidden;overflow-x:auto">
+      <table style="width:100%;border-collapse:collapse;min-width:550px">
+        <thead><tr style="background:var(--surface2);border-bottom:1px solid var(--border)">
+          <th style="padding:10px 14px;text-align:left;font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">Code</th>
+          <th style="padding:10px 14px;text-align:left;font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">Name</th>
+          <th style="padding:10px 14px;text-align:left;font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">Face Value</th>
+          <th style="padding:10px 14px;text-align:left;font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">Pack Size</th>
+          <th style="padding:10px 14px;text-align:left;font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">Pack Value</th>
+        </tr></thead>
+        <tbody id="sc-games-tbody"><tr><td colspan="5" style="padding:30px;text-align:center;color:var(--muted)">Loading...</td></tr></tbody>
+      </table>
     </div>
   </div>
 
-  <!-- HISTORY -->
+  <!-- DELIVERY HISTORY TAB -->
   <div class="scratch-panel" id="sp-history">
     <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;overflow:hidden;overflow-x:auto">
       <table style="width:100%;border-collapse:collapse;min-width:700px">
@@ -924,31 +930,9 @@ td{padding:9px 14px;vertical-align:middle}
       </table>
     </div>
   </div>
-
-  <!-- MANAGE BOXES -->
-  <div class="scratch-panel" id="sp-boxes">
-    <div style="display:flex;justify-content:flex-end;margin-bottom:12px">
-      <button class="btn btn-primary" onclick="openScBoxModal(null)">+ Add box</button>
-    </div>
-    <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;overflow:hidden;overflow-x:auto">
-      <table style="width:100%;border-collapse:collapse;min-width:600px">
-        <thead><tr style="background:var(--surface2);border-bottom:1px solid var(--border)">
-          <th style="padding:10px 14px;text-align:left;font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">Box #</th>
-          <th style="padding:10px 14px;text-align:left;font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">Game Name</th>
-          <th style="padding:10px 14px;text-align:left;font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">Code</th>
-          <th style="padding:10px 14px;text-align:left;font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">Face Value</th>
-          <th style="padding:10px 14px;text-align:left;font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">Pack Size</th>
-          <th style="padding:10px 14px;text-align:left;font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">Pack Value</th>
-          <th style="padding:10px 14px;text-align:left;font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">Status</th>
-          <th style="padding:10px 14px"></th>
-        </tr></thead>
-        <tbody id="sc-boxes-tbody"><tr><td colspan="8" style="padding:30px;text-align:center;color:var(--muted)">Loading...</td></tr></tbody>
-      </table>
-    </div>
-  </div>
 </div>
 
-<!-- SC BOX MODAL -->
+<!-- SC BOX MODAL --><!-- SC BOX MODAL -->
 <div class="modal-overlay" id="sc-box-modal">
   <div class="modal">
     <div class="modal-header">
@@ -957,18 +941,20 @@ td{padding:9px 14px;vertical-align:middle}
     </div>
     <div class="modal-body">
       <input type="hidden" id="sc-box-id">
+      <input type="hidden" id="sc-box-face-hidden">
+      <input type="hidden" id="sc-box-pack-hidden">
       <div class="form-grid">
         <div class="field"><label>Box Number</label><input type="number" id="sc-box-num" min="1" max="99"></div>
         <div class="field"><label>Status</label><select id="sc-box-status"><option value="active">Active</option><option value="closed">Closed out</option></select></div>
-        <div class="field"><label>Game Name</label><input type="text" id="sc-box-game" placeholder="e.g. 200X Cashword"></div>
-        <div class="field"><label>Game Code</label><input type="text" id="sc-box-code" placeholder="e.g. 797"></div>
-        <div class="field"><label>Face Value ($)</label>
-          <select id="sc-box-face"><option value="1">$1</option><option value="2">$2</option><option value="3">$3</option><option value="5">$5</option><option value="10">$10</option><option value="20">$20</option><option value="25">$25</option><option value="30">$30</option><option value="50">$50</option></select>
-        </div>
-        <div class="field"><label>Pack Size (tickets)</label><input type="number" id="sc-box-pack" min="1" placeholder="30"></div>
+      </div>
+      <div class="field">
+        <label>Game Code</label>
+        <input type="text" id="sc-box-code-input" placeholder="e.g. 797" oninput="scLookupGame(this.value.trim())" style="font-family:var(--mono);font-size:15px;font-weight:600;letter-spacing:.05em">
+        <div id="sc-game-info" style="font-size:12px;margin-top:6px;min-height:18px"></div>
+        <div style="font-size:11px;color:var(--muted);margin-top:4px">Enter the game code — face value and pack size auto-fill from the game lookup table.</div>
       </div>
       <div class="field"><label>Tickets on Hand</label><input type="number" id="sc-box-inv" min="0" placeholder="0">
-        <div style="font-size:11px;color:var(--muted);margin-top:4px">Only set manually during initial setup. Deliveries and daily reports update this automatically.</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:4px">Current tickets in this box. Updated automatically when daily reports are submitted.</div>
       </div>
     </div>
     <div class="modal-footer">
@@ -1953,6 +1939,12 @@ async function sbPatch(table, id, data) {
   const r = await fetch(`${SB}/rest/v1/${table}?id=eq.${id}`, {method:'PATCH', headers:H, body:JSON.stringify(data)});
   if (!r.ok) throw new Error(await r.text());
 }
+async function sbUpsert(table, data, onConflict) {
+  const r = await fetch(`${SB}/rest/v1/${table}?on_conflict=${onConflict}`, {
+    method:'POST', headers:{...H,'Prefer':'return=minimal,resolution=merge-duplicates'}, body:JSON.stringify(data)
+  });
+  if (!r.ok) throw new Error(await r.text());
+}
 function showToast(msg, type) {
   const el = g('scratch-alert');
   if (!el) return;
@@ -1965,7 +1957,8 @@ function showToast(msg, type) {
 
 // ─── SCRATCH TICKET BACKEND ───────────────────────────────────────────────────
 let SC_BOXES = [];
-let SC_DEL = {};
+let SC_GAMES = [];
+const GAMES_SEED = [{"store_id":1,"game_code":"613","game_name":"50000 CASH","face_value":20.0,"pack_size":30,"pack_value":600.0},{"store_id":1,"game_code":"655","game_name":"100000 CASH","face_value":30.0,"pack_size":30,"pack_value":900.0},{"store_id":1,"game_code":"681","game_name":"5000000 CASH","face_value":50.0,"pack_size":20,"pack_value":1000.0},{"store_id":1,"game_code":"690","game_name":"MEGA MONEY","face_value":30.0,"pack_size":30,"pack_value":900.0},{"store_id":1,"game_code":"711","game_name":"2000 LARGE","face_value":10.0,"pack_size":50,"pack_value":500.0},{"store_id":1,"game_code":"712","game_name":"5000 LARGE","face_value":30.0,"pack_size":30,"pack_value":900.0},{"store_id":1,"game_code":"718","game_name":"WIN 100 200 OR 500 3RD EDITION","face_value":20.0,"pack_size":30,"pack_value":600.0},{"store_id":1,"game_code":"726","game_name":"BONUS BINGO X20 2ND EDITION","face_value":20.0,"pack_size":30,"pack_value":600.0},{"store_id":1,"game_code":"734","game_name":"$5,000,000 FORTUNE","face_value":50.0,"pack_size":20,"pack_value":1000.0},{"store_id":1,"game_code":"736","game_name":"BACK TO THE FUTURE","face_value":2.0,"pack_size":100,"pack_value":200.0},{"store_id":1,"game_code":"739","game_name":"MORE MONEY","face_value":10.0,"pack_size":50,"pack_value":500.0},{"store_id":1,"game_code":"741","game_name":"LETS MAKE A DEAL","face_value":5.0,"pack_size":60,"pack_value":300.0},{"store_id":1,"game_code":"743","game_name":"FIRE","face_value":30.0,"pack_size":30,"pack_value":900.0},{"store_id":1,"game_code":"747","game_name":"LUCKY 7S MULTIPLIER","face_value":10.0,"pack_size":50,"pack_value":500.0},{"store_id":1,"game_code":"748","game_name":"LUCKY 777","face_value":20.0,"pack_size":30,"pack_value":600.0},{"store_id":1,"game_code":"749","game_name":"DIAMOND BINGO 6TH EDITION","face_value":3.0,"pack_size":100,"pack_value":300.0},{"store_id":1,"game_code":"750","game_name":"CASH BLAST","face_value":5.0,"pack_size":60,"pack_value":300.0},{"store_id":1,"game_code":"751","game_name":"WIN 50 100 OR 200 3RD EDITION","face_value":10.0,"pack_size":50,"pack_value":500.0},{"store_id":1,"game_code":"755","game_name":"CASH SCRATCH FEVER","face_value":5.0,"pack_size":60,"pack_value":300.0},{"store_id":1,"game_code":"758","game_name":"ALL ABOUT CASH","face_value":20.0,"pack_size":30,"pack_value":600.0},{"store_id":1,"game_code":"760","game_name":"RAVENS X10","face_value":10.0,"pack_size":50,"pack_value":500.0},{"store_id":1,"game_code":"761","game_name":"BREAK THE BANK","face_value":5.0,"pack_size":60,"pack_value":300.0},{"store_id":1,"game_code":"762","game_name":"100000 CROSSWORD 9TH EDITION","face_value":10.0,"pack_size":50,"pack_value":500.0},{"store_id":1,"game_code":"763","game_name":"DELUXE CROSSWORD 10TH EDITION","face_value":5.0,"pack_size":60,"pack_value":300.0},{"store_id":1,"game_code":"764","game_name":"JURASSIC PARK","face_value":5.0,"pack_size":60,"pack_value":300.0},{"store_id":1,"game_code":"765","game_name":"KINGS AND QUEENS","face_value":10.0,"pack_size":50,"pack_value":500.0},{"store_id":1,"game_code":"766","game_name":"ACE OF SPADES","face_value":30.0,"pack_size":30,"pack_value":900.0},{"store_id":1,"game_code":"767","game_name":"JUST 1 BUCK","face_value":1.0,"pack_size":200,"pack_value":200.0},{"store_id":1,"game_code":"768","game_name":"SNOW MUCH FUN","face_value":2.0,"pack_size":100,"pack_value":200.0},{"store_id":1,"game_code":"769","game_name":"CANDY CANE CASH","face_value":3.0,"pack_size":100,"pack_value":300.0},{"store_id":1,"game_code":"770","game_name":"FESTIVE FORTUNE","face_value":5.0,"pack_size":60,"pack_value":300.0},{"store_id":1,"game_code":"771","game_name":"SILVER BELLS BUCKS","face_value":10.0,"pack_size":50,"pack_value":500.0},{"store_id":1,"game_code":"772","game_name":"GIFTS OF GREEN","face_value":20.0,"pack_size":30,"pack_value":600.0},{"store_id":1,"game_code":"774","game_name":"HARLEM GLOBETROTTERS","face_value":2.0,"pack_size":100,"pack_value":200.0},{"store_id":1,"game_code":"775","game_name":"MONEY MAKER","face_value":5.0,"pack_size":60,"pack_value":300.0},{"store_id":1,"game_code":"776","game_name":"RED 5S DOUBLER","face_value":10.0,"pack_size":50,"pack_value":500.0},{"store_id":1,"game_code":"777","game_name":"200X THE CASH","face_value":30.0,"pack_size":30,"pack_value":900.0},{"store_id":1,"game_code":"779","game_name":"5X THE CASH","face_value":1.0,"pack_size":200,"pack_value":200.0},{"store_id":1,"game_code":"780","game_name":"10X THE CASH","face_value":2.0,"pack_size":100,"pack_value":200.0},{"store_id":1,"game_code":"781","game_name":"20X THE CASH","face_value":5.0,"pack_size":60,"pack_value":300.0},{"store_id":1,"game_code":"782","game_name":"50X THE CASH","face_value":10.0,"pack_size":50,"pack_value":500.0},{"store_id":1,"game_code":"783","game_name":"100X THE CASH","face_value":20.0,"pack_size":30,"pack_value":600.0},{"store_id":1,"game_code":"784","game_name":"BONUS CROSSWORD 8TH EDITION","face_value":3.0,"pack_size":100,"pack_value":300.0},{"store_id":1,"game_code":"785","game_name":"CASH TRIPLER","face_value":1.0,"pack_size":200,"pack_value":200.0},{"store_id":1,"game_code":"786","game_name":"WINNING STREAK","face_value":5.0,"pack_size":60,"pack_value":300.0},{"store_id":1,"game_code":"787","game_name":"MONEY","face_value":10.0,"pack_size":50,"pack_value":500.0},{"store_id":1,"game_code":"788","game_name":"1000000 CROSSWORD","face_value":25.0,"pack_size":30,"pack_value":750.0},{"store_id":1,"game_code":"789","game_name":"5000000 LUXE","face_value":50.0,"pack_size":20,"pack_value":1000.0},{"store_id":1,"game_code":"790","game_name":"MARYLAND TREASURES","face_value":2.0,"pack_size":100,"pack_value":200.0},{"store_id":1,"game_code":"791","game_name":"THE BIG SPIN 2ND EDITION","face_value":5.0,"pack_size":60,"pack_value":300.0},{"store_id":1,"game_code":"792","game_name":"BINGO X10 9TH EDITION","face_value":10.0,"pack_size":50,"pack_value":500.0},{"store_id":1,"game_code":"793","game_name":"SCRATCH AND MATCH","face_value":10.0,"pack_size":50,"pack_value":500.0},{"store_id":1,"game_code":"794","game_name":"MS PAC MAN","face_value":3.0,"pack_size":100,"pack_value":300.0},{"store_id":1,"game_code":"795","game_name":"WIN $25, $50 OR $100","face_value":5.0,"pack_size":60,"pack_value":300.0},{"store_id":1,"game_code":"796","game_name":"ROSE GOLD","face_value":10.0,"pack_size":50,"pack_value":500.0},{"store_id":1,"game_code":"797","game_name":"DIAMONDS & GOLD","face_value":30.0,"pack_size":30,"pack_value":900.0}];
 
 function showScratchTab(name, btn) {
   document.querySelectorAll('.scratch-tab').forEach(b => b.classList.remove('active'));
@@ -1973,44 +1966,68 @@ function showScratchTab(name, btn) {
   g('sp-' + name).classList.add('active');
   if (btn) btn.classList.add('active');
   if (name === 'history') loadScHistory();
-  if (name === 'delivery') renderScDelBoxes();
-  if (name === 'boxes') renderScBoxes();
+  if (name === 'games') renderGameLookup();
 }
 
 async function loadScratch() {
-  SC_BOXES = await sbGet('scratch_boxes', 'order=box_number.asc').catch(() => []);
-  renderScratchInv();
+  const [boxes, games] = await Promise.all([
+    sbGet('scratch_boxes', 'order=box_number.asc').catch(() => []),
+    sbGet('scratch_games', 'order=game_code.asc').catch(() => [])
+  ]);
+  SC_BOXES = boxes;
+  SC_GAMES = games.length ? games : GAMES_SEED;
+  // If no games in DB yet, seed them
+  if (!games.length) await seedGames();
+  renderScBoxes();
+  renderGameLookup();
 }
 
-function renderScratchInv() {
-  const search = (g('sc-search')?.value || '').toLowerCase();
+async function seedGames() {
+  try {
+    await sbUpsert('scratch_games', GAMES_SEED, 'store_id,game_code');
+    SC_GAMES = await sbGet('scratch_games', 'order=game_code.asc').catch(() => GAMES_SEED);
+    console.log('Games seeded:', SC_GAMES.length);
+  } catch(e) { console.log('Seed error:', e.message); }
+}
+
+// Game lookup by code
+function lookupGame(code) {
+  return SC_GAMES.find(g => g.game_code === String(code).trim()) || null;
+}
+
+// ── BOX ASSIGNMENTS ───────────────────────────────────────────────────────────
+function renderScBoxes() {
   const boxes = SC_BOXES.filter(b => b.is_active !== false && b.status !== 'closed');
-  const filtered = search ? boxes.filter(b =>
-    String(b.box_number).includes(search) ||
-    (b.game_name||'').toLowerCase().includes(search) ||
-    (b.game_code||'').toLowerCase().includes(search)
-  ) : boxes;
-  const totalVal = boxes.reduce((a,b) => a + (b.tickets_on_hand||0) * parseFloat(b.face_value||0), 0);
+  const totalVal = boxes.reduce((a,b) => {
+    const g = lookupGame(b.current_game_code);
+    return a + (b.tickets_on_hand||0) * (g ? parseFloat(g.face_value) : parseFloat(b.face_value||0));
+  }, 0);
   const totalTix = boxes.reduce((a,b) => a + (b.tickets_on_hand||0), 0);
-  const lowStock = boxes.filter(b => (b.tickets_on_hand||0) > 0 && (b.tickets_on_hand||0) < (b.pack_size||30)).length;
+  const lowStock = boxes.filter(b => {
+    const g = lookupGame(b.current_game_code);
+    const pack = g ? g.pack_size : (b.pack_size||30);
+    return (b.tickets_on_hand||0) > 0 && (b.tickets_on_hand||0) < pack;
+  }).length;
   if (g('sc-total-val')) g('sc-total-val').textContent = fmt(totalVal);
   if (g('sc-total-tix')) g('sc-total-tix').textContent = totalTix.toLocaleString();
   if (g('sc-low')) g('sc-low').textContent = lowStock;
-  const tbody = g('sc-inv-tbody');
-  if (!filtered.length) { tbody.innerHTML = '<tr><td colspan="9" style="padding:30px;text-align:center;color:var(--muted)">No boxes found</td></tr>'; return; }
-  tbody.innerHTML = filtered.map(b => {
+
+  const tbody = g('sc-boxes-tbody');
+  if (!SC_BOXES.length) { tbody.innerHTML = '<tr><td colspan="9" style="padding:30px;text-align:center;color:var(--muted)">No boxes yet — add a box to get started</td></tr>'; return; }
+  tbody.innerHTML = SC_BOXES.map(b => {
+    const game = lookupGame(b.current_game_code);
+    const fv = game ? parseFloat(game.face_value) : parseFloat(b.face_value||0);
+    const pack = game ? game.pack_size : (b.pack_size||30);
     const onHand = b.tickets_on_hand || 0;
-    const pack = b.pack_size || 30;
-    const fv = parseFloat(b.face_value || 0);
     const pct = Math.min(100, Math.round(onHand / (pack * 2) * 100));
     const barColor = onHand === 0 ? '#444' : onHand < pack ? '#e05555' : '#6abf8a';
     const stockLabel = onHand === 0 ? 'OUT' : onHand < pack ? 'LOW' : 'OK';
     const stockColor = onHand === 0 ? 'var(--muted)' : onHand < pack ? '#e05555' : '#6abf8a';
     return `<tr style="border-bottom:1px solid var(--border)">
       <td style="padding:10px 14px;font-family:var(--mono);color:var(--accent);font-weight:600">#${b.box_number}</td>
-      <td style="padding:10px 14px;font-weight:500">${b.game_name||'<span style="color:var(--muted)">—</span>'}</td>
-      <td style="padding:10px 14px;font-family:var(--mono);color:var(--muted);font-size:12px">${b.game_code||'—'}</td>
-      <td style="padding:10px 14px"><span style="font-family:var(--mono);font-size:12px;padding:2px 8px;background:rgba(200,169,110,.1);color:#c8a96e;border-radius:3px">$${fv%1===0?fv.toFixed(0):fv.toFixed(2)}</span></td>
+      <td style="padding:10px 14px;font-family:var(--mono);font-weight:600;color:var(--text)">${b.current_game_code||'<span style="color:var(--muted)">—</span>'}</td>
+      <td style="padding:10px 14px;font-size:13px">${game ? game.game_name : (b.game_name||'<span style="color:var(--muted)">—</span>')}</td>
+      <td style="padding:10px 14px"><span style="font-family:var(--mono);font-size:12px;padding:2px 8px;background:rgba(200,169,110,.1);color:#c8a96e;border-radius:3px">${fv>0?'$'+(fv%1===0?fv.toFixed(0):fv.toFixed(2)):'—'}</span></td>
       <td style="padding:10px 14px;font-family:var(--mono);font-size:12px;color:var(--muted)">${pack}</td>
       <td style="padding:10px 14px;font-family:var(--mono);font-weight:600;color:${stockColor}">${onHand.toLocaleString()}</td>
       <td style="padding:10px 14px">
@@ -2032,148 +2049,118 @@ function renderScratchInv() {
   }).join('');
 }
 
-function renderScDelBoxes() {
-  if (!g('sc-del-date').value) g('sc-del-date').value = new Date().toLocaleDateString('en-CA');
-  SC_DEL = {};
-  const boxes = SC_BOXES.filter(b => b.status !== 'closed' && b.is_active !== false);
-  g('sc-del-boxes').innerHTML = boxes.map(b => {
-    const fv = parseFloat(b.face_value||0);
-    return `<div style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:12px">
-      <div style="display:flex;justify-content:space-between;margin-bottom:8px">
-        <div>
-          <div style="font-family:var(--mono);font-size:11px;color:var(--accent);font-weight:600">Box #${b.box_number}</div>
-          <div style="font-size:12px;font-weight:500;margin-top:2px">${b.game_name||'Unnamed'}</div>
-          <div style="font-size:11px;color:var(--muted);font-family:var(--mono)">${b.game_code||''} · $${fv%1===0?fv.toFixed(0):fv.toFixed(2)} · ${b.pack_size||30}pk</div>
-        </div>
-        <div style="font-size:11px;color:var(--muted);font-family:var(--mono)">${b.tickets_on_hand||0} on hand</div>
-      </div>
-      <div style="display:flex;align-items:center;gap:8px">
-        <span style="font-size:11px;color:var(--muted)">Packs:</span>
-        <input type="number" min="0" value="0" style="width:65px;background:var(--bg);border:1px solid var(--border);color:var(--text);padding:5px 8px;border-radius:4px;font-family:var(--mono);font-size:13px;text-align:center"
-          oninput="updateScDel(${b.id},${b.pack_size||30},${fv},this.value)">
-        <span style="font-size:11px;color:var(--muted)" id="sc-dv-${b.id}"></span>
-      </div>
-    </div>`;
-  }).join('');
-}
-
-function updateScDel(boxId, packSize, fv, val) {
-  const packs = parseInt(val) || 0;
-  if (packs > 0) SC_DEL[boxId] = { packs, tickets: packs * packSize, value: packs * packSize * fv };
-  else delete SC_DEL[boxId];
-  const el = g('sc-dv-' + boxId);
-  if (el) el.textContent = packs > 0 ? `${packs * packSize} tickets / ${fmt(packs * packSize * fv)}` : '';
-  const items = Object.values(SC_DEL);
-  const sumEl = g('sc-del-summary');
-  if (!items.length) { sumEl.style.display = 'none'; return; }
-  const tt = items.reduce((a,i) => a + i.tickets, 0);
-  const tv = items.reduce((a,i) => a + i.value, 0);
-  sumEl.style.display = 'block';
-  sumEl.textContent = `${Object.keys(SC_DEL).length} boxes · ${tt} tickets · ${fmt(tv)}`;
-}
-
-async function saveScratchDelivery() {
-  const items = Object.entries(SC_DEL);
-  if (!items.length) { showToast('No packs entered', 'error'); return; }
-  const date = g('sc-del-date').value;
-  const notes = g('sc-del-notes').value.trim();
-  try {
-    const deliveries = items.map(([boxId, item]) => {
-      const box = SC_BOXES.find(b => b.id == boxId);
-      return { store_id: SID, delivery_date: date, box_number: box.box_number,
-        game_name: box.game_name||null, game_code: box.game_code||null,
-        face_value: parseFloat(box.face_value||0), packs_received: item.packs,
-        tickets_received: item.tickets, total_value: parseFloat(item.value.toFixed(2)), notes: notes||null };
-    });
-    await sbPost('scratch_deliveries', deliveries);
-    for (const [boxId, item] of items) {
-      const box = SC_BOXES.find(b => b.id == boxId);
-      await sbPatch('scratch_boxes', boxId, { tickets_on_hand: (box.tickets_on_hand||0) + item.tickets });
-    }
-    showToast(`Delivery saved — ${items.length} box${items.length>1?'es':''} updated`, 'success');
-    clearScratchDelivery();
-    await loadScratch();
-  } catch(e) { showToast('Error: ' + e.message, 'error'); }
-}
-
-function clearScratchDelivery() {
-  SC_DEL = {};
-  if (g('sc-del-date')) g('sc-del-date').value = new Date().toLocaleDateString('en-CA');
-  if (g('sc-del-notes')) g('sc-del-notes').value = '';
-  if (g('sc-del-summary')) g('sc-del-summary').style.display = 'none';
-  renderScDelBoxes();
-}
-
-async function loadScHistory() {
-  const rows = await sbGet('scratch_deliveries', 'order=delivery_date.desc,created_at.desc&limit=100').catch(()=>[]);
-  const tbody = g('sc-hist-tbody');
-  if (!rows.length) { tbody.innerHTML = '<tr><td colspan="9" style="padding:30px;text-align:center;color:var(--muted)">No deliveries yet</td></tr>'; return; }
-  tbody.innerHTML = rows.map(r => {
-    const fv = parseFloat(r.face_value||0);
+// ── GAME LOOKUP ───────────────────────────────────────────────────────────────
+function renderGameLookup() {
+  const search = (g('sc-game-search')?.value || '').toLowerCase();
+  const games = search ? SC_GAMES.filter(g =>
+    g.game_code.includes(search) || g.game_name.toLowerCase().includes(search)
+  ) : SC_GAMES;
+  const tbody = g('sc-games-tbody');
+  if (!games.length) { tbody.innerHTML = '<tr><td colspan="5" style="padding:30px;text-align:center;color:var(--muted)">No games found</td></tr>'; return; }
+  tbody.innerHTML = games.map(g => {
+    const fv = parseFloat(g.face_value||0);
     return `<tr style="border-bottom:1px solid var(--border)">
-      <td style="padding:9px 14px;font-family:var(--mono);font-size:12px;color:var(--muted)">${r.delivery_date}</td>
-      <td style="padding:9px 14px;font-family:var(--mono);color:var(--accent);font-weight:600">Box #${r.box_number}</td>
-      <td style="padding:9px 14px;font-weight:500">${r.game_name||'—'}</td>
-      <td style="padding:9px 14px;font-family:var(--mono);font-size:12px;color:var(--muted)">${r.game_code||'—'}</td>
-      <td style="padding:9px 14px"><span style="font-family:var(--mono);font-size:12px;padding:2px 8px;background:rgba(200,169,110,.1);color:#c8a96e;border-radius:3px">$${fv%1===0?fv.toFixed(0):fv.toFixed(2)}</span></td>
-      <td style="padding:9px 14px;font-family:var(--mono)">${r.packs_received}</td>
-      <td style="padding:9px 14px;font-family:var(--mono)">${(r.tickets_received||0).toLocaleString()}</td>
-      <td style="padding:9px 14px;font-family:var(--mono);color:var(--accent)">${fmt(r.total_value)}</td>
-      <td style="padding:9px 14px;font-size:12px;color:var(--muted)">${r.notes||'—'}</td>
+      <td style="padding:9px 14px;font-family:var(--mono);font-weight:600;color:var(--accent)">${g.game_code}</td>
+      <td style="padding:9px 14px;font-weight:500">${g.game_name}</td>
+      <td style="padding:9px 14px"><span style="font-family:var(--mono);font-size:12px;padding:2px 8px;background:rgba(200,169,110,.1);color:#c8a96e;border-radius:3px">${fv%1===0?fv.toFixed(0):fv.toFixed(2)}</span></td>
+      <td style="padding:9px 14px;font-family:var(--mono);font-size:12px;color:var(--muted)">${g.pack_size} tickets</td>
+      <td style="padding:9px 14px;font-family:var(--mono);color:var(--accent)">${fmt(g.pack_value||0)}</td>
     </tr>`;
   }).join('');
 }
 
-function renderScBoxes() {
-  const tbody = g('sc-boxes-tbody');
-  if (!SC_BOXES.length) { tbody.innerHTML = '<tr><td colspan="8" style="padding:30px;text-align:center;color:var(--muted)">No boxes</td></tr>'; return; }
-  tbody.innerHTML = SC_BOXES.map(b => {
-    const fv = parseFloat(b.face_value||0);
-    const pack = b.pack_size||30;
-    return `<tr style="border-bottom:1px solid var(--border)">
-      <td style="padding:9px 14px;font-family:var(--mono);color:var(--accent);font-weight:600">#${b.box_number}</td>
-      <td style="padding:9px 14px;font-weight:500">${b.game_name||'<span style="color:var(--muted)">—</span>'}</td>
-      <td style="padding:9px 14px;font-family:var(--mono);font-size:12px;color:var(--muted)">${b.game_code||'—'}</td>
-      <td style="padding:9px 14px"><span style="font-family:var(--mono);font-size:12px;padding:2px 8px;background:rgba(200,169,110,.1);color:#c8a96e;border-radius:3px">$${fv%1===0?fv.toFixed(0):fv.toFixed(2)}</span></td>
-      <td style="padding:9px 14px;font-family:var(--mono);font-size:12px;color:var(--muted)">${pack} tickets</td>
-      <td style="padding:9px 14px;font-family:var(--mono);color:var(--accent)">${fmt(fv*pack)} / pack</td>
-      <td style="padding:9px 14px"><span style="font-size:11px;padding:2px 8px;border-radius:3px;background:${b.status==='closed'?'rgba(100,100,100,.1)':'rgba(106,191,138,.1)'};color:${b.status==='closed'?'var(--muted)':'#6abf8a'}">${b.status||'active'}</span></td>
-      <td style="padding:9px 14px"><button class="btn btn-sm btn-primary" onclick="openScBoxModal(${b.id})">Edit</button></td>
-    </tr>`;
-  }).join('');
+// ── CSV IMPORT ────────────────────────────────────────────────────────────────
+function importLotteryCSV(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = async e => {
+    try {
+      const lines = e.target.result.trim().split('\n');
+      const headers = lines[0].split(',').map(h => h.replace(/"/g,'').trim());
+      const rows = [];
+      for (let i = 1; i < lines.length; i++) {
+        const vals = lines[i].split(',').map(v => v.replace(/"/g,'').trim());
+        const row = {};
+        headers.forEach((h,j) => row[h] = vals[j]||'');
+        if (row['Game #'] === 'Total' || !row['Game #']) continue;
+        rows.push({
+          store_id: SID,
+          game_code: row['Game #'].trim(),
+          game_name: row['Name'].trim(),
+          face_value: parseFloat(row['Ticket Cost'].replace(',','')||0),
+          pack_size: parseInt(row['Tkts Per Pack'].replace(',','')||0),
+          pack_value: parseFloat(row['Pack Value'].replace(',','')||0),
+          is_active: true
+        });
+      }
+      await sbUpsert('scratch_games', rows, 'store_id,game_code');
+      SC_GAMES = await sbGet('scratch_games', 'order=game_code.asc').catch(() => rows);
+      renderGameLookup();
+      showToast(`Imported ${rows.length} games from MD Lottery CSV`, 'success');
+    } catch(e) { showToast('CSV import error: ' + e.message, 'error'); }
+    input.value = '';
+  };
+  reader.readAsText(file);
 }
 
+// ── BOX MODAL ─────────────────────────────────────────────────────────────────
 function openScBoxModal(id) {
   const box = id ? SC_BOXES.find(b => b.id === id) : null;
   g('sc-box-modal-title').textContent = box ? `Edit Box #${box.box_number}` : 'Add Box';
   g('sc-box-id').value = box?.id || '';
   g('sc-box-num').value = box?.box_number || '';
-  g('sc-box-game').value = box?.game_name || '';
-  g('sc-box-code').value = box?.game_code || '';
-  g('sc-box-face').value = box?.face_value || '10';
-  g('sc-box-pack').value = box?.pack_size || '';
   g('sc-box-inv').value = box?.tickets_on_hand || 0;
   g('sc-box-status').value = box?.status || 'active';
+
+  // Game code field with lookup
+  const codeEl = g('sc-box-code-input');
+  if (codeEl) codeEl.value = box?.current_game_code || '';
+  scLookupGame(box?.current_game_code || '');
   openModal('sc-box-modal');
+}
+
+function scLookupGame(code) {
+  const game = lookupGame(code);
+  const infoEl = g('sc-game-info');
+  if (!infoEl) return;
+  if (game) {
+    infoEl.innerHTML = `<span style="color:#6abf8a">✓ ${game.game_name} — ${fmt(game.face_value)} face · ${game.pack_size} tickets/pack</span>`;
+  } else if (code) {
+    infoEl.innerHTML = `<span style="color:#e05555">Game code ${code} not found in lookup</span>`;
+  } else {
+    infoEl.innerHTML = '';
+  }
 }
 
 async function saveScBox() {
   const id = g('sc-box-id').value;
-  const data = { store_id: SID, box_number: parseInt(g('sc-box-num').value),
-    game_name: g('sc-box-game').value.trim()||null, game_code: g('sc-box-code').value.trim()||null,
-    face_value: parseFloat(g('sc-box-face').value), pack_size: parseInt(g('sc-box-pack').value),
+  const code = g('sc-box-code-input').value.trim();
+  const game = lookupGame(code);
+  const data = {
+    store_id: SID,
+    box_number: parseInt(g('sc-box-num').value),
+    current_game_code: code || null,
+    current_game_name: game ? game.game_name : null,
+    game_name: game ? game.game_name : null,
+    game_code: code || null,
+    face_value: game ? game.face_value : parseFloat(g('sc-box-face-hidden').value||0),
+    pack_size: game ? game.pack_size : parseInt(g('sc-box-pack-hidden').value||0),
     tickets_on_hand: parseInt(g('sc-box-inv').value)||0,
-    status: g('sc-box-status').value, is_active: g('sc-box-status').value === 'active' };
+    status: g('sc-box-status').value,
+    is_active: g('sc-box-status').value === 'active'
+  };
   try {
     if (id) await sbPatch('scratch_boxes', id, data);
     else await sbPost('scratch_boxes', data);
     closeModal('sc-box-modal');
     showToast('Box saved', 'success');
     SC_BOXES = await sbGet('scratch_boxes', 'order=box_number.asc').catch(()=>[]);
-    renderScratchInv(); renderScBoxes();
+    renderScBoxes();
   } catch(e) { showToast('Error: ' + e.message, 'error'); }
 }
 
+// ── ADJUST ────────────────────────────────────────────────────────────────────
 function openScAdj(id, boxNum, current) {
   g('sc-adj-id').value = id;
   g('sc-adj-title').textContent = `Adjust Inventory — Box #${boxNum}`;
@@ -2189,8 +2176,29 @@ async function saveScAdj() {
     closeModal('sc-adj-modal');
     showToast('Inventory updated', 'success');
     SC_BOXES = await sbGet('scratch_boxes', 'order=box_number.asc').catch(()=>[]);
-    renderScratchInv();
+    renderScBoxes();
   } catch(e) { showToast('Error: ' + e.message, 'error'); }
+}
+
+// ── DELIVERY HISTORY ──────────────────────────────────────────────────────────
+async function loadScHistory() {
+  const rows = await sbGet('scratch_deliveries', 'order=delivery_date.desc,created_at.desc&limit=100').catch(()=>[]);
+  const tbody = g('sc-hist-tbody');
+  if (!rows.length) { tbody.innerHTML = '<tr><td colspan="9" style="padding:30px;text-align:center;color:var(--muted)">No deliveries yet</td></tr>'; return; }
+  tbody.innerHTML = rows.map(r => {
+    const fv = parseFloat(r.face_value||0);
+    return `<tr style="border-bottom:1px solid var(--border)">
+      <td style="padding:9px 14px;font-family:var(--mono);font-size:12px;color:var(--muted)">${r.delivery_date}</td>
+      <td style="padding:9px 14px;font-family:var(--mono);color:var(--accent);font-weight:600">Box #${r.box_number}</td>
+      <td style="padding:9px 14px;font-weight:500">${r.game_name||'—'}</td>
+      <td style="padding:9px 14px;font-family:var(--mono);font-size:12px;color:var(--muted)">${r.game_code||'—'}</td>
+      <td style="padding:9px 14px"><span style="font-family:var(--mono);font-size:12px;padding:2px 8px;background:rgba(200,169,110,.1);color:#c8a96e;border-radius:3px">${fv>0?'$'+(fv%1===0?fv.toFixed(0):fv.toFixed(2)):'—'}</span></td>
+      <td style="padding:9px 14px;font-family:var(--mono)">${r.packs_received}</td>
+      <td style="padding:9px 14px;font-family:var(--mono)">${(r.tickets_received||0).toLocaleString()}</td>
+      <td style="padding:9px 14px;font-family:var(--mono);color:var(--accent)">${fmt(r.total_value)}</td>
+      <td style="padding:9px 14px;font-size:12px;color:var(--muted)">${r.notes||'—'}</td>
+    </tr>`;
+  }).join('');
 }
 
 </script>
