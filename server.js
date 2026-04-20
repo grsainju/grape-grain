@@ -135,7 +135,7 @@ app.get('/api/square/day', async (req, res) => {
       } while (orderCursor);
 
       let liveGross = 0, liveTax = 0, liveDisc = 0, liveRet = 0;
-      let liveCash = 0, liveCard = 0;
+      let liveCash = 0, liveCard = 0, liveScratch = 0;
       const itemMap = {};
 
       for (const order of allOrders) {
@@ -151,6 +151,8 @@ app.get('/api/square/day', async (req, res) => {
           const name = item.name || 'Unknown';
           const amt = (item.gross_sales_money?.amount || 0) / 100;
           if (amt <= 0) continue;
+          // Track scratch lotto separately by name pattern
+          if (name.match(/^\d+\s*\$|scratch|lotto|lottery/i)) { liveScratch += amt; continue; }
           itemMap[name] = (itemMap[name] || 0) + amt;
         }
       }
@@ -180,12 +182,13 @@ app.get('/api/square/day', async (req, res) => {
 
       return res.json({
         date,
-        netSales: parseFloat((liveGross - liveTax).toFixed(2)),
+        netSales: parseFloat((liveGross - liveTax - liveScratch).toFixed(2)),
         grossSales: parseFloat(liveGross.toFixed(2)),
         tax: parseFloat(liveTax.toFixed(2)),
         discounts: parseFloat(liveDisc.toFixed(2)),
         returns: parseFloat(liveRet.toFixed(2)),
         fees: parseFloat(totalFees.toFixed(2)),
+        scratchLotto: parseFloat(liveScratch.toFixed(2)),
         cash: parseFloat(liveCash.toFixed(2)),
         card: parseFloat(liveCard.toFixed(2)),
         transactions: allOrders.length,
