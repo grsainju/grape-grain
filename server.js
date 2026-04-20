@@ -1274,6 +1274,10 @@ app.get('/api/sales/monthly/net', async (req, res) => {
     const grossSalesMonth = parseFloat((netSales + scratchTotal).toFixed(2));
     const netSalesMonth = parseFloat((grossSalesMonth - totalTax - scratchTotal).toFixed(2));
 
+    // Exclude today from days count — today is still in progress
+    const todayET = new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' });
+    const completedDays = rows.filter(r => r.sale_date < todayET).length;
+
     res.json({
       month: parseInt(month), year: parseInt(year),
       netSales: netSalesMonth,
@@ -1282,7 +1286,7 @@ app.get('/api/sales/monthly/net', async (req, res) => {
       discounts: parseFloat(totalDiscounts.toFixed(2)),
       returns: parseFloat(totalReturns.toFixed(2)),
       scratchLotto: parseFloat(scratchTotal.toFixed(2)),
-      days: rows.length,
+      days: completedDays,
       transactions,
       useImported
     });
@@ -1297,12 +1301,17 @@ app.get('*', (req, res) => {
 // ── NIGHTLY SYNC (called by cron or manually) ─────────────────────────────────
 async function runNightlySync() {
   try {
-    const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0,10);
+    // At 2am ET, sync yesterday (the just-completed business day)
+    const etNow = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/New_York' }));
+    const yesterday = new Date(etNow);
+    yesterday.setDate(etNow.getDate() - 1);
+    const dateStr = yesterday.toLocaleDateString('en-CA'); // YYYY-MM-DD
+    console.log(`Nightly sync: syncing ${dateStr}`);
     const { default: fetch } = await import('node-fetch');
     const r = await fetch(`http://localhost:${PORT}/api/square/sync`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ start: yesterday, end: yesterday })
+      body: JSON.stringify({ start: dateStr, end: dateStr })
     });
     const result = await r.json();
     console.log('Nightly sync result:', result);
@@ -1311,17 +1320,20 @@ async function runNightlySync() {
   }
 }
 
-// Schedule nightly sync at 2am ET
+// Schedule nightly sync at 2am ET (6am UTC during EDT, 7am UTC during EST)
 function scheduleSyncs() {
   const now = new Date();
   const nextSync = new Date();
-  nextSync.setHours(7, 0, 0, 0); // 2am ET = 7am UTC
-  if (nextSync <= now) nextSync.setDate(nextSync.getDate() + 1);
-  const msUntilSync = nextSync - now;
-  console.log(`Next sync scheduled in ${Math.round(msUntilSync/1000/60)} minutes`);
+  // Use America/New_York — calculate next 2am ET
+  const etNow = new Date(now.toLocaleString('en-US', { timeZone: 'America/New_York' }));
+  const etTarget = new Date(etNow);
+  etTarget.setHours(2, 0, 0, 0);
+  if (etTarget <= etNow) etTarget.setDate(etTarget.getDate() + 1);
+  const msUntilSync = etTarget - etNow;
+  console.log(`Next nightly sync in ${Math.round(msUntilSync/1000/60)} minutes (2am ET)`);
   setTimeout(() => {
     runNightlySync();
-    setInterval(runNightlySync, 24 * 60 * 60 * 1000); // then every 24h
+    setInterval(runNightlySync, 24 * 60 * 60 * 1000);
   }, msUntilSync);
 }
 
