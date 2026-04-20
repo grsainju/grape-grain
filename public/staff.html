@@ -285,7 +285,7 @@ async function init(){
 
   // Build kiosk denoms from unique face values
   const km={};
-  boxes.forEach(b=>{if(!km[b.face_value])km[b.face_value]={faceValue:b.face_value,packSize:b.pack_size,countAdded:0};});
+  boxes.forEach(b=>{if(!km[b.face_value])km[b.face_value]={faceValue:b.face_value,packSize:b.pack_size,countAdded:0,games:[]};});
   S.kiosk=Object.values(km).sort((a,b)=>a.faceValue-b.faceValue);
 
   if(existing.length){
@@ -303,7 +303,20 @@ async function init(){
     const ps=game?game.pack_size:b.pack_size;
     return{bn:b.box_number,fv,ps,gc:b.current_game_code||'',gn:game?game.game_name:'',start:e?e.start_count:0,addCode:e?e.added_game_code||b.current_game_code||'':'',add:e?e.added_count:0,end:e?e.end_count:0};
   });
-    kd.forEach(k=>{const x=S.kiosk.find(i=>parseFloat(i.faceValue)===parseFloat(k.face_value));if(x)x.countAdded=k.count_added;});
+    // Restore kiosk entries — group by face_value and rebuild games array
+  const kdByFv={};
+  kd.forEach(k=>{
+    const fv=parseFloat(k.face_value);
+    if(!kdByFv[fv])kdByFv[fv]=[];
+    kdByFv[fv].push({code:k.game_code||'',name:k.game_name||'',count:k.count_added||0});
+  });
+  S.kiosk.forEach(k=>{
+    const fv=parseFloat(k.faceValue);
+    if(kdByFv[fv]){
+      k.games=kdByFv[fv];
+      k.countAdded=kdByFv[fv].reduce((a,g)=>a+(g.count||0),0);
+    }
+  });
     S.pays=pays.map(p=>({v:p.vendor_name||'',a:p.amount,n:p.note||''}));
     S.drops=drops.map(d=>({a:d.amount,n:d.note||''}));
     const rep=existing[0];
@@ -339,6 +352,8 @@ function getValStyle(v){
 function lookupGameByCode(code){
   return S.games.find(g=>g.game_code===String(code||'').trim())||null;
 }
+// Debounce timers for auto-save
+const _autoSaveTimers={};
 function onAddCode(i, code){
   code=code.trim().toUpperCase();
   const game=lookupGameByCode(code);
@@ -348,12 +363,15 @@ function onAddCode(i, code){
     l.addFv=parseFloat(game.face_value);
     l.addPs=game.pack_size;
     l.addName=game.game_name;
-    l.add=game.pack_size; // auto-fill one full pack
+    l.add=game.pack_size;
     const row=g('scratch-tbody').querySelectorAll('tr')[i];
     if(row){
       const codeInfo=row.querySelector('.add-code-info');
       if(codeInfo){codeInfo.textContent=game.game_name+' ('+game.pack_size+' tickets)';codeInfo.style.color='var(--green)';}
     }
+    // Auto-save game code to box after 800ms debounce
+    clearTimeout(_autoSaveTimers[i]);
+    _autoSaveTimers[i]=setTimeout(()=>autoSaveBoxGame(i,code,game),800);
   } else {
     l.addFv=null;l.addPs=null;l.addName=null;l.add=0;
     if(code){
@@ -363,6 +381,30 @@ function onAddCode(i, code){
     }
   }
   calcAll();
+}
+async function autoSaveBoxGame(i,code,game){
+  const box=S.boxes[i];
+  if(!box)return;
+  // Only save if game changed
+  if(box.current_game_code===code)return;
+  try{
+    await fetch(`${SB}/rest/v1/scratch_boxes?id=eq.${box.id}`,{
+      method:'PATCH',headers:H,
+      body:JSON.stringify({
+        current_game_code:code,
+        current_game_name:game.game_name,
+        game_name:game.game_name,
+        game_code:code,
+        face_value:game.face_value,
+        pack_size:game.pack_size
+      })
+    });
+    box.current_game_code=code; // update local state
+    // Show brief saved indicator
+    const row=g('scratch-tbody').querySelectorAll('tr')[i];
+    const codeInfo=row?.querySelector('.add-code-info');
+    if(codeInfo){const prev=codeInfo.textContent;codeInfo.textContent+=' ✓ saved';setTimeout(()=>codeInfo.textContent=prev,1500);}
+  }catch(e){console.log('Auto-save error:',e.message);}
 }
 function renderScratch(){
   g('scratch-tbody').innerHTML=S.lines.map((l,i)=>{
@@ -417,14 +459,54 @@ function calcScratch(){
 }
 
 function renderKiosk(){
-  g('kiosk-tbody').innerHTML=S.kiosk.map((k,i)=>{
-    const v=parseFloat(k.faceValue);const vLabel='$'+(v%1===0?v.toFixed(0):v.toFixed(2));
+  // S.kiosk entries now have: faceValue, packSize, games[] (list of {code, name, count})
+  const tbody=g('kiosk-tbody');
+  tbody.innerHTML=S.kiosk.map((k,i)=>{
+    const v=parseFloat(k.faceValue);
+    const vLabel='$'+(v%1===0?v.toFixed(0):v.toFixed(2));
+    const gameRows=(k.games||[]).map((gm,j)=>`
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">
+        <input class="num-input" type="text" placeholder="game code" value="${gm.code||''}"
+          style="width:80px;font-family:var(--mono);font-size:12px;letter-spacing:.04em;border-color:var(--orange-border);background:var(--orange-bg);text-transform:uppercase"
+          oninput="onKioskCode(${i},${j},this.value)">
+        <span style="font-size:11px;color:var(--green);min-width:100px" id="ki-info-${i}-${j}">${gm.name||''}</span>
+        <button onclick="removeKioskGame(${i},${j})" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:14px;padding:0 4px">✕</button>
+      </div>`).join('');
     return `<tr>
       <td><span style="font-family:var(--mono);font-weight:600;color:var(--gold)">${vLabel}</span></td>
       <td><span style="font-family:var(--mono);color:var(--muted)">${k.packSize}</span></td>
-      <td><input class="num-input" type="number" min="0" value="${k.countAdded}" style="border-color:var(--orange-border);background:var(--orange-bg)" onchange="S.kiosk[${i}].countAdded=parseInt(this.value)||0"></td>
+      <td>
+        <div>${gameRows}</div>
+        <button onclick="addKioskGame(${i})"
+          style="font-size:18px;background:none;border:1px solid var(--orange-border);color:var(--gold);cursor:pointer;border-radius:4px;padding:0 8px;line-height:1.6;margin-top:2px">+</button>
+      </td>
     </tr>`;
   }).join('');
+}
+function onKioskCode(ki,gi,code){
+  code=code.trim().toUpperCase();
+  S.kiosk[ki].games[gi].code=code;
+  const game=lookupGameByCode(code);
+  S.kiosk[ki].games[gi].name=game?game.game_name:'';
+  S.kiosk[ki].games[gi].count=game?game.pack_size:0;
+  const infoEl=g('ki-info-'+ki+'-'+gi);
+  if(infoEl){
+    if(game){infoEl.textContent=game.game_name+' ('+game.pack_size+'pk)';infoEl.style.color='var(--green)';}
+    else if(code){infoEl.textContent='Not found';infoEl.style.color='var(--red)';}
+    else{infoEl.textContent='';}
+  }
+  // Update countAdded = total tickets across all games for this denomination
+  S.kiosk[ki].countAdded=S.kiosk[ki].games.reduce((a,g)=>a+(g.count||0),0);
+}
+function addKioskGame(ki){
+  S.kiosk[ki].games=S.kiosk[ki].games||[];
+  S.kiosk[ki].games.push({code:'',name:'',count:0});
+  renderKiosk();
+}
+function removeKioskGame(ki,gi){
+  S.kiosk[ki].games.splice(gi,1);
+  S.kiosk[ki].countAdded=S.kiosk[ki].games.reduce((a,g)=>a+(g.count||0),0);
+  renderKiosk();
 }
 
 function renderPays(){
