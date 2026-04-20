@@ -302,16 +302,12 @@ td{padding:9px 14px;vertical-align:middle}
   .cat-tracker-grid{grid-template-columns:1fr}
 }
 
-.scratch-tab {
-  padding: 8px 16px; border: none; background: transparent;
-  color: var(--muted); font-family: var(--mono); font-size: 12px;
-  cursor: pointer; border-bottom: 2px solid transparent;
-  margin-bottom: -1px; letter-spacing: .04em; transition: all .15s;
-}
-.scratch-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
-.scratch-tab:hover:not(.active) { color: var(--text); }
-.scratch-panel { display: none; }
-.scratch-panel.active { display: block; }
+
+.scratch-tab{padding:8px 16px;border:none;background:transparent;color:var(--muted);font-family:var(--mono);font-size:12px;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;letter-spacing:.04em;transition:all .15s}
+.scratch-tab.active{color:var(--accent);border-bottom-color:var(--accent)}
+.scratch-tab:hover:not(.active){color:var(--text)}
+.scratch-panel{display:none}
+.scratch-panel.active{display:block}
 </style>
 </head>
 <body>
@@ -840,6 +836,165 @@ td{padding:9px 14px;vertical-align:middle}
   </div>
 </div>
 
+
+
+<!-- SCRATCH TICKETS PAGE -->
+<div class="page" id="page-scratch">
+  <div id="scratch-alert" style="margin-bottom:12px"></div>
+  <div style="display:flex;gap:0;margin-bottom:20px;border-bottom:1px solid var(--border)">
+    <button class="scratch-tab active" onclick="showScratchTab('inventory',this)">Inventory</button>
+    <button class="scratch-tab" onclick="showScratchTab('delivery',this)">Record Delivery</button>
+    <button class="scratch-tab" onclick="showScratchTab('history',this)">Delivery History</button>
+    <button class="scratch-tab" onclick="showScratchTab('boxes',this)">Manage Boxes</button>
+  </div>
+
+  <!-- INVENTORY -->
+  <div class="scratch-panel active" id="sp-inventory">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:10px">
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:10px 16px">
+          <div style="font-family:var(--mono);font-size:20px;font-weight:600;color:var(--accent)" id="sc-total-val">—</div>
+          <div style="font-size:10px;color:var(--muted);font-family:var(--mono);text-transform:uppercase;letter-spacing:.05em;margin-top:2px">Total Value</div>
+        </div>
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:10px 16px">
+          <div style="font-family:var(--mono);font-size:20px;font-weight:600;color:var(--accent)" id="sc-total-tix">—</div>
+          <div style="font-size:10px;color:var(--muted);font-family:var(--mono);text-transform:uppercase;letter-spacing:.05em;margin-top:2px">Total Tickets</div>
+        </div>
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:10px 16px">
+          <div style="font-family:var(--mono);font-size:20px;font-weight:600;color:#e05555" id="sc-low">—</div>
+          <div style="font-size:10px;color:var(--muted);font-family:var(--mono);text-transform:uppercase;letter-spacing:.05em;margin-top:2px">Low Stock</div>
+        </div>
+      </div>
+      <input type="text" placeholder="Search box or game..." id="sc-search" oninput="renderScratchInv()" style="padding:7px 12px;border:1px solid var(--border);border-radius:5px;background:var(--surface);color:var(--text);font-size:13px;width:220px">
+    </div>
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;overflow:hidden;overflow-x:auto">
+      <table style="width:100%;border-collapse:collapse;min-width:700px">
+        <thead><tr style="background:var(--surface2);border-bottom:1px solid var(--border)">
+          <th style="padding:10px 14px;text-align:left;font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;white-space:nowrap">Box</th>
+          <th style="padding:10px 14px;text-align:left;font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">Game</th>
+          <th style="padding:10px 14px;text-align:left;font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">Code</th>
+          <th style="padding:10px 14px;text-align:left;font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">Value</th>
+          <th style="padding:10px 14px;text-align:left;font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">Pack</th>
+          <th style="padding:10px 14px;text-align:left;font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">On Hand</th>
+          <th style="padding:10px 14px;text-align:left;font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;min-width:120px">Stock</th>
+          <th style="padding:10px 14px;text-align:left;font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">Value on Hand</th>
+          <th style="padding:10px 14px"></th>
+        </tr></thead>
+        <tbody id="sc-inv-tbody"><tr><td colspan="9" style="padding:30px;text-align:center;color:var(--muted)">Loading...</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- DELIVERY -->
+  <div class="scratch-panel" id="sp-delivery">
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:20px">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px">
+        <div><label style="display:block;font-size:11px;font-family:var(--mono);color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">Delivery Date</label>
+          <input type="date" id="sc-del-date" style="width:100%;background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:8px 12px;border-radius:5px;font-size:13px"></div>
+        <div><label style="display:block;font-size:11px;font-family:var(--mono);color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">Notes (optional)</label>
+          <input type="text" id="sc-del-notes" placeholder="e.g. Monday delivery" style="width:100%;background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:8px 12px;border-radius:5px;font-size:13px"></div>
+      </div>
+      <div style="font-size:11px;font-family:var(--mono);color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px">Enter packs received per box</div>
+      <div id="sc-del-boxes" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px;margin-bottom:14px"></div>
+      <div id="sc-del-summary" style="display:none;background:rgba(200,169,110,.08);border:1px solid rgba(200,169,110,.2);border-radius:6px;padding:10px 14px;font-family:var(--mono);font-size:13px;color:#c8a96e;margin-bottom:14px"></div>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-primary" onclick="saveScratchDelivery()">Save Delivery</button>
+        <button class="btn" onclick="clearScratchDelivery()">Clear</button>
+      </div>
+      <div id="sc-del-feedback" style="margin-top:10px"></div>
+    </div>
+  </div>
+
+  <!-- HISTORY -->
+  <div class="scratch-panel" id="sp-history">
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;overflow:hidden;overflow-x:auto">
+      <table style="width:100%;border-collapse:collapse;min-width:700px">
+        <thead><tr style="background:var(--surface2);border-bottom:1px solid var(--border)">
+          <th style="padding:10px 14px;text-align:left;font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">Date</th>
+          <th style="padding:10px 14px;text-align:left;font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">Box</th>
+          <th style="padding:10px 14px;text-align:left;font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">Game</th>
+          <th style="padding:10px 14px;text-align:left;font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">Code</th>
+          <th style="padding:10px 14px;text-align:left;font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">Face $</th>
+          <th style="padding:10px 14px;text-align:left;font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">Packs</th>
+          <th style="padding:10px 14px;text-align:left;font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">Tickets</th>
+          <th style="padding:10px 14px;text-align:left;font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">Total Value</th>
+          <th style="padding:10px 14px;text-align:left;font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">Notes</th>
+        </tr></thead>
+        <tbody id="sc-hist-tbody"><tr><td colspan="9" style="padding:30px;text-align:center;color:var(--muted)">Loading...</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- MANAGE BOXES -->
+  <div class="scratch-panel" id="sp-boxes">
+    <div style="display:flex;justify-content:flex-end;margin-bottom:12px">
+      <button class="btn btn-primary" onclick="openScBoxModal(null)">+ Add box</button>
+    </div>
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;overflow:hidden;overflow-x:auto">
+      <table style="width:100%;border-collapse:collapse;min-width:600px">
+        <thead><tr style="background:var(--surface2);border-bottom:1px solid var(--border)">
+          <th style="padding:10px 14px;text-align:left;font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">Box #</th>
+          <th style="padding:10px 14px;text-align:left;font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">Game Name</th>
+          <th style="padding:10px 14px;text-align:left;font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">Code</th>
+          <th style="padding:10px 14px;text-align:left;font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">Face Value</th>
+          <th style="padding:10px 14px;text-align:left;font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">Pack Size</th>
+          <th style="padding:10px 14px;text-align:left;font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">Pack Value</th>
+          <th style="padding:10px 14px;text-align:left;font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">Status</th>
+          <th style="padding:10px 14px"></th>
+        </tr></thead>
+        <tbody id="sc-boxes-tbody"><tr><td colspan="8" style="padding:30px;text-align:center;color:var(--muted)">Loading...</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- SC BOX MODAL -->
+<div class="modal-overlay" id="sc-box-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="sc-box-modal-title">Edit Box</div>
+      <button class="modal-close" onclick="closeModal('sc-box-modal')">×</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="sc-box-id">
+      <div class="form-grid">
+        <div class="field"><label>Box Number</label><input type="number" id="sc-box-num" min="1" max="99"></div>
+        <div class="field"><label>Status</label><select id="sc-box-status"><option value="active">Active</option><option value="closed">Closed out</option></select></div>
+        <div class="field"><label>Game Name</label><input type="text" id="sc-box-game" placeholder="e.g. 200X Cashword"></div>
+        <div class="field"><label>Game Code</label><input type="text" id="sc-box-code" placeholder="e.g. 797"></div>
+        <div class="field"><label>Face Value ($)</label>
+          <select id="sc-box-face"><option value="1">$1</option><option value="2">$2</option><option value="3">$3</option><option value="5">$5</option><option value="10">$10</option><option value="20">$20</option><option value="25">$25</option><option value="30">$30</option><option value="50">$50</option></select>
+        </div>
+        <div class="field"><label>Pack Size (tickets)</label><input type="number" id="sc-box-pack" min="1" placeholder="30"></div>
+      </div>
+      <div class="field"><label>Tickets on Hand</label><input type="number" id="sc-box-inv" min="0" placeholder="0">
+        <div style="font-size:11px;color:var(--muted);margin-top:4px">Only set manually during initial setup. Deliveries and daily reports update this automatically.</div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal('sc-box-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveScBox()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- SC ADJUST MODAL -->
+<div class="modal-overlay" id="sc-adj-modal">
+  <div class="modal" style="max-width:380px">
+    <div class="modal-header">
+      <div class="modal-title" id="sc-adj-title">Adjust Inventory</div>
+      <button class="modal-close" onclick="closeModal('sc-adj-modal')">×</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="sc-adj-id">
+      <div class="field"><label>Tickets on Hand</label><input type="number" id="sc-adj-inv" min="0" placeholder="0"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal('sc-adj-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveScAdj()">Update</button>
+    </div>
+  </div>
+</div>
 </div><!-- /main -->
 </div><!-- /layout -->
 
@@ -881,203 +1036,7 @@ td{padding:9px 14px;vertical-align:middle}
       <button class="btn btn-primary" onclick="saveEdit()" id="btn-save-edit">Save changes</button>
     </div>
   </div>
-
-<!-- SCRATCH TICKETS PAGE -->
-<div class="page" id="page-scratch">
-  <div id="scratch-alert" style="margin-bottom:12px"></div>
-
-  <!-- TOP NAV TABS -->
-  <div style="display:flex;gap:8px;margin-bottom:20px;border-bottom:1px solid var(--border);padding-bottom:0">
-    <button class="scratch-tab active" onclick="showScratchTab('inventory',this)">Inventory</button>
-    <button class="scratch-tab" onclick="showScratchTab('delivery',this)">Record Delivery</button>
-    <button class="scratch-tab" onclick="showScratchTab('history',this)">Delivery History</button>
-    <button class="scratch-tab" onclick="showScratchTab('boxes',this)">Manage Boxes</button>
-  </div>
-
-  <!-- INVENTORY TAB -->
-  <div class="scratch-panel active" id="sp-inventory">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:10px">
-      <div style="display:flex;gap:12px;flex-wrap:wrap">
-        <div style="background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:10px 16px;min-width:130px">
-          <div style="font-family:var(--mono);font-size:18px;font-weight:600;color:var(--accent)" id="sc-total-val">—</div>
-          <div style="font-size:10px;color:var(--muted);font-family:var(--mono);text-transform:uppercase;letter-spacing:.05em;margin-top:2px">Total Value</div>
-        </div>
-        <div style="background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:10px 16px;min-width:130px">
-          <div style="font-family:var(--mono);font-size:18px;font-weight:600;color:var(--accent)" id="sc-total-tix">—</div>
-          <div style="font-size:10px;color:var(--muted);font-family:var(--mono);text-transform:uppercase;letter-spacing:.05em;margin-top:2px">Total Tickets</div>
-        </div>
-        <div style="background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:10px 16px;min-width:130px">
-          <div style="font-family:var(--mono);font-size:18px;font-weight:600;color:#e05555" id="sc-low">—</div>
-          <div style="font-size:10px;color:var(--muted);font-family:var(--mono);text-transform:uppercase;letter-spacing:.05em;margin-top:2px">Low Stock</div>
-        </div>
-      </div>
-      <input type="text" placeholder="Search box or game..." id="sc-search" oninput="renderScratchInv()"
-        style="padding:7px 12px;border:1px solid var(--border);border-radius:5px;background:var(--surface);color:var(--text);font-size:13px;width:220px">
-    </div>
-    <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;overflow:hidden">
-      <table style="width:100%;border-collapse:collapse">
-        <thead><tr style="background:var(--surface2);border-bottom:1px solid var(--border)">
-          <th style="padding:10px 14px;text-align:left;font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;font-weight:500">Box</th>
-          <th style="padding:10px 14px;text-align:left;font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;font-weight:500">Game</th>
-          <th style="padding:10px 14px;text-align:left;font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;font-weight:500">Code</th>
-          <th style="padding:10px 14px;text-align:left;font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;font-weight:500">Value</th>
-          <th style="padding:10px 14px;text-align:left;font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;font-weight:500">Pack</th>
-          <th style="padding:10px 14px;text-align:left;font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;font-weight:500">On Hand</th>
-          <th style="padding:10px 14px;text-align:left;font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;font-weight:500">Stock</th>
-          <th style="padding:10px 14px;text-align:left;font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;font-weight:500">Value on Hand</th>
-          <th style="padding:10px 14px"></th>
-        </tr></thead>
-        <tbody id="sc-inv-tbody"><tr><td colspan="9" style="padding:40px;text-align:center;color:var(--muted)">Loading...</td></tr></tbody>
-      </table>
-    </div>
-  </div>
-
-  <!-- DELIVERY TAB -->
-  <div class="scratch-panel" id="sp-delivery">
-    <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:20px;margin-bottom:20px">
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px">
-        <div>
-          <label style="display:block;font-size:11px;font-family:var(--mono);color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">Delivery Date</label>
-          <input type="date" id="sc-del-date" style="width:100%;background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:8px 12px;border-radius:5px;font-size:13px">
-        </div>
-        <div>
-          <label style="display:block;font-size:11px;font-family:var(--mono);color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">Notes (optional)</label>
-          <input type="text" id="sc-del-notes" placeholder="e.g. Monday delivery" style="width:100%;background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:8px 12px;border-radius:5px;font-size:13px">
-        </div>
-      </div>
-      <div style="font-size:11px;font-family:var(--mono);color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px">Enter packs received per box</div>
-      <div id="sc-del-boxes" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px;margin-bottom:16px">
-        <div style="color:var(--muted);padding:20px">Loading boxes...</div>
-      </div>
-      <div id="sc-del-summary" style="display:none;background:rgba(200,169,110,.08);border:1px solid rgba(200,169,110,.2);border-radius:6px;padding:10px 14px;font-family:var(--mono);font-size:13px;color:#c8a96e;margin-bottom:14px"></div>
-      <div style="display:flex;gap:8px">
-        <button class="btn btn-primary" onclick="saveScratchDelivery()">Save Delivery</button>
-        <button class="btn" onclick="clearScratchDelivery()">Clear</button>
-      </div>
-      <div id="sc-del-feedback" style="margin-top:10px"></div>
-    </div>
-  </div>
-
-  <!-- HISTORY TAB -->
-  <div class="scratch-panel" id="sp-history">
-    <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;overflow:hidden">
-      <table style="width:100%;border-collapse:collapse">
-        <thead><tr style="background:var(--surface2);border-bottom:1px solid var(--border)">
-          <th style="padding:10px 14px;text-align:left;font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;font-weight:500">Date</th>
-          <th style="padding:10px 14px;text-align:left;font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;font-weight:500">Box</th>
-          <th style="padding:10px 14px;text-align:left;font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;font-weight:500">Game</th>
-          <th style="padding:10px 14px;text-align:left;font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;font-weight:500">Code</th>
-          <th style="padding:10px 14px;text-align:left;font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;font-weight:500">Face Value</th>
-          <th style="padding:10px 14px;text-align:left;font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;font-weight:500">Packs</th>
-          <th style="padding:10px 14px;text-align:left;font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;font-weight:500">Tickets</th>
-          <th style="padding:10px 14px;text-align:left;font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;font-weight:500">Total Value</th>
-          <th style="padding:10px 14px;text-align:left;font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;font-weight:500">Notes</th>
-        </tr></thead>
-        <tbody id="sc-hist-tbody"><tr><td colspan="9" style="padding:40px;text-align:center;color:var(--muted)">Loading...</td></tr></tbody>
-      </table>
-    </div>
-  </div>
-
-  <!-- MANAGE BOXES TAB -->
-  <div class="scratch-panel" id="sp-boxes">
-    <div style="display:flex;justify-content:flex-end;margin-bottom:12px">
-      <button class="btn btn-primary" onclick="openScBoxModal(null)">+ Add box</button>
-    </div>
-    <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;overflow:hidden">
-      <table style="width:100%;border-collapse:collapse">
-        <thead><tr style="background:var(--surface2);border-bottom:1px solid var(--border)">
-          <th style="padding:10px 14px;text-align:left;font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;font-weight:500">Box #</th>
-          <th style="padding:10px 14px;text-align:left;font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;font-weight:500">Game Name</th>
-          <th style="padding:10px 14px;text-align:left;font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;font-weight:500">Code</th>
-          <th style="padding:10px 14px;text-align:left;font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;font-weight:500">Face Value</th>
-          <th style="padding:10px 14px;text-align:left;font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;font-weight:500">Pack Size</th>
-          <th style="padding:10px 14px;text-align:left;font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;font-weight:500">Pack Value</th>
-          <th style="padding:10px 14px;text-align:left;font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;font-weight:500">Status</th>
-          <th style="padding:10px 14px"></th>
-        </tr></thead>
-        <tbody id="sc-boxes-tbody"><tr><td colspan="8" style="padding:40px;text-align:center;color:var(--muted)">Loading...</td></tr></tbody>
-      </table>
-    </div>
-  </div>
 </div>
-
-<!-- SCRATCH BOX MODAL -->
-<div class="modal-overlay" id="sc-box-modal">
-  <div class="modal">
-    <div class="modal-header">
-      <div class="modal-title" id="sc-box-modal-title">Edit Box</div>
-      <button class="modal-close" onclick="closeModal('sc-box-modal')">×</button>
-    </div>
-    <div class="modal-body">
-      <input type="hidden" id="sc-box-id">
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-        <div class="modal-field">
-          <label>Box Number</label>
-          <input type="number" id="sc-box-num" min="1" max="99" placeholder="1">
-        </div>
-        <div class="modal-field">
-          <label>Status</label>
-          <select id="sc-box-status"><option value="active">Active</option><option value="closed">Closed out</option></select>
-        </div>
-      </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-        <div class="modal-field">
-          <label>Game Name</label>
-          <input type="text" id="sc-box-game" placeholder="e.g. 200X Cashword">
-        </div>
-        <div class="modal-field">
-          <label>Game Code</label>
-          <input type="text" id="sc-box-code" placeholder="e.g. 797">
-        </div>
-      </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-        <div class="modal-field">
-          <label>Face Value ($)</label>
-          <select id="sc-box-face">
-            <option value="1">$1</option><option value="2">$2</option><option value="3">$3</option>
-            <option value="5">$5</option><option value="10">$10</option><option value="20">$20</option>
-            <option value="25">$25</option><option value="30">$30</option><option value="50">$50</option>
-          </select>
-        </div>
-        <div class="modal-field">
-          <label>Pack Size (tickets)</label>
-          <input type="number" id="sc-box-pack" min="1" placeholder="30">
-        </div>
-      </div>
-      <div class="modal-field">
-        <label>Tickets on Hand</label>
-        <input type="number" id="sc-box-inv" min="0" placeholder="0">
-        <div style="font-size:11px;color:var(--muted);margin-top:4px">Only set manually during initial setup. Deliveries and daily reports update this automatically.</div>
-      </div>
-    </div>
-    <div class="modal-footer">
-      <button class="btn" onclick="closeModal('sc-box-modal')">Cancel</button>
-      <button class="btn btn-primary" onclick="saveScBox()">Save</button>
-    </div>
-  </div>
-</div>
-
-<!-- ADJUST INVENTORY MODAL -->
-<div class="modal-overlay" id="sc-adj-modal">
-  <div class="modal" style="max-width:380px">
-    <div class="modal-header">
-      <div class="modal-title" id="sc-adj-title">Adjust Inventory</div>
-      <button class="modal-close" onclick="closeModal('sc-adj-modal')">×</button>
-    </div>
-    <div class="modal-body">
-      <input type="hidden" id="sc-adj-id">
-      <div class="modal-field">
-        <label>Tickets on Hand</label>
-        <input type="number" id="sc-adj-inv" min="0" placeholder="0">
-      </div>
-    </div>
-    <div class="modal-footer">
-      <button class="btn" onclick="closeModal('sc-adj-modal')">Cancel</button>
-      <button class="btn btn-primary" onclick="saveScAdj()">Update</button>
-    </div>
-  </div>
-</div>
-
 
 </div>
 
@@ -1104,10 +1063,7 @@ const fmtS = n => { const v = parseFloat(n||0); return (v<0?'−$':'$') + Math.a
 async function apiGet(path) { const r = await fetch(path); if(!r.ok) throw new Error(await r.text()); return r.json(); }
 async function apiPost(path, body) { const r = await fetch(path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}); if(!r.ok) throw new Error(await r.text()); return r.json(); }
 async function apiPatch(path, body) { const r = await fetch(path,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}); if(!r.ok) throw new Error(await r.text()); return r.json(); }
-async function sbGet(table, q='') { const r = await fetch(`${SB}/rest/v1/${table}?store_id=eq.${SID}&${q}`,{headers:H}); return r.json(); }
-async function sbPost(table, data) { const r = await fetch(`${SB}/rest/v1/${table}`,{method:'POST',headers:{...H,'Prefer':'return=representation'},body:JSON.stringify(data)}); if(!r.ok) throw new Error(await r.text()); return r.json(); }
-async function sbPatch(table, id, data) { const r = await fetch(`${SB}/rest/v1/${table}?id=eq.${id}`,{method:'PATCH',headers:H,body:JSON.stringify(data)}); if(!r.ok) throw new Error(await r.text()); return r.json(); }
-function showToast(msg, type='success') { const el = g('scratch-alert'); if(!el) return; el.innerHTML = `<div style="padding:10px 14px;border-radius:5px;margin-bottom:10px;font-size:13px;background:${type==='success'?'rgba(106,191,138,.1)':'rgba(224,85,85,.1)'};border:1px solid ${type==='success'?'rgba(106,191,138,.3)':'rgba(224,85,85,.3)'};color:${type==='success'?'#6abf8a':'#e05555'}">${msg}</div>`; setTimeout(()=>el.innerHTML='',3000); }
+async function sbGet(table, q='') { const r = await fetch(`${SB}/rest/v1/${table}?${q}`,{headers:H}); return r.json(); }
 
 function setSync(state, label) {
   g('sync-dot').className = 'sync-dot' + (state==='ok'?' ok':state==='err'?' err':'');
@@ -1533,9 +1489,6 @@ async function loadSquareCategoryTracker(daysElapsed, daysInMonth, squareDays) {
     g('cat-tracker').innerHTML = '<div class="empty">Could not load category tracker</div>';
   }
 }
-
-
-
 
 async function handleCSVUpload(type, input) {
   const file = input.files[0];
@@ -1989,11 +1942,30 @@ function statusBadge(s){return `<span class="badge ${SB2[s]||'badge-gray'}">${s|
   });
 })();
 
-// ═══════════════════════════════════════════════════
-// SCRATCH TICKET BACKEND
-// ═══════════════════════════════════════════════════
+
+// ─── SUPABASE HELPERS ────────────────────────────────────────────────────────
+async function sbPost(table, data) {
+  const r = await fetch(`${SB}/rest/v1/${table}`, {method:'POST', headers:{...H,'Prefer':'return=representation'}, body:JSON.stringify(data)});
+  if (!r.ok) throw new Error(await r.text());
+  return r.json();
+}
+async function sbPatch(table, id, data) {
+  const r = await fetch(`${SB}/rest/v1/${table}?id=eq.${id}`, {method:'PATCH', headers:H, body:JSON.stringify(data)});
+  if (!r.ok) throw new Error(await r.text());
+}
+function showToast(msg, type) {
+  const el = g('scratch-alert');
+  if (!el) return;
+  const bg = type==='success' ? 'rgba(106,191,138,.1)' : 'rgba(224,85,85,.1)';
+  const bc = type==='success' ? 'rgba(106,191,138,.3)' : 'rgba(224,85,85,.3)';
+  const col = type==='success' ? '#6abf8a' : '#e05555';
+  el.innerHTML = `<div style="padding:10px 14px;border-radius:5px;margin-bottom:10px;font-size:13px;background:${bg};border:1px solid ${bc};color:${col}">${msg}</div>`;
+  setTimeout(() => el.innerHTML = '', 3000);
+}
+
+// ─── SCRATCH TICKET BACKEND ───────────────────────────────────────────────────
 let SC_BOXES = [];
-let SC_DEL = {}; // boxId → packs
+let SC_DEL = {};
 
 function showScratchTab(name, btn) {
   document.querySelectorAll('.scratch-tab').forEach(b => b.classList.remove('active'));
@@ -2010,7 +1982,6 @@ async function loadScratch() {
   renderScratchInv();
 }
 
-// ── INVENTORY ──
 function renderScratchInv() {
   const search = (g('sc-search')?.value || '').toLowerCase();
   const boxes = SC_BOXES.filter(b => b.is_active !== false && b.status !== 'closed');
@@ -2019,14 +1990,12 @@ function renderScratchInv() {
     (b.game_name||'').toLowerCase().includes(search) ||
     (b.game_code||'').toLowerCase().includes(search)
   ) : boxes;
-
   const totalVal = boxes.reduce((a,b) => a + (b.tickets_on_hand||0) * parseFloat(b.face_value||0), 0);
   const totalTix = boxes.reduce((a,b) => a + (b.tickets_on_hand||0), 0);
   const lowStock = boxes.filter(b => (b.tickets_on_hand||0) > 0 && (b.tickets_on_hand||0) < (b.pack_size||30)).length;
   if (g('sc-total-val')) g('sc-total-val').textContent = fmt(totalVal);
-  if (g('sc-total-tix')) g('sc-total-tix').textContent = (totalTix).toLocaleString();
+  if (g('sc-total-tix')) g('sc-total-tix').textContent = totalTix.toLocaleString();
   if (g('sc-low')) g('sc-low').textContent = lowStock;
-
   const tbody = g('sc-inv-tbody');
   if (!filtered.length) { tbody.innerHTML = '<tr><td colspan="9" style="padding:30px;text-align:center;color:var(--muted)">No boxes found</td></tr>'; return; }
   tbody.innerHTML = filtered.map(b => {
@@ -2036,15 +2005,15 @@ function renderScratchInv() {
     const pct = Math.min(100, Math.round(onHand / (pack * 2) * 100));
     const barColor = onHand === 0 ? '#444' : onHand < pack ? '#e05555' : '#6abf8a';
     const stockLabel = onHand === 0 ? 'OUT' : onHand < pack ? 'LOW' : 'OK';
-    const stockColor = onHand === 0 ? '#666' : onHand < pack ? '#e05555' : '#6abf8a';
+    const stockColor = onHand === 0 ? 'var(--muted)' : onHand < pack ? '#e05555' : '#6abf8a';
     return `<tr style="border-bottom:1px solid var(--border)">
       <td style="padding:10px 14px;font-family:var(--mono);color:var(--accent);font-weight:600">#${b.box_number}</td>
-      <td style="padding:10px 14px;font-weight:500">${b.game_name || '<span style="color:var(--muted)">—</span>'}</td>
+      <td style="padding:10px 14px;font-weight:500">${b.game_name||'<span style="color:var(--muted)">—</span>'}</td>
       <td style="padding:10px 14px;font-family:var(--mono);color:var(--muted);font-size:12px">${b.game_code||'—'}</td>
       <td style="padding:10px 14px"><span style="font-family:var(--mono);font-size:12px;padding:2px 8px;background:rgba(200,169,110,.1);color:#c8a96e;border-radius:3px">$${fv%1===0?fv.toFixed(0):fv.toFixed(2)}</span></td>
       <td style="padding:10px 14px;font-family:var(--mono);font-size:12px;color:var(--muted)">${pack}</td>
       <td style="padding:10px 14px;font-family:var(--mono);font-weight:600;color:${stockColor}">${onHand.toLocaleString()}</td>
-      <td style="padding:10px 14px;min-width:120px">
+      <td style="padding:10px 14px">
         <div style="display:flex;align-items:center;gap:8px">
           <div style="flex:1;height:4px;background:var(--border);border-radius:2px;overflow:hidden">
             <div style="height:100%;width:${pct}%;background:${barColor};border-radius:2px"></div>
@@ -2063,13 +2032,11 @@ function renderScratchInv() {
   }).join('');
 }
 
-// ── DELIVERY ──
 function renderScDelBoxes() {
   if (!g('sc-del-date').value) g('sc-del-date').value = new Date().toLocaleDateString('en-CA');
   SC_DEL = {};
   const boxes = SC_BOXES.filter(b => b.status !== 'closed' && b.is_active !== false);
-  const container = g('sc-del-boxes');
-  container.innerHTML = boxes.map(b => {
+  g('sc-del-boxes').innerHTML = boxes.map(b => {
     const fv = parseFloat(b.face_value||0);
     return `<div style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:12px">
       <div style="display:flex;justify-content:space-between;margin-bottom:8px">
@@ -2123,7 +2090,7 @@ async function saveScratchDelivery() {
       const box = SC_BOXES.find(b => b.id == boxId);
       await sbPatch('scratch_boxes', boxId, { tickets_on_hand: (box.tickets_on_hand||0) + item.tickets });
     }
-    showToast('Delivery saved', 'success');
+    showToast(`Delivery saved — ${items.length} box${items.length>1?'es':''} updated`, 'success');
     clearScratchDelivery();
     await loadScratch();
   } catch(e) { showToast('Error: ' + e.message, 'error'); }
@@ -2131,13 +2098,12 @@ async function saveScratchDelivery() {
 
 function clearScratchDelivery() {
   SC_DEL = {};
-  g('sc-del-date').value = new Date().toLocaleDateString('en-CA');
-  g('sc-del-notes').value = '';
-  g('sc-del-summary').style.display = 'none';
+  if (g('sc-del-date')) g('sc-del-date').value = new Date().toLocaleDateString('en-CA');
+  if (g('sc-del-notes')) g('sc-del-notes').value = '';
+  if (g('sc-del-summary')) g('sc-del-summary').style.display = 'none';
   renderScDelBoxes();
 }
 
-// ── HISTORY ──
 async function loadScHistory() {
   const rows = await sbGet('scratch_deliveries', 'order=delivery_date.desc,created_at.desc&limit=100').catch(()=>[]);
   const tbody = g('sc-hist-tbody');
@@ -2158,7 +2124,6 @@ async function loadScHistory() {
   }).join('');
 }
 
-// ── MANAGE BOXES ──
 function renderScBoxes() {
   const tbody = g('sc-boxes-tbody');
   if (!SC_BOXES.length) { tbody.innerHTML = '<tr><td colspan="8" style="padding:30px;text-align:center;color:var(--muted)">No boxes</td></tr>'; return; }
@@ -2171,14 +2136,13 @@ function renderScBoxes() {
       <td style="padding:9px 14px;font-family:var(--mono);font-size:12px;color:var(--muted)">${b.game_code||'—'}</td>
       <td style="padding:9px 14px"><span style="font-family:var(--mono);font-size:12px;padding:2px 8px;background:rgba(200,169,110,.1);color:#c8a96e;border-radius:3px">$${fv%1===0?fv.toFixed(0):fv.toFixed(2)}</span></td>
       <td style="padding:9px 14px;font-family:var(--mono);font-size:12px;color:var(--muted)">${pack} tickets</td>
-      <td style="padding:9px 14px;font-family:var(--mono);color:var(--accent)">${fmt(fv * pack)} / pack</td>
+      <td style="padding:9px 14px;font-family:var(--mono);color:var(--accent)">${fmt(fv*pack)} / pack</td>
       <td style="padding:9px 14px"><span style="font-size:11px;padding:2px 8px;border-radius:3px;background:${b.status==='closed'?'rgba(100,100,100,.1)':'rgba(106,191,138,.1)'};color:${b.status==='closed'?'var(--muted)':'#6abf8a'}">${b.status||'active'}</span></td>
       <td style="padding:9px 14px"><button class="btn btn-sm btn-primary" onclick="openScBoxModal(${b.id})">Edit</button></td>
     </tr>`;
   }).join('');
 }
 
-// ── BOX MODAL ──
 function openScBoxModal(id) {
   const box = id ? SC_BOXES.find(b => b.id === id) : null;
   g('sc-box-modal-title').textContent = box ? `Edit Box #${box.box_number}` : 'Add Box';
@@ -2210,7 +2174,6 @@ async function saveScBox() {
   } catch(e) { showToast('Error: ' + e.message, 'error'); }
 }
 
-// ── ADJUST ──
 function openScAdj(id, boxNum, current) {
   g('sc-adj-id').value = id;
   g('sc-adj-title').textContent = `Adjust Inventory — Box #${boxNum}`;
