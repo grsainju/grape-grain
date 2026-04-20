@@ -105,127 +105,97 @@ app.get('/api/square/day', async (req, res) => {
       } catch(e) { console.log('Background sync error:', e.message); }
     })();
 
-    // For today: also do a live category pull from Orders API using catalog
-    if (isToday) {
-      try {
-        // Load catalog item→category map from Supabase
-        const itemMapR = await sbFetch(
-          `${SUPABASE_URL}/rest/v1/square_items?store_id=eq.${STORE_ID}&select=id,category_name&limit=5000`,
-          { headers: sbHeaders }
-        );
-        const itemMapRows = await itemMapR.json();
-        const itemCatMap = {};
-        itemMapRows.forEach(r => { if (r.id && r.category_name) itemCatMap[r.id] = r.category_name; });
+    // Live pull - top 5 items by name directly from order line items
+    try {
+      const allOrders = [];
+      let orderCursor = null;
+      const nextDay = new Date(date + 'T06:00:00Z');
+      nextDay.setDate(nextDay.getDate() + 1);
+      const endTime = nextDay.toISOString().slice(0,19) + 'Z';
 
-        // Pull today's orders live
+      do {
         const ordersR = await sqFetch('/orders/search', {
           method: 'POST',
           body: JSON.stringify({
             location_ids: [SQUARE_LOCATION],
             query: {
               filter: {
-                date_time_filter: {
-                  created_at: {
-                    start_at: `${date}T00:00:00-05:00`,
-                    end_at: `${date}T23:59:59-05:00`
-                  }
-                },
+                date_time_filter: { created_at: { start_at: `${date}T06:00:00Z`, end_at: endTime } },
                 state_filter: { states: ['COMPLETED'] }
               }
             },
-            limit: 500
+            limit: 500,
+            ...(orderCursor && { cursor: orderCursor })
           })
         });
-        const ordersData = await ordersR.json();
-        const orders = ordersData.orders || [];
+        const od = await ordersR.json();
+        if (od.errors) throw new Error(od.errors[0]?.detail);
+        allOrders.push(...(od.orders || []));
+        orderCursor = od.cursor;
+      } while (orderCursor);
 
-        // Aggregate by category using catalog map
-        const liveCatMap = {};
-        let liveScratch = 0, liveGross = 0, liveTax = 0, liveDisc = 0, liveRet = 0, liveTxns = orders.length;
-        let liveCash = 0, liveCard = 0;
+      let liveGross = 0, liveTax = 0, liveDisc = 0, liveRet = 0;
+      let liveCash = 0, liveCard = 0;
+      const itemMap = {};
 
-        for (const order of orders) {
-          liveGross += (order.total_money?.amount || 0) / 100;
-          liveTax += (order.total_tax_money?.amount || 0) / 100;
-          liveDisc += (order.total_discount_money?.amount || 0) / 100;
-          // Returns come from return_amounts on the order (refunded items)
-          liveRet += (order.return_amounts?.total_money?.amount || 0) / 100;
-          for (const tender of (order.tenders || [])) {
-            const ta = (tender.amount_money?.amount || 0) / 100;
-            if (tender.type === 'CASH') liveCash += ta; else liveCard += ta;
-          }
-          for (const item of (order.line_items || [])) {
-            const varId = item.catalog_object_id;
-            const catName = (varId && itemCatMap[varId]) ? itemCatMap[varId] : null;
-            const amt = (item.gross_sales_money?.amount || 0) / 100;
-            if (amt <= 0) continue;
-            // Skip if no category mapping — don't lump into "Other"
-            if (!catName) continue;
-            if (catName === 'Scratch Lotto') { liveScratch += amt; continue; }
-            liveCatMap[catName] = (liveCatMap[catName] || 0) + amt;
-          }
+      for (const order of allOrders) {
+        liveGross += (order.total_money?.amount || 0) / 100;
+        liveTax += (order.total_tax_money?.amount || 0) / 100;
+        liveDisc += (order.total_discount_money?.amount || 0) / 100;
+        liveRet += (order.return_amounts?.total_money?.amount || 0) / 100;
+        for (const tender of (order.tenders || [])) {
+          const ta = (tender.amount_money?.amount || 0) / 100;
+          if (tender.type === 'CASH') liveCash += ta; else liveCard += ta;
         }
+        for (const item of (order.line_items || [])) {
+          const name = item.name || 'Unknown';
+          const amt = (item.gross_sales_money?.amount || 0) / 100;
+          if (amt <= 0) continue;
+          itemMap[name] = (itemMap[name] || 0) + amt;
+        }
+      }
 
-        const liveNetSales = liveGross - liveTax - liveScratch;
-        const liveCats = Object.entries(liveCatMap)
-          .filter(([name]) => name !== '_unmapped')
-          .sort((a,b) => b[1]-a[1])
-          .slice(0,5)
-          .map(([name, netSales]) => ({ name, netSales: parseFloat(netSales.toFixed(2)) }));
-        const unmappedTotal = parseFloat((liveCatMap['_unmapped'] || 0).toFixed(2));
+      const top5 = Object.entries(itemMap)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 5)
+        .map(([name, sales]) => ({ name, netSales: parseFloat(sales.toFixed(2)) }));
 
-        // Get Square processing fees from Payments API
-        // Fees: Square processing fees from Payments API
-        let totalFees = 0;
-        try {
-          let feesCursor = null;
-          let feesPage = 0;
-          do {
-            const nextDayFees = new Date(date + 'T06:00:00Z');
-            nextDayFees.setDate(nextDayFees.getDate() + 1);
-            const feesEndTime = nextDayFees.toISOString().replace('06:00:00', '05:59:59');
-            const feesUrl = `/payments?location_id=${SQUARE_LOCATION}&begin_time=${date}T06:00:00Z&end_time=${feesEndTime}&limit=100${feesCursor ? '&cursor=' + feesCursor : ''}`;
-            const paymentsR = await sqFetch(feesUrl);
-            const paymentsData = await paymentsR.json();
-            for (const p of (paymentsData.payments || [])) {
-              // processing_fee is array of fee objects, amount is in cents
-              // type=INITIAL is the actual fee charge
-              if (Array.isArray(p.processing_fee)) {
-                for (const f of p.processing_fee) {
-                  if (f.type === 'INITIAL') {
-                    totalFees += Math.abs((f.amount_money?.amount || 0)) / 100;
-                  }
-                }
+      // Fees
+      let totalFees = 0;
+      try {
+        let feesCursor = null, feesPage = 0;
+        do {
+          const pr = await sqFetch(`/payments?location_id=${SQUARE_LOCATION}&begin_time=${date}T06:00:00Z&end_time=${endTime}&limit=100${feesCursor ? '&cursor=' + feesCursor : ''}`);
+          const pd = await pr.json();
+          for (const p of (pd.payments || [])) {
+            if (Array.isArray(p.processing_fee)) {
+              for (const f of p.processing_fee) {
+                if (f.type === 'INITIAL') totalFees += Math.abs((f.amount_money?.amount || 0)) / 100;
               }
             }
-            feesCursor = paymentsData.cursor;
-            feesPage++;
-          } while (feesCursor && feesPage < 10);
-          console.log(`Fees total: $${totalFees.toFixed(2)}`);
-        } catch(e) { console.log('Fees fetch error:', e.message); }
+          }
+          feesCursor = pd.cursor; feesPage++;
+        } while (feesCursor && feesPage < 10);
+      } catch(e) { console.log('Fees error:', e.message); }
 
-        return res.json({
-          date,
-          netSales: parseFloat(liveNetSales.toFixed(2)),
-          grossSales: parseFloat(liveGross.toFixed(2)),
-          unmappedSales: unmappedTotal,
-          tax: parseFloat(liveTax.toFixed(2)),
-          discounts: parseFloat(liveDisc.toFixed(2)),
-          returns: parseFloat(liveRet.toFixed(2)),
-          fees: parseFloat(totalFees.toFixed(2)),
-          scratchLotto: parseFloat(liveScratch.toFixed(2)),
-          cash: parseFloat(liveCash.toFixed(2)),
-          card: parseFloat(liveCard.toFixed(2)),
-          transactions: liveTxns,
-          categories: liveCats,
-          syncedAt: new Date().toISOString(),
-          isLive: true
-        });
+      return res.json({
+        date,
+        netSales: parseFloat((liveGross - liveTax).toFixed(2)),
+        grossSales: parseFloat(liveGross.toFixed(2)),
+        tax: parseFloat(liveTax.toFixed(2)),
+        discounts: parseFloat(liveDisc.toFixed(2)),
+        returns: parseFloat(liveRet.toFixed(2)),
+        fees: parseFloat(totalFees.toFixed(2)),
+        cash: parseFloat(liveCash.toFixed(2)),
+        card: parseFloat(liveCard.toFixed(2)),
+        transactions: allOrders.length,
+        categories: top5,
+        syncedAt: new Date().toISOString(),
+        isLive: true
+      });
     } catch(e) {
-      console.log(`[LIVE] Live pull FAILED: ${e.message}`);
-      console.log(`[LIVE] Stack: ${e.stack?.substring(0,300)}`);
-      // Fall through to stored data below
-    }
+      console.log(`[LIVE] Failed: ${e.message}`);
+      // Fall through to stored data
     }
 
     // Return stored data (most recent sync)
