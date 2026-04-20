@@ -127,7 +127,7 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);font-size:14
           <th style="text-align:left;padding-left:16px">#</th>
           <th style="text-align:left">Game</th>
           <th style="text-align:left">Value</th>
-          <th>Pack</th><th>Start</th><th>Add (game code + packs)</th><th>End</th><th>Sold</th><th>$ Sold</th>
+          <th>Pack</th><th>Start</th><th>Add (enter game code)</th><th>End</th><th>Sold</th><th>$ Sold</th>
         </tr></thead>
         <tbody id="scratch-tbody"></tbody>
         <tfoot><tr>
@@ -340,38 +340,28 @@ function lookupGameByCode(code){
   return S.games.find(g=>g.game_code===String(code||'').trim())||null;
 }
 function onAddCode(i, code){
-  code=code.trim();
+  code=code.trim().toUpperCase();
   const game=lookupGameByCode(code);
   const l=S.lines[i];
   l.addCode=code;
   if(game){
-    // If same game, add one pack. If different, use new game's pack size
-    const addPacks=1;
     l.addFv=parseFloat(game.face_value);
     l.addPs=game.pack_size;
     l.addName=game.game_name;
-    l.add=addPacks*game.pack_size;
-    // Update the add count input
+    l.add=game.pack_size; // auto-fill one full pack
     const row=g('scratch-tbody').querySelectorAll('tr')[i];
     if(row){
-      const packInput=row.querySelector('.add-count');
-      if(packInput)packInput.value=l.add;
       const codeInfo=row.querySelector('.add-code-info');
-      if(codeInfo)codeInfo.textContent=game.game_name+' $'+parseFloat(game.face_value).toFixed(0)+' · '+game.pack_size+'pk';
-      codeInfo&&(codeInfo.style.color='var(--green)');
+      if(codeInfo){codeInfo.textContent=game.game_name+' ('+game.pack_size+' tickets)';codeInfo.style.color='var(--green)';}
     }
-  } else if(code) {
-    const row=g('scratch-tbody').querySelectorAll('tr')[i];
-    const codeInfo=row?.querySelector('.add-code-info');
-    if(codeInfo){codeInfo.textContent='Game '+code+' not found';codeInfo.style.color='var(--red)';}
-    l.addFv=null;l.addPs=null;l.addName=null;
   } else {
     l.addFv=null;l.addPs=null;l.addName=null;l.add=0;
+    if(code){
+      const row=g('scratch-tbody').querySelectorAll('tr')[i];
+      const codeInfo=row?.querySelector('.add-code-info');
+      if(codeInfo){codeInfo.textContent='Code not found';codeInfo.style.color='var(--red)';}
+    }
   }
-  calcAll();
-}
-function onAddCount(i,val){
-  S.lines[i].add=parseInt(val)||0;
   calcAll();
 }
 function renderScratch(){
@@ -385,11 +375,10 @@ function renderScratch(){
       <td><span class="val-badge" style="color:${st.c};background:${st.bg};border:1px solid ${st.c}30">${vLabel}</span></td>
       <td><span style="font-family:var(--mono);font-size:12px;color:var(--muted)">${l.ps}</span></td>
       <td><span class="start-cell">${l.start}</span></td>
-      <td style="min-width:180px">
-        <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
-          <input class="num-input add-i" type="text" placeholder="code" value="${l.addCode||''}" style="width:60px;font-family:var(--mono);font-size:13px;letter-spacing:.05em;text-transform:uppercase" oninput="onAddCode(${i},this.value)">
-          <input class="num-input add-count" type="number" min="0" value="${l.add}" style="width:55px" oninput="onAddCount(${i},this.value)">
-          <div class="add-code-info" style="font-size:10px;color:var(--green);min-width:120px">${l.addName||''}</div>
+      <td style="min-width:160px">
+        <div style="display:flex;flex-direction:column;gap:3px">
+          <input class="num-input add-i" type="text" placeholder="game code" value="${l.addCode||''}" style="width:90px;font-family:var(--mono);font-size:13px;letter-spacing:.05em;text-transform:uppercase" oninput="onAddCode(${i},this.value)">
+          <div class="add-code-info" style="font-size:10px;min-width:120px;color:${l.addName?'var(--green)':'var(--muted)'}">${l.addName?l.addName+' ('+l.add+' tickets)':''}</div>
         </div>
       </td>
       <td><input class="num-input" type="number" min="0" value="${l.end}" onchange="upLine(${i},'end',this.value)"></td>
