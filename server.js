@@ -1233,62 +1233,65 @@ app.get('/api/sales/monthly/net', async (req, res) => {
     const from = `${year}-${String(month).padStart(2,'0')}-01`;
     const to = `${year}-${String(month).padStart(2,'0')}-${daysInMonth}`;
 
-    const r = await sbFetch(`${SUPABASE_URL}/rest/v1/square_daily_sales?store_id=eq.${STORE_ID}&sale_date=gte.${from}&sale_date=lte.${to}&select=sale_date,gross_sales,categories,transaction_count,synced_at&order=sale_date.asc`, { headers: sbHeaders });
+    // Always use square_daily_sales for money totals — has all fields
+    const r = await sbFetch(
+      `${SUPABASE_URL}/rest/v1/square_daily_sales?store_id=eq.${STORE_ID}&sale_date=gte.${from}&sale_date=lte.${to}&select=sale_date,gross_sales,tax,cash_amount,card_amount,discounts,returns,transaction_count,categories&order=sale_date.asc`,
+      { headers: sbHeaders }
+    );
     const rows = await r.json();
 
-    // Also check imported category sales for more accurate data
-    const catR = await sbFetch(`${SUPABASE_URL}/rest/v1/square_category_sales?store_id=eq.${STORE_ID}&sale_date=gte.${from}&sale_date=lte.${to}&select=sale_date,category,gross_sales`, { headers: sbHeaders });
-    const catRows = await catR.json();
+    // Exclude today — still in progress
+    const todayET = new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' });
+    const completedRows = rows.filter(r => r.sale_date < todayET);
 
-    let netSales = 0, scratchTotal = 0, transactions = 0;
-    const useImported = catRows.length > 0;
-
-    if (useImported) {
-      // Use imported CSV data — more accurate
-      for (const row of catRows) {
-        const amt = parseFloat(row.gross_sales || 0);
-        if (row.category === 'Scratch Lotto') scratchTotal += amt;
-        else netSales += amt;
-      }
-      transactions = rows.reduce((a,r) => a + (r.transaction_count||0), 0);
-    } else {
-      // Fall back to order sync data
-      for (const row of rows) {
-        const gross = parseFloat(row.gross_sales || 0);
-        const cats = row.categories || {};
-        const scratch = Object.entries(cats).filter(([k,v])=>(v.name||k)==='Scratch Lotto').reduce((a,[k,v])=>a+parseFloat(v.amount||0),0);
-        scratchTotal += scratch;
-        netSales += gross - scratch;
-        transactions += row.transaction_count || 0;
-      }
-    }
-
-    // Also aggregate tax, discounts, returns from order sync data
-    let totalTax = 0, totalDiscounts = 0, totalReturns = 0;
-    for (const row of rows) {
+    // Aggregate totals
+    let grossSales = 0, totalTax = 0, totalDiscounts = 0, totalReturns = 0, transactions = 0, scratchTotal = 0;
+    for (const row of completedRows) {
+      grossSales += parseFloat(row.gross_sales || 0);
       totalTax += parseFloat(row.tax || 0);
       totalDiscounts += parseFloat(row.discounts || 0);
       totalReturns += parseFloat(row.returns || 0);
+      transactions += row.transaction_count || 0;
+      // Get scratch lotto from categories JSONB
+      const cats = row.categories || {};
+      for (const [k, v] of Object.entries(cats)) {
+        if ((v.name || k) === 'Scratch Lotto') scratchTotal += parseFloat(v.amount || 0);
+      }
     }
-    // Recalculate net: gross - tax - scratch
-    const grossSalesMonth = parseFloat((netSales + scratchTotal).toFixed(2));
-    const netSalesMonth = parseFloat((grossSalesMonth - totalTax - scratchTotal).toFixed(2));
 
-    // Exclude today from days count — today is still in progress
-    const todayET = new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' });
-    const completedDays = rows.filter(r => r.sale_date < todayET).length;
+    // Also get fees from stored fees column if available, else 0
+    // Net = Gross - Tax (Scratch Lotto shown separately but not subtracted from net)
+    const netSales = grossSales - totalTax;
+
+    // Fees — pull from Payments API for the month range
+    let totalFees = 0;
+    try {
+      let feesCursor = null, feesPage = 0;
+      do {
+        const pr = await sqFetch(`/payments?location_id=${SQUARE_LOCATION}&begin_time=${from}T06:00:00Z&end_time=${todayET}T06:00:00Z&limit=200${feesCursor ? '&cursor=' + feesCursor : ''}`);
+        const pd = await pr.json();
+        for (const p of (pd.payments || [])) {
+          if (Array.isArray(p.processing_fee)) {
+            for (const f of p.processing_fee) {
+              if (f.type === 'INITIAL') totalFees += Math.abs((f.amount_money?.amount || 0)) / 100;
+            }
+          }
+        }
+        feesCursor = pd.cursor; feesPage++;
+      } while (feesCursor && feesPage < 20);
+    } catch(e) { console.log('Monthly fees error:', e.message); }
 
     res.json({
       month: parseInt(month), year: parseInt(year),
-      netSales: netSalesMonth,
-      grossSales: grossSalesMonth,
+      netSales: parseFloat(netSales.toFixed(2)),
+      grossSales: parseFloat(grossSales.toFixed(2)),
       tax: parseFloat(totalTax.toFixed(2)),
       discounts: parseFloat(totalDiscounts.toFixed(2)),
       returns: parseFloat(totalReturns.toFixed(2)),
+      fees: parseFloat(totalFees.toFixed(2)),
       scratchLotto: parseFloat(scratchTotal.toFixed(2)),
-      days: completedDays,
-      transactions,
-      useImported
+      days: completedRows.length,
+      transactions
     });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
