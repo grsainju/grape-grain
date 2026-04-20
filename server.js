@@ -1149,14 +1149,20 @@ app.get('/api/square/debug-live', async (req, res) => {
     const date = new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' });
     
     // Step 1: Load catalog map
-    const itemMapR = await sbFetch(
-      `${SUPABASE_URL}/rest/v1/square_items?store_id=eq.${STORE_ID}&select=id,category_name&limit=5000&is_deleted=eq.false`,
-      { headers: sbHeaders }
-    );
-    const itemMapRows = await itemMapR.json();
     const itemCatMap = {};
-    if (Array.isArray(itemMapRows)) {
-      itemMapRows.forEach(r => { if (r.id && r.category_name) itemCatMap[r.id] = r.category_name; });
+    let dbgOffset = 0;
+    let dbgHttpStatus = 200;
+    while (true) {
+      const itemMapR = await sbFetch(
+        `${SUPABASE_URL}/rest/v1/square_items?store_id=eq.${STORE_ID}&select=id,category_name&is_deleted=eq.false&limit=1000&offset=${dbgOffset}`,
+        { headers: sbHeaders }
+      );
+      dbgHttpStatus = itemMapR.status;
+      const batch = await itemMapR.json();
+      if (!Array.isArray(batch) || batch.length === 0) break;
+      batch.forEach(r => { if (r.id && r.category_name) itemCatMap[r.id] = r.category_name; });
+      if (batch.length < 1000) break;
+      dbgOffset += 1000;
     }
 
     // Step 2: Pull a small sample of orders
@@ -1188,7 +1194,7 @@ app.get('/api/square/debug-live', async (req, res) => {
 
     res.json({
       catalogMapSize: Object.keys(itemCatMap).length,
-      catalogHttpStatus: itemMapR.status,
+      catalogHttpStatus: dbgHttpStatus,
       ordersReturned: orders.length,
       ordersHttpStatus: ordersR.status,
       sampleItemMapEntry: Object.entries(itemCatMap).slice(0,2),
