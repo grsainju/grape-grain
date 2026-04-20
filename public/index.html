@@ -774,6 +774,113 @@ td{padding:9px 14px;vertical-align:middle}
 <!-- ── SETTINGS ── -->
 <div class="page" id="page-settings">
   <div class="page-header"><div class="page-title">Settings</div><div class="page-sub">Store configuration</div></div>
+  <div class="card">
+    <div class="card-title">Store info</div>
+    <div class="form-grid" style="margin-bottom:16px">
+      <div class="field"><label>Store name</label><input id="cfg-name" readonly></div>
+      <div class="field"><label>Store type</label><input id="cfg-type" readonly></div>
+      <div class="field"><label>City</label><input id="cfg-city" readonly></div>
+      <div class="field"><label>County system</label><input id="cfg-county" readonly></div>
+      <div class="field"><label>Beer deadline</label><input id="cfg-beer-dl" readonly></div>
+      <div class="field"><label>Wine deadline</label><input id="cfg-wine-dl" readonly></div>
+    </div>
+    <button class="btn btn-primary" onclick="testConnection()">Test connection</button>
+    <div id="conn-result" style="margin-top:12px"></div>
+  </div>
+  <div class="card">
+    <div class="card-title">Square integration</div>
+    <div style="display:flex;flex-direction:column;gap:12px">
+
+      <!-- CSV Import -->
+      <div style="padding:14px;background:var(--surface2);border-radius:8px;border:1px solid var(--border)">
+        <div style="font-size:13px;font-weight:500;margin-bottom:4px">Import CSV from Square</div>
+        <div style="font-size:12px;color:var(--muted);margin-bottom:12px">Export Category Sales or Item Sales from Square dashboard → upload here. Any date range works — re-importing same dates overwrites.</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          <div>
+            <div style="font-size:11px;font-family:var(--mono);color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:.05em">Category Sales CSV</div>
+            <label for="csv-cat" style="display:block;border:1px dashed var(--border2);border-radius:6px;padding:16px 12px;text-align:center;cursor:pointer;background:var(--surface);transition:all .15s" onmouseover="this.style.borderColor='var(--gold)';this.style.background='var(--gold-bg)'" onmouseout="this.style.borderColor='var(--border2)';this.style.background='var(--surface)'">
+              <div style="font-size:13px;color:var(--muted)" id="csv-cat-label">📂 Click to upload</div>
+            </label>
+            <input type="file" id="csv-cat" accept=".csv" style="display:none">
+          </div>
+          <div>
+            <div style="font-size:11px;font-family:var(--mono);color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:.05em">Item Sales CSV</div>
+            <label for="csv-item" style="display:block;border:1px dashed var(--border2);border-radius:6px;padding:16px 12px;text-align:center;cursor:pointer;background:var(--surface);transition:all .15s" onmouseover="this.style.borderColor='var(--gold)';this.style.background='var(--gold-bg)'" onmouseout="this.style.borderColor='var(--border2)';this.style.background='var(--surface)'">
+              <div style="font-size:13px;color:var(--muted)" id="csv-item-label">📂 Click to upload</div>
+            </label>
+            <input type="file" id="csv-item" accept=".csv" style="display:none">
+          </div>
+        </div>
+        <div id="import-status" style="margin-top:10px;font-size:12px;font-family:var(--mono);color:var(--muted)"></div>
+      </div>
+
+      <!-- Catalog Sync -->
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:12px;background:var(--surface2);border-radius:8px;border:1px solid var(--border)">
+        <div>
+          <div style="font-size:13px;font-weight:500">Catalog sync</div>
+          <div style="font-size:12px;color:var(--muted);margin-top:2px">Pull all categories and items — run after catalog changes in Square</div>
+        </div>
+        <button class="btn btn-primary" onclick="runCatalogSync()">Sync catalog</button>
+      </div>
+
+      <!-- Order Sync -->
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:12px;background:var(--surface2);border-radius:8px;border:1px solid var(--border)">
+        <div>
+          <div style="font-size:13px;font-weight:500">Order sync (daily totals)</div>
+          <div style="font-size:12px;color:var(--muted);margin-top:2px">Pull daily net sales — nightly sync runs at 2am EST automatically</div>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <input type="date" id="sync-start" style="padding:6px 10px;border:1px solid var(--border2);border-radius:5px;font-family:var(--mono);font-size:12px">
+          <input type="date" id="sync-end" style="padding:6px 10px;border:1px solid var(--border2);border-radius:5px;font-family:var(--mono);font-size:12px">
+          <button class="btn btn-gold" onclick="runManualSync()">Sync</button>
+        </div>
+      </div>
+      <div id="sync-status" style="font-size:12px;color:var(--muted);font-family:var(--mono)"></div>
+    </div>
+  </div>
+</div>
+
+</div><!-- /main -->
+</div><!-- /layout -->
+
+<!-- EDIT ITEM MODAL -->
+<div class="modal-overlay" id="edit-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="edit-modal-title">Edit item</div>
+      <button class="modal-close" onclick="closeModal('edit-modal')">×</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="edit-id">
+      <div class="form-section">County information</div>
+      <div class="form-grid" style="margin-bottom:12px">
+        <div class="field"><label>ABS Code</label><input id="edit-abs" readonly style="opacity:.5"></div>
+        <div class="field"><label>Item Name (County)</label><input id="edit-county-name"></div>
+        <div class="field"><label>BPC</label><input id="edit-bpc" type="number" oninput="calcEditMargin()"></div>
+        <div class="field"><label>Cost ($)</label><input id="edit-cost" type="number" step="0.01" oninput="calcEditMargin()"></div>
+        <div class="field"><label>Low Discount ($)</label><input id="edit-low-dis" type="number" step="0.01"></div>
+        <div class="field"><label>High Discount ($)</label><input id="edit-high-dis" type="number" step="0.01"></div>
+      </div>
+      <div class="form-section">Store information</div>
+      <div class="form-grid" style="margin-bottom:12px">
+        <div class="field"><label>GG Name</label><input id="edit-gg-name"></div>
+        <div class="field"><label>UPC</label><input id="edit-upc"></div>
+        <div class="field"><label>Category</label>
+          <select id="edit-category"><option>Beer</option><option>Wine</option><option>Single Beer</option><option>Custom Beer</option><option>Cigar</option><option>Tobacco</option><option>Snacks</option><option>Drinks</option><option>On Hold</option></select>
+        </div>
+        <div class="field"><label>Sell Price ($)</label><input id="edit-sp" type="number" step="0.01" oninput="calcEditMargin()"></div>
+        <div class="field"><label>Margin % (auto)</label><input id="edit-margin" readonly></div>
+        <div class="field"><label>Status</label><select id="edit-status"><option>Active</option><option>On Hold</option><option>Discontinued</option></select></div>
+        <div class="field"><label>Inventory</label><input id="edit-inv" type="number" step="0.1"></div>
+        <div class="field"><label>Vendor</label><input id="edit-vendor"></div>
+      </div>
+      <div class="field"><label>Notes</label><textarea id="edit-notes" style="height:70px;resize:vertical;padding:8px 11px;border:1px solid var(--border2);border-radius:6px;font-family:var(--font);font-size:13px;width:100%;background:var(--bg)"></textarea></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal('edit-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveEdit()" id="btn-save-edit">Save changes</button>
+    </div>
+  </div>
 
 <!-- SCRATCH TICKETS PAGE -->
 <div class="page" id="page-scratch">
@@ -971,113 +1078,7 @@ td{padding:9px 14px;vertical-align:middle}
   </div>
 </div>
 
-  <div class="card">
-    <div class="card-title">Store info</div>
-    <div class="form-grid" style="margin-bottom:16px">
-      <div class="field"><label>Store name</label><input id="cfg-name" readonly></div>
-      <div class="field"><label>Store type</label><input id="cfg-type" readonly></div>
-      <div class="field"><label>City</label><input id="cfg-city" readonly></div>
-      <div class="field"><label>County system</label><input id="cfg-county" readonly></div>
-      <div class="field"><label>Beer deadline</label><input id="cfg-beer-dl" readonly></div>
-      <div class="field"><label>Wine deadline</label><input id="cfg-wine-dl" readonly></div>
-    </div>
-    <button class="btn btn-primary" onclick="testConnection()">Test connection</button>
-    <div id="conn-result" style="margin-top:12px"></div>
-  </div>
-  <div class="card">
-    <div class="card-title">Square integration</div>
-    <div style="display:flex;flex-direction:column;gap:12px">
 
-      <!-- CSV Import -->
-      <div style="padding:14px;background:var(--surface2);border-radius:8px;border:1px solid var(--border)">
-        <div style="font-size:13px;font-weight:500;margin-bottom:4px">Import CSV from Square</div>
-        <div style="font-size:12px;color:var(--muted);margin-bottom:12px">Export Category Sales or Item Sales from Square dashboard → upload here. Any date range works — re-importing same dates overwrites.</div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-          <div>
-            <div style="font-size:11px;font-family:var(--mono);color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:.05em">Category Sales CSV</div>
-            <label for="csv-cat" style="display:block;border:1px dashed var(--border2);border-radius:6px;padding:16px 12px;text-align:center;cursor:pointer;background:var(--surface);transition:all .15s" onmouseover="this.style.borderColor='var(--gold)';this.style.background='var(--gold-bg)'" onmouseout="this.style.borderColor='var(--border2)';this.style.background='var(--surface)'">
-              <div style="font-size:13px;color:var(--muted)" id="csv-cat-label">📂 Click to upload</div>
-            </label>
-            <input type="file" id="csv-cat" accept=".csv" style="display:none">
-          </div>
-          <div>
-            <div style="font-size:11px;font-family:var(--mono);color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:.05em">Item Sales CSV</div>
-            <label for="csv-item" style="display:block;border:1px dashed var(--border2);border-radius:6px;padding:16px 12px;text-align:center;cursor:pointer;background:var(--surface);transition:all .15s" onmouseover="this.style.borderColor='var(--gold)';this.style.background='var(--gold-bg)'" onmouseout="this.style.borderColor='var(--border2)';this.style.background='var(--surface)'">
-              <div style="font-size:13px;color:var(--muted)" id="csv-item-label">📂 Click to upload</div>
-            </label>
-            <input type="file" id="csv-item" accept=".csv" style="display:none">
-          </div>
-        </div>
-        <div id="import-status" style="margin-top:10px;font-size:12px;font-family:var(--mono);color:var(--muted)"></div>
-      </div>
-
-      <!-- Catalog Sync -->
-      <div style="display:flex;align-items:center;justify-content:space-between;padding:12px;background:var(--surface2);border-radius:8px;border:1px solid var(--border)">
-        <div>
-          <div style="font-size:13px;font-weight:500">Catalog sync</div>
-          <div style="font-size:12px;color:var(--muted);margin-top:2px">Pull all categories and items — run after catalog changes in Square</div>
-        </div>
-        <button class="btn btn-primary" onclick="runCatalogSync()">Sync catalog</button>
-      </div>
-
-      <!-- Order Sync -->
-      <div style="display:flex;align-items:center;justify-content:space-between;padding:12px;background:var(--surface2);border-radius:8px;border:1px solid var(--border)">
-        <div>
-          <div style="font-size:13px;font-weight:500">Order sync (daily totals)</div>
-          <div style="font-size:12px;color:var(--muted);margin-top:2px">Pull daily net sales — nightly sync runs at 2am EST automatically</div>
-        </div>
-        <div style="display:flex;gap:8px;align-items:center">
-          <input type="date" id="sync-start" style="padding:6px 10px;border:1px solid var(--border2);border-radius:5px;font-family:var(--mono);font-size:12px">
-          <input type="date" id="sync-end" style="padding:6px 10px;border:1px solid var(--border2);border-radius:5px;font-family:var(--mono);font-size:12px">
-          <button class="btn btn-gold" onclick="runManualSync()">Sync</button>
-        </div>
-      </div>
-      <div id="sync-status" style="font-size:12px;color:var(--muted);font-family:var(--mono)"></div>
-    </div>
-  </div>
-</div>
-
-</div><!-- /main -->
-</div><!-- /layout -->
-
-<!-- EDIT ITEM MODAL -->
-<div class="modal-overlay" id="edit-modal">
-  <div class="modal">
-    <div class="modal-header">
-      <div class="modal-title" id="edit-modal-title">Edit item</div>
-      <button class="modal-close" onclick="closeModal('edit-modal')">×</button>
-    </div>
-    <div class="modal-body">
-      <input type="hidden" id="edit-id">
-      <div class="form-section">County information</div>
-      <div class="form-grid" style="margin-bottom:12px">
-        <div class="field"><label>ABS Code</label><input id="edit-abs" readonly style="opacity:.5"></div>
-        <div class="field"><label>Item Name (County)</label><input id="edit-county-name"></div>
-        <div class="field"><label>BPC</label><input id="edit-bpc" type="number" oninput="calcEditMargin()"></div>
-        <div class="field"><label>Cost ($)</label><input id="edit-cost" type="number" step="0.01" oninput="calcEditMargin()"></div>
-        <div class="field"><label>Low Discount ($)</label><input id="edit-low-dis" type="number" step="0.01"></div>
-        <div class="field"><label>High Discount ($)</label><input id="edit-high-dis" type="number" step="0.01"></div>
-      </div>
-      <div class="form-section">Store information</div>
-      <div class="form-grid" style="margin-bottom:12px">
-        <div class="field"><label>GG Name</label><input id="edit-gg-name"></div>
-        <div class="field"><label>UPC</label><input id="edit-upc"></div>
-        <div class="field"><label>Category</label>
-          <select id="edit-category"><option>Beer</option><option>Wine</option><option>Single Beer</option><option>Custom Beer</option><option>Cigar</option><option>Tobacco</option><option>Snacks</option><option>Drinks</option><option>On Hold</option></select>
-        </div>
-        <div class="field"><label>Sell Price ($)</label><input id="edit-sp" type="number" step="0.01" oninput="calcEditMargin()"></div>
-        <div class="field"><label>Margin % (auto)</label><input id="edit-margin" readonly></div>
-        <div class="field"><label>Status</label><select id="edit-status"><option>Active</option><option>On Hold</option><option>Discontinued</option></select></div>
-        <div class="field"><label>Inventory</label><input id="edit-inv" type="number" step="0.1"></div>
-        <div class="field"><label>Vendor</label><input id="edit-vendor"></div>
-      </div>
-      <div class="field"><label>Notes</label><textarea id="edit-notes" style="height:70px;resize:vertical;padding:8px 11px;border:1px solid var(--border2);border-radius:6px;font-family:var(--font);font-size:13px;width:100%;background:var(--bg)"></textarea></div>
-    </div>
-    <div class="modal-footer">
-      <button class="btn" onclick="closeModal('edit-modal')">Cancel</button>
-      <button class="btn btn-primary" onclick="saveEdit()" id="btn-save-edit">Save changes</button>
-    </div>
-  </div>
 </div>
 
 <script>
