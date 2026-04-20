@@ -234,11 +234,42 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);font-size:14
     </div>
   </div>
 
-  <div class="section">
+    <div class="section">
+    <div class="section-header">
+      <div class="section-title">XCAP — Emergency Lottery Fund</div>
+      <div class="section-badge" id="xcap-badge" style="color:var(--green)">$5,000.00</div>
+    </div>
+    <div class="section-body">
+      <div class="totals-row">
+        <div class="totals-label">Starting Balance</div>
+        <div class="totals-val" id="xcap-start-disp">$5,000.00</div>
+      </div>
+      <div class="field" style="margin-top:10px">
+        <label>Paid Out to Winner ($)</label>
+        <input type="number" step="0.01" id="xcap-paid" placeholder="0.00" value="0" oninput="calcXcap()">
+      </div>
+      <div class="field">
+        <label>Added Back from Cash Drop ($)</label>
+        <input type="number" step="0.01" id="xcap-added" placeholder="0.00" value="0" oninput="calcXcap()">
+        <div style="font-size:11px;color:var(--muted);margin-top:3px">This amount will be deducted from your safe drop</div>
+      </div>
+      <div class="totals-row" style="margin-top:8px">
+        <div class="totals-label">Ending Balance</div>
+        <div class="totals-val" id="xcap-end-disp">$5,000.00</div>
+      </div>
+      <div class="totals-row">
+        <div class="totals-label">Short vs $5,000 Target</div>
+        <div class="totals-val" id="xcap-short-disp" style="color:var(--red)">$0.00</div>
+      </div>
+    </div>
+  </div>
+
+<div class="section">
     <div class="section-header"><div class="section-title">Bank Deposit</div></div>
     <div class="section-body">
       <div class="totals-row"><div class="totals-label">Total Cash</div><div class="totals-val" id="d-cash">$0.00</div></div>
       <div class="totals-row"><div class="totals-label">Total Safe Drop</div><div class="totals-val red" id="d-drop">−$0.00</div></div>
+      <div class="totals-row"><div class="totals-label">XCAP Added Back</div><div class="totals-val red" id="d-xcap">−$0.00</div></div>
       <div class="hi-box green"><div class="hi-label">Total for Bank Deposit</div><div class="hi-val green" id="bank-dep">$0.00</div></div>
     </div>
   </div>
@@ -257,7 +288,7 @@ const AK='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6I
 const SID=1;
 const TODAY=new Date().toISOString().slice(0,10);
 const H={'apikey':AK,'Authorization':'Bearer '+AK,'Content-Type':'application/json','Prefer':'return=representation'};
-const S={boxes:[],lines:[],kiosk:[],pays:[],drops:[],vendors:[],games:[],rid:null};
+const S={boxes:[],lines:[],kiosk:[],pays:[],drops:[],vendors:[],games:[],rid:null,xcap:{start:5000,paidOut:0,addedBack:0}};
 
 const g=id=>document.getElementById(id);
 const fmt=n=>'$'+Math.abs(parseFloat(n||0)).toFixed(2);
@@ -335,7 +366,15 @@ async function init(){
     const yDate=yd.toISOString().slice(0,10);
     const prev=await get('gg_daily_reports','store_id=eq.'+SID+'&report_date=eq.'+yDate+'&limit=1');
     let prevLines=[];
-    if(prev.length)prevLines=await get('scratch_inventory_lines','report_id=eq.'+prev[0].id+'&order=box_number.asc');
+    if(prev.length){
+      prevLines=await get('scratch_inventory_lines','report_id=eq.'+prev[0].id+'&order=box_number.asc');
+      // Use yesterday's XCAP end as today's start
+      if(prev[0].xcap_end!=null){
+        S.xcap.start=parseFloat(prev[0].xcap_end||5000);
+      }
+    }
+    g('xcap-start-disp').textContent='$'+S.xcap.start.toFixed(2);
+    calcXcap();
     S.lines=boxes.map(b=>{
     const p=prevLines.find(l=>l.box_number===b.box_number);
     const game=S.games.find(g=>g.game_code===b.current_game_code);
@@ -569,6 +608,32 @@ function renderDrops(){
 
 function addDrop(){S.drops.push({a:0,n:''});renderDrops();}
 
+function calcXcap(){
+  const paidOut=parseFloat(g('xcap-paid')?.value)||0;
+  const addedBack=parseFloat(g('xcap-added')?.value)||0;
+  S.xcap.paidOut=paidOut;
+  S.xcap.addedBack=addedBack;
+  const xcapEnd=S.xcap.start - paidOut + addedBack;
+  const xcapShort=Math.max(0, 5000 - xcapEnd);
+  // Update XCAP display
+  const endEl=g('xcap-end-disp');
+  if(endEl){
+    endEl.textContent='$'+xcapEnd.toFixed(2);
+    endEl.style.color=xcapEnd<5000?'var(--red)':'var(--green)';
+  }
+  const shortEl=g('xcap-short-disp');
+  if(shortEl)shortEl.textContent=xcapShort>0?'$'+xcapShort.toFixed(2):'$0.00';
+  const badgeEl=g('xcap-badge');
+  if(badgeEl){
+    badgeEl.textContent='$'+xcapEnd.toFixed(2);
+    badgeEl.style.color=xcapEnd<5000?'var(--red)':'var(--green)';
+  }
+  // Update d-xcap line in bank deposit
+  const xcapLineEl=g('d-xcap');
+  if(xcapLineEl)xcapLineEl.textContent=addedBack>0?'−$'+addedBack.toFixed(2):'$0.00';
+  // Recalculate full cash summary
+  calcAll();
+}
 function calcAll(){
   const ts=calcScratch();
   const ssq=parseFloat(g('scratch-sq').value)||0;
@@ -580,13 +645,16 @@ function calcAll(){
   const tp=S.pays.reduce((a,p)=>a+parseFloat(p.a||0),0);
   const tc=cash+lot-tp;
   const td=S.drops.reduce((a,d)=>a+parseFloat(d.a||0),0);
-  const bd=tc-td;
+  const xcapBack=parseFloat(g('xcap-added')?.value)||0;
+  const bd=Math.max(0, tc-td-xcapBack);
   g('s-cash').textContent=fmt(cash);
   const le=g('s-lot');le.textContent=(lot<0?'−$':'$')+Math.abs(lot).toFixed(2);le.style.color=lot<0?'var(--red)':'var(--text)';
   g('s-pay').textContent='−'+fmt(tp);g('pay-badge').textContent=fmt(tp);
   g('t-cash').textContent=fmt(tc);g('d-cash').textContent=fmt(tc);
   g('d-drop').textContent='−'+fmt(td);g('drop-badge').textContent=fmt(td);
-  g('bank-dep').textContent=fmt(bd);
+  const xcapBackDisp=parseFloat(g('xcap-added')?.value)||0;
+  if(g('d-xcap'))g('d-xcap').textContent=xcapBackDisp>0?'−$'+xcapBackDisp.toFixed(2):'$0.00';
+  g('bank-dep').textContent=bd>=0?fmt(bd):'$0.00';
 }
 
 function lotColor(){const v=parseFloat(g('lottery').value)||0;const el=g('lottery');if(v<0)el.classList.add('lot-neg');else el.classList.remove('lot-neg');}
@@ -603,7 +671,11 @@ async function doSave(status){
     const tp=S.pays.reduce((a,p)=>a+parseFloat(p.a||0),0);
     const tc=cash+lot-tp;
     const td=S.drops.reduce((a,d)=>a+parseFloat(d.a||0),0);
-    const rd={store_id:SID,report_date:TODAY,status,cash_sales:cash||null,scratch_from_square:ssq||null,daily_lottery_sale:lot||null,total_scratch_sold:parseFloat(ts.toFixed(2)),short_over:parseFloat((ts-ssq).toFixed(2)),total_payouts:parseFloat(tp.toFixed(2)),total_cash:parseFloat(tc.toFixed(2)),total_safe_drop:parseFloat(td.toFixed(2)),bank_deposit:parseFloat((tc-td).toFixed(2)),entered_by:name||null};
+    const xcapPaid=parseFloat(g('xcap-paid')?.value)||0;
+  const xcapAdded=parseFloat(g('xcap-added')?.value)||0;
+  const xcapEnd=S.xcap.start - xcapPaid + xcapAdded;
+  const xcapShort=Math.max(0, 5000 - xcapEnd);
+  const rd={store_id:SID,report_date:TODAY,status,cash_sales:cash||null,scratch_from_square:ssq||null,daily_lottery_sale:lot||null,total_scratch_sold:parseFloat(ts.toFixed(2)),short_over:parseFloat((ts-ssq).toFixed(2)),total_payouts:parseFloat(tp.toFixed(2)),total_cash:parseFloat(tc.toFixed(2)),total_safe_drop:parseFloat(td.toFixed(2)),bank_deposit:parseFloat(Math.max(0,tc-td-xcapAdded).toFixed(2)),xcap_start:S.xcap.start,xcap_paid_out:xcapPaid,xcap_added_back:xcapAdded,xcap_end:parseFloat(xcapEnd.toFixed(2)),xcap_short:parseFloat(xcapShort.toFixed(2)),entered_by:name||null};
     let rid=S.rid;
     if(rid){await patch('gg_daily_reports','id=eq.'+rid,rd);}
     else{
@@ -611,6 +683,11 @@ async function doSave(status){
       const res=await r.json();rid=Array.isArray(res)?res[0].id:res.id;S.rid=rid;
     }
     if(!rid)throw new Error('No report ID');
+    // Log XCAP transaction if any activity
+    if(xcapPaid>0||xcapAdded>0){
+      const xcapRec={store_id:SID,report_date:TODAY,xcap_start:S.xcap.start,xcap_target:5000,xcap_paid_out:xcapPaid,xcap_added_back:xcapAdded,xcap_end:parseFloat(xcapEnd.toFixed(2)),xcap_short:parseFloat(xcapShort.toFixed(2))};
+      await fetch(`${SB}/rest/v1/xcap_transactions?on_conflict=store_id,report_date`,{method:'POST',headers:{...H,'Prefer':'return=minimal,resolution=merge-duplicates'},body:JSON.stringify(xcapRec)});
+    }
     await del('scratch_inventory_lines','report_id=eq.'+rid);
     const lines=S.lines.map(l=>{
     const s=Math.max(0,l.start+l.add-l.end);
