@@ -1260,25 +1260,33 @@ app.get('/api/sales/monthly/net', async (req, res) => {
     }
 
     // Also get fees from stored fees column if available, else 0
-    // Net = Gross - Tax (Scratch Lotto shown separately but not subtracted from net)
-    const netSales = grossSales - totalTax;
+    // Net = Gross - Tax - Returns (matches Square's net sales definition)
+    const netSales = grossSales - totalTax - totalReturns;
 
-    // Fees — pull from Payments API for the month range
+    // Fees — pull from Payments API for the full month
+    // Use Square reporting day: from start of month 2am ET to today 2am ET
     let totalFees = 0;
     try {
       let feesCursor = null, feesPage = 0;
+      const feesEnd = todayET; // up to but not including today
       do {
-        const pr = await sqFetch(`/payments?location_id=${SQUARE_LOCATION}&begin_time=${from}T06:00:00Z&end_time=${todayET}T06:00:00Z&limit=200${feesCursor ? '&cursor=' + feesCursor : ''}`);
+        const feesUrl = `/payments?location_id=${SQUARE_LOCATION}&begin_time=${from}T06:00:00Z&end_time=${feesEnd}T06:00:00Z&limit=200${feesCursor ? '&cursor=' + feesCursor : ''}`;
+        const pr = await sqFetch(feesUrl);
         const pd = await pr.json();
-        for (const p of (pd.payments || [])) {
+        if (!pd.payments) break;
+        for (const p of pd.payments) {
           if (Array.isArray(p.processing_fee)) {
             for (const f of p.processing_fee) {
-              if (f.type === 'INITIAL') totalFees += Math.abs((f.amount_money?.amount || 0)) / 100;
+              // INITIAL = fee charged, ADJUSTMENT = fee refunded (negative)
+              totalFees += (f.amount_money?.amount || 0) / 100;
             }
           }
         }
         feesCursor = pd.cursor; feesPage++;
-      } while (feesCursor && feesPage < 20);
+        if (feesPage > 100) break; // safety
+      } while (feesCursor);
+      // Fees are stored as negative by Square (cost to merchant)
+      totalFees = Math.abs(totalFees);
     } catch(e) { console.log('Monthly fees error:', e.message); }
 
     res.json({
