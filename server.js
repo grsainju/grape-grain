@@ -436,6 +436,33 @@ app.post('/api/square/sync', async (req, res) => {
       synced_at: new Date().toISOString()
     }));
 
+    // Collect fees per day from Payments API
+    const feesByDate = {};
+    try {
+      let feesCursor = null;
+      const feesStart = startDate + 'T06:00:00Z';
+      const feesEndDate = new Date(endDate + 'T06:00:00Z');
+      feesEndDate.setDate(feesEndDate.getDate() + 1);
+      const feesEnd = feesEndDate.toISOString().slice(0,19) + 'Z';
+      do {
+        const pr = await sqFetch(`/payments?location_id=${SQUARE_LOCATION}&begin_time=${feesStart}&end_time=${feesEnd}&limit=200${feesCursor ? '&cursor=' + feesCursor : ''}`);
+        const pd = await pr.json();
+        for (const p of (pd.payments || [])) {
+          if (!Array.isArray(p.processing_fee)) continue;
+          // Get payment date in ET
+          const pDate = new Date(p.created_at || p.updated_at).toLocaleDateString('en-CA', { timeZone: 'America/New_York' });
+          for (const f of p.processing_fee) {
+            feesByDate[pDate] = (feesByDate[pDate] || 0) + Math.abs((f.amount_money?.amount || 0)) / 100;
+          }
+        }
+        feesCursor = pd.cursor;
+      } while (feesCursor);
+      console.log(`Fees collected for ${Object.keys(feesByDate).length} dates`);
+    } catch(e) { console.log('Fees collection error:', e.message); }
+
+    // Add fees to rows
+    rows.forEach(r => { r.fees = parseFloat((feesByDate[r.sale_date] || 0).toFixed(2)); });
+
     if (rows.length > 0) {
       const upsertR = await sbFetch(`${SUPABASE_URL}/rest/v1/square_daily_sales?on_conflict=store_id,sale_date`, {
         method: 'POST',
@@ -1235,7 +1262,7 @@ app.get('/api/sales/monthly/net', async (req, res) => {
 
     // Always use square_daily_sales for money totals — has all fields
     const r = await sbFetch(
-      `${SUPABASE_URL}/rest/v1/square_daily_sales?store_id=eq.${STORE_ID}&sale_date=gte.${from}&sale_date=lte.${to}&select=sale_date,gross_sales,tax,cash_amount,card_amount,discounts,returns,transaction_count,categories&order=sale_date.asc`,
+      `${SUPABASE_URL}/rest/v1/square_daily_sales?store_id=eq.${STORE_ID}&sale_date=gte.${from}&sale_date=lte.${to}&select=sale_date,gross_sales,tax,cash_amount,card_amount,discounts,returns,fees,transaction_count,categories&order=sale_date.asc`,
       { headers: sbHeaders }
     );
     const rows = await r.json();
@@ -1263,31 +1290,8 @@ app.get('/api/sales/monthly/net', async (req, res) => {
     // Net = Gross - Tax - Returns (matches Square's net sales definition)
     const netSales = grossSales - totalTax - totalReturns;
 
-    // Fees — pull from Payments API for the full month
-    // Use Square reporting day: from start of month 2am ET to today 2am ET
-    let totalFees = 0;
-    try {
-      let feesCursor = null, feesPage = 0;
-      const feesEnd = todayET; // up to but not including today
-      do {
-        const feesUrl = `/payments?location_id=${SQUARE_LOCATION}&begin_time=${from}T06:00:00Z&end_time=${feesEnd}T06:00:00Z&limit=200${feesCursor ? '&cursor=' + feesCursor : ''}`;
-        const pr = await sqFetch(feesUrl);
-        const pd = await pr.json();
-        if (!pd.payments) break;
-        for (const p of pd.payments) {
-          if (Array.isArray(p.processing_fee)) {
-            for (const f of p.processing_fee) {
-              // INITIAL = fee charged, ADJUSTMENT = fee refunded (negative)
-              totalFees += (f.amount_money?.amount || 0) / 100;
-            }
-          }
-        }
-        feesCursor = pd.cursor; feesPage++;
-        if (feesPage > 100) break; // safety
-      } while (feesCursor);
-      // Fees are stored as negative by Square (cost to merchant)
-      totalFees = Math.abs(totalFees);
-    } catch(e) { console.log('Monthly fees error:', e.message); }
+    // Fees — read from stored fees column in square_daily_sales
+    const totalFees = completedRows.reduce((a, r) => a + parseFloat(r.fees || 0), 0);
 
     res.json({
       month: parseInt(month), year: parseInt(year),
