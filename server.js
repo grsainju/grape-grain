@@ -1208,6 +1208,34 @@ app.get('/api/square/debug-live', async (req, res) => {
   }
 });
 
+
+// Test Square's reporting endpoints for category sales
+app.get('/api/square/test-reporting', async (req, res) => {
+  try {
+    const today = new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' });
+    const results = {};
+
+    // Try 1: Labor API (not relevant but tests auth)
+    const r1 = await sqFetch(`/labor/shifts?location_id=${SQUARE_LOCATION}&limit=1`);
+    results.laborStatus = r1.status;
+
+    // Try 2: Square's v1 settlements (legacy but has category data)
+    const r2 = await sqFetch(`/v1/${SQUARE_LOCATION}/settlements?limit=1`);
+    results.settlementsStatus = r2.status;
+    if (r2.ok) results.settlementsData = (await r2.json()).slice(0,1);
+
+    // Try 3: Reporting API - business report
+    const r3 = await sqFetch(`/reporting/reports/cash-drawer-current-day-report?location_id=${SQUARE_LOCATION}`);
+    results.cashDrawerStatus = r3.status;
+
+    // Try 4: Inventory count by category (different approach)
+    const r4 = await sqFetch(`/inventory/counts?location_ids=${SQUARE_LOCATION}&limit=1`);
+    results.inventoryStatus = r4.status;
+
+    res.json(results);
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
 // Debug: show raw Square catalog structure for first item
 app.get('/api/square/catalog/raw', async (req, res) => {
   try {
