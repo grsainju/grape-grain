@@ -179,7 +179,10 @@ app.get('/api/square/day', async (req, res) => {
           let feesCursor = null;
           let feesPage = 0;
           do {
-            const feesUrl = `/payments?location_id=${SQUARE_LOCATION}&begin_time=${date}T00:00:00-05:00&end_time=${date}T23:59:59-05:00&limit=100${feesCursor ? '&cursor=' + feesCursor : ''}`;
+            const nextDayFees = new Date(date + 'T06:00:00Z');
+            nextDayFees.setDate(nextDayFees.getDate() + 1);
+            const feesEndTime = nextDayFees.toISOString().replace('06:00:00', '05:59:59');
+            const feesUrl = `/payments?location_id=${SQUARE_LOCATION}&begin_time=${date}T06:00:00Z&end_time=${feesEndTime}&limit=100${feesCursor ? '&cursor=' + feesCursor : ''}`;
             const paymentsR = await sqFetch(feesUrl);
             const paymentsData = await paymentsR.json();
             for (const p of (paymentsData.payments || [])) {
@@ -381,7 +384,7 @@ app.post('/api/square/sync', async (req, res) => {
         query: {
           filter: {
             date_time_filter: {
-              created_at: { start_at: `${startDate}T00:00:00-05:00`, end_at: `${endDate}T23:59:59-05:00` }
+              created_at: { start_at: `${startDate}T06:00:00Z`, end_at: `${endDate}T05:59:59Z` }
             },
             state_filter: { states: ['COMPLETED'] }
           }
@@ -405,10 +408,11 @@ app.post('/api/square/sync', async (req, res) => {
     const categoryByDate = {};
 
     for (const order of allOrders) {
-      // Square timestamps are in UTC, convert to EST (UTC-5)
-      // Using America/New_York for proper DST handling
+      // Square reporting day starts at 2am EDT (6am UTC)
+      // Subtract 6 hours to align with Square's reporting day
       const utcDate = new Date(order.created_at);
-      const date = utcDate.toLocaleDateString('en-CA', { timeZone: 'America/New_York' });
+      const squareDate = new Date(utcDate.getTime() - 6 * 60 * 60 * 1000);
+      const date = squareDate.toISOString().slice(0, 10);
 
       if (!byDate[date]) byDate[date] = { date, netSales: 0, grossSales: 0, tax: 0, cash: 0, card: 0, transactions: 0, discounts: 0, returns: 0, fees: 0 };
       if (!categoryByDate[date]) categoryByDate[date] = {};
@@ -1136,6 +1140,63 @@ app.get('/api/square/debug-payment', async (req, res) => {
       } : null
     });
   } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+
+// Debug live category pull step by step
+app.get('/api/square/debug-live', async (req, res) => {
+  try {
+    const date = new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' });
+    
+    // Step 1: Load catalog map
+    const itemMapR = await sbFetch(
+      `${SUPABASE_URL}/rest/v1/square_items?store_id=eq.${STORE_ID}&select=id,category_name&limit=5000&is_deleted=eq.false`,
+      { headers: sbHeaders }
+    );
+    const itemMapRows = await itemMapR.json();
+    const itemCatMap = {};
+    if (Array.isArray(itemMapRows)) {
+      itemMapRows.forEach(r => { if (r.id && r.category_name) itemCatMap[r.id] = r.category_name; });
+    }
+
+    // Step 2: Pull a small sample of orders
+    const ordersR = await sqFetch('/orders/search', {
+      method: 'POST',
+      body: JSON.stringify({
+        location_ids: [SQUARE_LOCATION],
+        query: {
+          filter: {
+            date_time_filter: { created_at: { start_at: `${date}T06:00:00Z`, end_at: `${date}T23:59:59Z` } },
+            state_filter: { states: ['COMPLETED'] }
+          }
+        },
+        limit: 5
+      })
+    });
+    const ordersData = await ordersR.json();
+    const orders = ordersData.orders || [];
+
+    // Step 3: Check matching for first order's items
+    const firstOrder = orders[0];
+    const lineItemCheck = (firstOrder?.line_items || []).slice(0,5).map(item => ({
+      name: item.name,
+      catalog_object_id: item.catalog_object_id,
+      gross_sales: (item.gross_sales_money?.amount || 0) / 100,
+      foundInCatalog: item.catalog_object_id ? !!itemCatMap[item.catalog_object_id] : false,
+      category: item.catalog_object_id ? (itemCatMap[item.catalog_object_id] || 'NOT FOUND') : 'NO ID'
+    }));
+
+    res.json({
+      catalogMapSize: Object.keys(itemCatMap).length,
+      catalogHttpStatus: itemMapR.status,
+      ordersReturned: orders.length,
+      ordersHttpStatus: ordersR.status,
+      sampleItemMapEntry: Object.entries(itemCatMap).slice(0,2),
+      firstOrderLineItems: lineItemCheck
+    });
+  } catch(e) {
+    res.status(500).json({ error: e.message, stack: e.stack?.substring(0,500) });
+  }
 });
 
 // Debug: show raw Square catalog structure for first item
