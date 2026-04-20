@@ -450,6 +450,7 @@ td{padding:9px 14px;vertical-align:middle}
     <div style="display:flex;gap:10px;flex-wrap:wrap;padding:12px 0;border-top:1px solid var(--border);margin-top:4px">
       <div style="flex:1;min-width:100px;padding:10px 12px;background:var(--surface2);border-radius:6px;border:1px solid var(--border)"><div style="font-family:var(--mono);font-size:14px;font-weight:500;color:var(--muted)" id="ms-discounts">—</div><div style="font-size:10px;font-family:var(--mono);color:var(--faint);text-transform:uppercase;letter-spacing:.05em;margin-top:2px">Discounts</div></div>
       <div style="flex:1;min-width:100px;padding:10px 12px;background:var(--surface2);border-radius:6px;border:1px solid var(--border)"><div style="font-family:var(--mono);font-size:14px;font-weight:500;color:var(--muted)" id="ms-returns">—</div><div style="font-size:10px;font-family:var(--mono);color:var(--faint);text-transform:uppercase;letter-spacing:.05em;margin-top:2px">Returns</div></div>
+      <div style="flex:1;min-width:100px;padding:10px 12px;background:var(--surface2);border-radius:6px;border:1px solid var(--border)"><div style="font-family:var(--mono);font-size:14px;font-weight:500;color:var(--muted)" id="ms-fees">—</div><div style="font-size:10px;font-family:var(--mono);color:var(--faint);text-transform:uppercase;letter-spacing:.05em;margin-top:2px">Fees</div></div>
       <div style="flex:1;min-width:100px;padding:10px 12px;background:var(--surface2);border-radius:6px;border:1px solid var(--border)"><div style="font-family:var(--mono);font-size:14px;font-weight:500;color:var(--muted)" id="ms-scratch">—</div><div style="font-size:10px;font-family:var(--mono);color:var(--faint);text-transform:uppercase;letter-spacing:.05em;margin-top:2px">Scratch Lotto</div></div>
     </div>
     <div style="margin-top:14px">
@@ -1084,6 +1085,7 @@ async function loadMonthlySummary() {
   if (g('ms-tax')) g('ms-tax').textContent = fmt(monthly.tax || 0);
   if (g('ms-discounts')) g('ms-discounts').textContent = fmt(monthly.discounts || 0);
   if (g('ms-returns')) g('ms-returns').textContent = fmt(monthly.returns || 0);
+  if (g('ms-fees')) g('ms-fees').textContent = fmt(monthly.fees || 0);
   if (g('ms-scratch')) g('ms-scratch').textContent = fmt(monthly.scratchLotto || 0);
 
   ST.dashMonth = dashMonth; ST.dashYear = dashYear;
