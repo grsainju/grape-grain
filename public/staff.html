@@ -269,7 +269,6 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);font-size:14
     <div class="section-body">
       <div class="totals-row"><div class="totals-label">Total Cash</div><div class="totals-val" id="d-cash">$0.00</div></div>
       <div class="totals-row"><div class="totals-label">Total Safe Drop</div><div class="totals-val red" id="d-drop">−$0.00</div></div>
-      <div class="totals-row"><div class="totals-label">XCAP Added Back</div><div class="totals-val red" id="d-xcap">−$0.00</div></div>
       <div class="hi-box green"><div class="hi-label">Total for Bank Deposit</div><div class="hi-val green" id="bank-dep">$0.00</div></div>
     </div>
   </div>
@@ -643,18 +642,24 @@ function calcAll(){
   const cash=parseFloat(g('cash-sales').value)||0;
   const lot=parseFloat(g('lottery').value)||0;
   const tp=S.pays.reduce((a,p)=>a+parseFloat(p.a||0),0);
-  const tc=cash+lot-tp;
+  const tc=cash+lot-tp; // can be negative when lottery loss > cash sales
   const td=S.drops.reduce((a,d)=>a+parseFloat(d.a||0),0);
+  const xcapPaidOut=parseFloat(g('xcap-paid')?.value)||0;
   const xcapBack=parseFloat(g('xcap-added')?.value)||0;
-  const bd=Math.max(0, tc-td-xcapBack);
+  // Bank deposit = safe drop (what goes in safe goes to bank)
+  const bd=td;
   g('s-cash').textContent=fmt(cash);
   const le=g('s-lot');le.textContent=(lot<0?'−$':'$')+Math.abs(lot).toFixed(2);le.style.color=lot<0?'var(--red)':'var(--text)';
   g('s-pay').textContent='−'+fmt(tp);g('pay-badge').textContent=fmt(tp);
-  g('t-cash').textContent=fmt(tc);g('d-cash').textContent=fmt(tc);
+  // Total Cash — show negative in red
+  const tcEl=g('t-cash');
+  tcEl.textContent=(tc<0?'−$':'$')+Math.abs(tc).toFixed(2);
+  tcEl.style.color=tc<0?'var(--red)':'inherit';
+  const dcEl=g('d-cash');
+  dcEl.textContent=(tc<0?'−$':'$')+Math.abs(tc).toFixed(2);
+  dcEl.style.color=tc<0?'var(--red)':'inherit';
   g('d-drop').textContent='−'+fmt(td);g('drop-badge').textContent=fmt(td);
-  const xcapBackDisp=parseFloat(g('xcap-added')?.value)||0;
-  if(g('d-xcap'))g('d-xcap').textContent=xcapBackDisp>0?'−$'+xcapBackDisp.toFixed(2):'$0.00';
-  g('bank-dep').textContent=bd>=0?fmt(bd):'$0.00';
+  g('bank-dep').textContent=fmt(bd);
 }
 
 function lotColor(){const v=parseFloat(g('lottery').value)||0;const el=g('lottery');if(v<0)el.classList.add('lot-neg');else el.classList.remove('lot-neg');}
@@ -675,7 +680,7 @@ async function doSave(status){
   const xcapAdded=parseFloat(g('xcap-added')?.value)||0;
   const xcapEnd=S.xcap.start - xcapPaid + xcapAdded;
   const xcapShort=Math.max(0, 5000 - xcapEnd);
-  const rd={store_id:SID,report_date:TODAY,status,cash_sales:cash||null,scratch_from_square:ssq||null,daily_lottery_sale:lot||null,total_scratch_sold:parseFloat(ts.toFixed(2)),short_over:parseFloat((ts-ssq).toFixed(2)),total_payouts:parseFloat(tp.toFixed(2)),total_cash:parseFloat(tc.toFixed(2)),total_safe_drop:parseFloat(td.toFixed(2)),bank_deposit:parseFloat(Math.max(0,tc-td-xcapAdded).toFixed(2)),xcap_start:S.xcap.start,xcap_paid_out:xcapPaid,xcap_added_back:xcapAdded,xcap_end:parseFloat(xcapEnd.toFixed(2)),xcap_short:parseFloat(xcapShort.toFixed(2)),entered_by:name||null};
+  const rd={store_id:SID,report_date:TODAY,status,cash_sales:cash||null,scratch_from_square:ssq||null,daily_lottery_sale:lot||null,total_scratch_sold:parseFloat(ts.toFixed(2)),short_over:parseFloat((ts-ssq).toFixed(2)),total_payouts:parseFloat(tp.toFixed(2)),total_cash:parseFloat(tc.toFixed(2)),total_safe_drop:parseFloat(td.toFixed(2)),bank_deposit:parseFloat(td.toFixed(2)),xcap_start:S.xcap.start,xcap_paid_out:xcapPaid,xcap_added_back:xcapAdded,xcap_end:parseFloat(xcapEnd.toFixed(2)),xcap_short:parseFloat(xcapShort.toFixed(2)),entered_by:name||null};
     let rid=S.rid;
     if(rid){await patch('gg_daily_reports','id=eq.'+rid,rd);}
     else{
