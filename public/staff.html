@@ -125,8 +125,9 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);font-size:14
       <table class="scratch-table">
         <thead><tr>
           <th style="text-align:left;padding-left:16px">#</th>
+          <th style="text-align:left">Game</th>
           <th style="text-align:left">Value</th>
-          <th>Pack</th><th>Start</th><th>Add</th><th>End</th><th>Sold</th><th>$ Sold</th>
+          <th>Pack</th><th>Start</th><th>Add (game code + packs)</th><th>End</th><th>Sold</th><th>$ Sold</th>
         </tr></thead>
         <tbody id="scratch-tbody"></tbody>
         <tfoot><tr>
@@ -251,7 +252,7 @@ const AK='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6I
 const SID=1;
 const TODAY=new Date().toISOString().slice(0,10);
 const H={'apikey':AK,'Authorization':'Bearer '+AK,'Content-Type':'application/json','Prefer':'return=representation'};
-const S={boxes:[],lines:[],kiosk:[],pays:[],drops:[],vendors:[],rid:null};
+const S={boxes:[],lines:[],kiosk:[],pays:[],drops:[],vendors:[],games:[],rid:null};
 
 const g=id=>document.getElementById(id);
 const fmt=n=>'$'+Math.abs(parseFloat(n||0)).toFixed(2);
@@ -274,12 +275,13 @@ async function init(){
   g('hdate').textContent=d.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'});
   g('ptitle').textContent='Daily Report — '+d.toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric',year:'numeric'});
 
-  const [boxes,vendors,existing]=await Promise.all([
+  const [boxes,vendors,existing,games]=await Promise.all([
     get('scratch_boxes','store_id=eq.'+SID+'&is_active=eq.true&order=box_number.asc'),
     get('vendors','store_id=eq.'+SID+'&order=vendor_name.asc'),
     get('gg_daily_reports','store_id=eq.'+SID+'&report_date=eq.'+TODAY+'&limit=1'),
+    get('scratch_games','store_id=eq.'+SID+'&order=game_code.asc'),
   ]);
-  S.boxes=boxes; S.vendors=vendors;
+  S.boxes=boxes; S.vendors=vendors; S.games=games;
 
   // Build kiosk denoms from unique face values
   const km={};
@@ -294,7 +296,13 @@ async function init(){
       get('gg_daily_payouts','report_id=eq.'+S.rid),
       get('gg_safe_drops','report_id=eq.'+S.rid+'&order=created_at.asc'),
     ]);
-    S.lines=boxes.map(b=>{const e=lines.find(l=>l.box_number===b.box_number);return{bn:b.box_number,fv:b.face_value,ps:b.pack_size,start:e?e.start_count:0,add:e?e.added_count:0,end:e?e.end_count:0};});
+    S.lines=boxes.map(b=>{
+    const e=lines.find(l=>l.box_number===b.box_number);
+    const game=S.games.find(g=>g.game_code===b.current_game_code);
+    const fv=game?game.face_value:b.face_value;
+    const ps=game?game.pack_size:b.pack_size;
+    return{bn:b.box_number,fv,ps,gc:b.current_game_code||'',gn:game?game.game_name:'',start:e?e.start_count:0,addCode:e?e.added_game_code||b.current_game_code||'':'',add:e?e.added_count:0,end:e?e.end_count:0};
+  });
     kd.forEach(k=>{const x=S.kiosk.find(i=>parseFloat(i.faceValue)===parseFloat(k.face_value));if(x)x.countAdded=k.count_added;});
     S.pays=pays.map(p=>({v:p.vendor_name||'',a:p.amount,n:p.note||''}));
     S.drops=drops.map(d=>({a:d.amount,n:d.note||''}));
@@ -309,7 +317,14 @@ async function init(){
     const prev=await get('gg_daily_reports','store_id=eq.'+SID+'&report_date=eq.'+yDate+'&limit=1');
     let prevLines=[];
     if(prev.length)prevLines=await get('scratch_inventory_lines','report_id=eq.'+prev[0].id+'&order=box_number.asc');
-    S.lines=boxes.map(b=>{const p=prevLines.find(l=>l.box_number===b.box_number);const s=p?p.end_count:0;return{bn:b.box_number,fv:b.face_value,ps:b.pack_size,start:s,add:0,end:s};});
+    S.lines=boxes.map(b=>{
+    const p=prevLines.find(l=>l.box_number===b.box_number);
+    const game=S.games.find(g=>g.game_code===b.current_game_code);
+    const fv=game?game.face_value:b.face_value;
+    const ps=game?game.pack_size:b.pack_size;
+    const s=p?p.end_count:0;
+    return{bn:b.box_number,fv,ps,gc:b.current_game_code||'',gn:game?game.game_name:'',start:s,addCode:'',add:0,end:s};
+  });
   }
 
   renderScratch();renderKiosk();renderPays();renderDrops();calcAll();lotColor();
@@ -321,16 +336,62 @@ function getValStyle(v){
   return styles[v]||{c:'#555',bg:'#f1f3f5'};
 }
 
+function lookupGameByCode(code){
+  return S.games.find(g=>g.game_code===String(code||'').trim())||null;
+}
+function onAddCode(i, code){
+  code=code.trim();
+  const game=lookupGameByCode(code);
+  const l=S.lines[i];
+  l.addCode=code;
+  if(game){
+    // If same game, add one pack. If different, use new game's pack size
+    const addPacks=1;
+    l.addFv=parseFloat(game.face_value);
+    l.addPs=game.pack_size;
+    l.addName=game.game_name;
+    l.add=addPacks*game.pack_size;
+    // Update the add count input
+    const row=g('scratch-tbody').querySelectorAll('tr')[i];
+    if(row){
+      const packInput=row.querySelector('.add-count');
+      if(packInput)packInput.value=l.add;
+      const codeInfo=row.querySelector('.add-code-info');
+      if(codeInfo)codeInfo.textContent=game.game_name+' $'+parseFloat(game.face_value).toFixed(0)+' · '+game.pack_size+'pk';
+      codeInfo&&(codeInfo.style.color='var(--green)');
+    }
+  } else if(code) {
+    const row=g('scratch-tbody').querySelectorAll('tr')[i];
+    const codeInfo=row?.querySelector('.add-code-info');
+    if(codeInfo){codeInfo.textContent='Game '+code+' not found';codeInfo.style.color='var(--red)';}
+    l.addFv=null;l.addPs=null;l.addName=null;
+  } else {
+    l.addFv=null;l.addPs=null;l.addName=null;l.add=0;
+  }
+  calcAll();
+}
+function onAddCount(i,val){
+  S.lines[i].add=parseInt(val)||0;
+  calcAll();
+}
 function renderScratch(){
   g('scratch-tbody').innerHTML=S.lines.map((l,i)=>{
     const v=parseFloat(l.fv);const sold=l.start+l.add-l.end;const dollar=sold>0?sold*v:0;
     const st=getValStyle(v);const vLabel='$'+(v%1===0?v.toFixed(0):v.toFixed(2));
+    const gcLabel=l.gc||'—';
     return `<tr>
       <td style="padding-left:16px"><span class="box-num">${l.bn}</span></td>
+      <td style="font-family:var(--mono);font-size:12px;color:var(--accent)">${gcLabel}</td>
       <td><span class="val-badge" style="color:${st.c};background:${st.bg};border:1px solid ${st.c}30">${vLabel}</span></td>
       <td><span style="font-family:var(--mono);font-size:12px;color:var(--muted)">${l.ps}</span></td>
       <td><span class="start-cell">${l.start}</span></td>
-      <td><input class="num-input add-i" type="number" min="0" value="${l.add}" onchange="upLine(${i},'add',this.value)"></td>
+      <td style="min-width:180px">
+        <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+          <input class="num-input add-i" type="text" placeholder="code" value="${l.addCode||''}" style="width:60px;font-family:var(--mono);font-size:13px;letter-spacing:.05em;text-transform:uppercase" oninput="onAddCode(${i},this.value)">
+          <input class="num-input add-count" type="number" min="0" value="${l.add}" style="width:55px" oninput="onAddCount(${i},this.value)">
+          <div class="add-code-info" style="font-size:10px;color:var(--green);min-width:120px">${l.addName||''}</div>
+        </div>
+      </td>
       <td><input class="num-input" type="number" min="0" value="${l.end}" onchange="upLine(${i},'end',this.value)"></td>
       <td class="sold-cell ${sold<0?'sold-neg':''}">${sold<0?'⚠':sold}</td>
       <td class="dollar-cell">${sold<0?'<span style="color:var(--red);font-size:11px">check</span>':'$'+dollar.toFixed(2)}</td>
@@ -344,16 +405,23 @@ function upLine(i,field,val){
   const rows=g('scratch-tbody').querySelectorAll('tr');
   if(rows[i]){
     const l=S.lines[i];const v=parseFloat(l.fv);const sold=l.start+l.add-l.end;const dollar=sold>0?sold*v:0;
-    rows[i].querySelectorAll('td')[6].innerHTML=sold<0?'⚠':sold;
-    rows[i].querySelectorAll('td')[6].className='sold-cell'+(sold<0?' sold-neg':'');
-    rows[i].querySelectorAll('td')[7].innerHTML=sold<0?'<span style="color:var(--red);font-size:11px">check</span>':'$'+dollar.toFixed(2);
+    rows[i].querySelectorAll('td')[7].innerHTML=sold<0?'⚠':sold;
+    rows[i].querySelectorAll('td')[7].className='sold-cell'+(sold<0?' sold-neg':'');
+    rows[i].querySelectorAll('td')[8].innerHTML=sold<0?'<span style="color:var(--red);font-size:11px">check</span>':'$'+dollar.toFixed(2);
   }
   calcAll();
 }
 
 function calcScratch(){
   let tix=0,dol=0;
-  S.lines.forEach(l=>{const s=l.start+l.add-l.end;if(s>0){tix+=s;dol+=s*parseFloat(l.fv);}});
+  S.lines.forEach(l=>{
+    const s=l.start+l.add-l.end;
+    if(s>0){
+      // If a different game was added, sold tickets use that game's face value
+      const fv=l.addFv&&l.addCode&&l.addCode!==l.gc?l.addFv:parseFloat(l.fv);
+      tix+=s;dol+=s*fv;
+    }
+  });
   g('ttix').textContent=tix;g('tdol').textContent='$'+dol.toFixed(2);
   g('scratch-badge').textContent='$'+dol.toFixed(2)+' sold';
   return dol;
@@ -446,8 +514,28 @@ async function doSave(status){
     }
     if(!rid)throw new Error('No report ID');
     await del('scratch_inventory_lines','report_id=eq.'+rid);
-    const lines=S.lines.map(l=>{const s=Math.max(0,l.start+l.add-l.end);return{report_id:rid,store_id:SID,box_number:l.bn,face_value:parseFloat(l.fv),pack_size:l.ps,start_count:l.start,added_count:l.add,end_count:l.end,tickets_sold:s,dollar_sold:parseFloat((s*parseFloat(l.fv)).toFixed(2))};});
+    const lines=S.lines.map(l=>{
+    const s=Math.max(0,l.start+l.add-l.end);
+    const fv=l.addFv&&l.addCode&&l.addCode!==l.gc?l.addFv:parseFloat(l.fv);
+    return{report_id:rid,store_id:SID,box_number:l.bn,face_value:parseFloat(l.fv),pack_size:l.ps,
+      current_game_code:l.gc||null,added_game_code:l.addCode||null,
+      start_count:l.start,added_count:l.add,end_count:l.end,tickets_sold:s,
+      dollar_sold:parseFloat((s*fv).toFixed(2))};
+  });
     await post('scratch_inventory_lines',lines,'return=minimal');
+    // Deduct tickets sold and update inventory + game code on each box
+    for(const l of S.lines){
+      const sold=Math.max(0,l.start+l.add-l.end);
+      const box=S.boxes.find(b=>b.box_number===l.bn);
+      if(!box)continue;
+      const newOnHand=Math.max(0,(box.tickets_on_hand||0)-sold+(l.add||0));
+      const upd={tickets_on_hand:newOnHand};
+      if(l.addCode&&l.addCode!==l.gc){
+        const ng=lookupGameByCode(l.addCode);
+        if(ng){upd.current_game_code=l.addCode;upd.current_game_name=ng.game_name;upd.game_name=ng.game_name;upd.game_code=l.addCode;upd.face_value=ng.face_value;upd.pack_size=ng.pack_size;}
+      }
+      await fetch(`${SB}/rest/v1/scratch_boxes?id=eq.${box.id}`,{method:'PATCH',headers:H,body:JSON.stringify(upd)});
+    }
     await del('kiosk_activations','report_id=eq.'+rid);
     const kd=S.kiosk.filter(k=>k.countAdded>0).map(k=>({report_id:rid,store_id:SID,face_value:parseFloat(k.faceValue),pack_size:k.packSize,count_added:k.countAdded}));
     if(kd.length)await post('kiosk_activations',kd,'return=minimal');
