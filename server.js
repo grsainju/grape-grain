@@ -168,9 +168,11 @@ app.get('/api/square/day', async (req, res) => {
 
         const liveNetSales = liveGross - liveTax - liveScratch;
         const liveCats = Object.entries(liveCatMap)
+          .filter(([name]) => name !== '_unmapped')
           .sort((a,b) => b[1]-a[1])
           .slice(0,5)
           .map(([name, netSales]) => ({ name, netSales: parseFloat(netSales.toFixed(2)) }));
+        const unmappedTotal = parseFloat((liveCatMap['_unmapped'] || 0).toFixed(2));
 
         // Get Square processing fees from Payments API
         // Fees: Square processing fees from Payments API
@@ -206,6 +208,7 @@ app.get('/api/square/day', async (req, res) => {
           date,
           netSales: parseFloat(liveNetSales.toFixed(2)),
           grossSales: parseFloat(liveGross.toFixed(2)),
+          unmappedSales: unmappedTotal,
           tax: parseFloat(liveTax.toFixed(2)),
           discounts: parseFloat(liveDisc.toFixed(2)),
           returns: parseFloat(liveRet.toFixed(2)),
