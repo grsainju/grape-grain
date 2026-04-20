@@ -1050,11 +1050,15 @@ async function loadMonthlySummary() {
   const r = await fetch(`/api/sales/monthly/net?month=${dashMonth}&year=${dashYear}`);
   const monthly = await r.json();
   const squareDays = await (await fetch(`/api/square/stored/month?month=${dashMonth}&year=${dashYear}`)).json();
-  const days = monthly.days || squareDays.length;
+  // Exclude today — only count completed days
+  const todayStr = new Date().toLocaleDateString('en-CA', {timeZone:'America/New_York'});
+  const completedSquareDays = Array.isArray(squareDays) ? squareDays.filter(d => d.sale_date < todayStr) : [];
+  const days = monthly.days || completedSquareDays.length;
   const netSales = monthly.netSales || 0;
   const now = new Date();
   const isCurrentMonth = now.getMonth()+1===dashMonth && now.getFullYear()===dashYear;
-  const daysElapsed = isCurrentMonth ? now.getDate() : daysInMonth;
+  // daysElapsed = yesterday for current month (today is incomplete)
+  const daysElapsed = isCurrentMonth ? now.getDate() - 1 : daysInMonth;
   const avgSale = daysElapsed > 0 ? netSales / daysElapsed : 0;
   const estSale = avgSale * daysInMonth;
 
