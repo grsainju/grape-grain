@@ -1316,33 +1316,42 @@ app.get('/api/sales/monthly/net', async (req, res) => {
 // ITEM MANAGER ENDPOINTS
 // ═══════════════════════════════════════════════════════════════
 
-// Match items table to square_items by UPC, store Square IDs
+// Match items to square_items by UPC — single bulk SQL via Supabase RPC
 app.post('/api/items/match-square', async (req, res) => {
   try {
-    // Get all items with UPC
-    let matched = 0, unmatched = 0;
-    let offset = 0;
-    while (true) {
-      const r = await sbFetch(`${SUPABASE_URL}/rest/v1/items?store_id=eq.${STORE_ID}&upc=not.is.null&select=id,upc,abs_code&limit=500&offset=${offset}`, { headers: sbHeaders });
-      const items = await r.json();
-      if (!items.length) break;
+    // Step 1: Pull square_items UPC map (one fetch, ~3500 rows)
+    const sqR = await sbFetch(`${SUPABASE_URL}/rest/v1/square_items?store_id=eq.${STORE_ID}&sku=not.is.null&is_deleted=eq.false&select=id,sku,price_cents&limit=5000`, { headers: sbHeaders });
+    const sqItems = await sqR.json();
+    const upcMap = {};
+    sqItems.forEach(si => { if (si.sku) upcMap[si.sku.trim()] = { id: si.id, price_cents: si.price_cents }; });
 
-      for (const item of items) {
-        // Match by UPC to square_items
-        const sqR = await sbFetch(`${SUPABASE_URL}/rest/v1/square_items?store_id=eq.${STORE_ID}&sku=eq.${encodeURIComponent(item.upc)}&limit=1&select=id,price_cents`, { headers: sbHeaders });
-        const sqItems = await sqR.json();
-        if (sqItems.length) {
-          await sbFetch(`${SUPABASE_URL}/rest/v1/items?id=eq.${item.id}`, {
-            method: 'PATCH', headers: sbHeaders,
-            body: JSON.stringify({ square_variation_id: sqItems[0].id, square_price_cents: sqItems[0].price_cents, square_synced_at: new Date().toISOString() })
-          });
-          matched++;
-        } else { unmatched++; }
-      }
-      if (items.length < 500) break;
-      offset += 500;
+    // Step 2: Pull all items with UPC (one fetch, ~2600 rows)
+    const iR = await sbFetch(`${SUPABASE_URL}/rest/v1/items?store_id=eq.${STORE_ID}&upc=not.is.null&select=id,upc&limit=5000`, { headers: sbHeaders });
+    const items = await iR.json();
+
+    // Step 3: Build matched and unmatched lists
+    const toUpdate = [];
+    let unmatched = 0;
+    const now = new Date().toISOString();
+    items.forEach(item => {
+      const sq = upcMap[item.upc?.trim()];
+      if (sq) toUpdate.push({ id: item.id, square_variation_id: sq.id, square_price_cents: sq.price_cents, square_synced_at: now });
+      else unmatched++;
+    });
+
+    // Step 4: Upsert matched rows back via items table — batch of 500 at a time
+    // Use POST with on_conflict=id and merge-duplicates to do bulk UPDATE
+    const batchSize = 500;
+    for (let i = 0; i < toUpdate.length; i += batchSize) {
+      const batch = toUpdate.slice(i, i + batchSize);
+      await sbFetch(`${SUPABASE_URL}/rest/v1/items?on_conflict=id`, {
+        method: 'POST',
+        headers: { ...sbHeaders, 'Prefer': 'return=minimal,resolution=merge-duplicates' },
+        body: JSON.stringify(batch)
+      });
     }
-    res.json({ success: true, matched, unmatched });
+
+    res.json({ success: true, matched: toUpdate.length, unmatched, squareCatalogSize: sqItems.length });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
