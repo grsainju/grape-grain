@@ -12,6 +12,7 @@ const STORE_ID = parseInt(process.env.STORE_ID || '1');
 const SQUARE_TOKEN = process.env.SQUARE_TOKEN || 'EAAAl97orZ29ofOnCX88UeQ-WL96DpCM1BXg85gRiRO_0DWbkSEdaI_BbqyUiUxs';
 const SQUARE_LOCATION = process.env.SQUARE_LOCATION || '9RXJEVJ2DHQGG';
 const SQUARE_BASE = 'https://connect.squareup.com/v2';
+const ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY || '';
 const SQUARE_VERSION = '2024-01-18';
 
 const sbHeaders = {
@@ -1632,6 +1633,28 @@ app.get('/api/newsletter/items-map', async (req, res) => {
     const map = {};
     items.forEach(i => { if (i.abs_code) map[i.abs_code] = i; });
     res.json(map);
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+
+// ═══════════════════════════════════════════════════════════════
+// CLAUDE API PROXY — keeps API key server-side
+// ═══════════════════════════════════════════════════════════════
+app.post('/api/claude/proxy', async (req, res) => {
+  try {
+    if (!ANTHROPIC_KEY) return res.status(500).json({ error: 'ANTHROPIC_API_KEY not configured on server' });
+    const { model, max_tokens, messages } = req.body;
+    const r = await sbFetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': ANTHROPIC_KEY,
+        'anthropic-version': '2023-06-01'
+      },
+      body: JSON.stringify({ model, max_tokens, messages })
+    });
+    const data = await r.json();
+    res.json(data);
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
