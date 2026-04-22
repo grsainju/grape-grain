@@ -899,6 +899,162 @@ td{padding:9px 14px;vertical-align:middle}
 
 
 
+<!-- NEWSLETTER PAGE -->
+<div class="page" id="page-newsletter">
+  <div class="page-header" style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:10px">
+    <div>
+      <div class="page-title">ABS Newsletter Import</div>
+      <div class="page-sub" id="nl-sub">Upload the monthly ABS newsletter PDF to import discounts and price changes</div>
+    </div>
+    <label class="btn btn-primary" style="cursor:pointer">
+      Upload PDF
+      <input type="file" id="nl-pdf-input" accept=".pdf" style="display:none" onchange="importNewsletterPDF(this)">
+    </label>
+  </div>
+
+  <!-- LOADING STATE -->
+  <div id="nl-loading" style="display:none;padding:40px;text-align:center;color:var(--muted)">
+    <div style="font-family:var(--mono);font-size:14px;font-weight:600;margin-bottom:8px">Analyzing PDF with Claude AI</div>
+    <div id="nl-progress" style="font-size:12px;color:var(--muted);margin-bottom:12px">Starting...</div>
+    <div style="font-size:11px;color:var(--muted)">This takes 1-2 minutes for a 150-page PDF</div>
+  </div>
+
+  <!-- STATS BAR -->
+  <div id="nl-stats" style="display:none;margin-bottom:20px">
+    <div style="display:flex;gap:10px;flex-wrap:wrap">
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:10px 16px;flex:1;min-width:140px">
+        <div style="font-family:var(--mono);font-size:18px;font-weight:600;color:var(--accent)" id="nl-stat-beer">—</div>
+        <div style="font-size:10px;color:var(--muted);font-family:var(--mono);text-transform:uppercase;letter-spacing:.05em;margin-top:2px">Beer Discounts</div>
+      </div>
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:10px 16px;flex:1;min-width:140px">
+        <div style="font-family:var(--mono);font-size:18px;font-weight:600;color:var(--accent)" id="nl-stat-wine">—</div>
+        <div style="font-size:10px;color:var(--muted);font-family:var(--mono);text-transform:uppercase;letter-spacing:.05em;margin-top:2px">Wine Discounts</div>
+      </div>
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:10px 16px;flex:1;min-width:140px">
+        <div style="font-family:var(--mono);font-size:18px;font-weight:600;color:var(--accent)" id="nl-stat-qty">—</div>
+        <div style="font-size:10px;color:var(--muted);font-family:var(--mono);text-transform:uppercase;letter-spacing:.05em;margin-top:2px">Qty Discounts</div>
+      </div>
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:10px 16px;flex:1;min-width:140px">
+        <div style="font-family:var(--mono);font-size:18px;font-weight:600;color:#e05555" id="nl-stat-pc">—</div>
+        <div style="font-size:10px;color:var(--muted);font-family:var(--mono);text-transform:uppercase;letter-spacing:.05em;margin-top:2px">Price Changes</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TABS -->
+  <div id="nl-tabs" style="display:none">
+    <div style="display:flex;gap:0;margin-bottom:20px;border-bottom:1px solid var(--border)">
+      <button class="scratch-tab active" onclick="showNLTab('price-changes',this)">⚠ Price Changes</button>
+      <button class="scratch-tab" onclick="showNLTab('beer-discounts',this)">Beer Discounts</button>
+      <button class="scratch-tab" onclick="showNLTab('wine-discounts',this)">Wine Discounts</button>
+      <button class="scratch-tab" onclick="showNLTab('qty-discounts',this)">Quantity Discounts</button>
+    </div>
+
+    <!-- PRICE CHANGES TAB -->
+    <div class="scratch-panel active" id="nl-tab-price-changes">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px">
+        <div style="font-size:13px;color:var(--muted)">Items where ABS cost changed. Review and approve to update your database.</div>
+        <button class="btn btn-primary btn-sm" onclick="applySelected('price_change')">Apply Selected →</button>
+      </div>
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;overflow:hidden;overflow-x:auto">
+        <table style="width:100%;border-collapse:collapse;min-width:700px">
+          <thead><tr style="background:var(--surface2);border-bottom:1px solid var(--border)">
+            <th style="padding:8px 12px;width:32px"><input type="checkbox" id="pc-select-all" onchange="selectAllPC(this)"></th>
+            <th style="padding:8px 12px;text-align:left;font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">ABS Code</th>
+            <th style="padding:8px 12px;text-align:left;font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">Description</th>
+            <th style="padding:8px 12px;text-align:left;font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">Our Name</th>
+            <th style="padding:8px 12px;text-align:right;font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">Our Cost</th>
+            <th style="padding:8px 12px;text-align:right;font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">Change</th>
+            <th style="padding:8px 12px;text-align:right;font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">New Cost</th>
+            <th style="padding:8px 12px;text-align:left;font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">Status</th>
+          </tr></thead>
+          <tbody id="nl-pc-tbody"><tr><td colspan="8" style="padding:30px;text-align:center;color:var(--muted)">Upload a PDF to see price changes</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- BEER DISCOUNTS TAB -->
+    <div class="scratch-panel" id="nl-tab-beer-discounts">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px">
+        <div style="font-size:13px;color:var(--muted)">Monthly beer discounts. Select matched items to save to your database.</div>
+        <button class="btn btn-primary btn-sm" onclick="applySelected('discount','beer')">Apply Selected →</button>
+      </div>
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;overflow:hidden;overflow-x:auto">
+        <table style="width:100%;border-collapse:collapse;min-width:800px">
+          <thead><tr style="background:var(--surface2);border-bottom:1px solid var(--border)">
+            <th style="padding:8px 12px;width:32px"><input type="checkbox" id="bd-select-all" onchange="selectAllBD(this)"></th>
+            <th style="padding:8px 12px;text-align:left;font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">ABS Code</th>
+            <th style="padding:8px 12px;text-align:left;font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">Description</th>
+            <th style="padding:8px 12px;text-align:left;font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">Our Name</th>
+            <th style="padding:8px 12px;text-align:right;font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">List Price</th>
+            <th style="padding:8px 12px;text-align:right;font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">Discount</th>
+            <th style="padding:8px 12px;text-align:right;font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">Sale Price</th>
+            <th style="padding:8px 12px;text-align:left;font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">Period</th>
+            <th style="padding:8px 12px;text-align:left;font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">Status</th>
+          </tr></thead>
+          <tbody id="nl-bd-tbody"><tr><td colspan="9" style="padding:30px;text-align:center;color:var(--muted)">Upload a PDF to see beer discounts</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- WINE DISCOUNTS TAB -->
+    <div class="scratch-panel" id="nl-tab-wine-discounts">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px">
+        <div style="font-size:13px;color:var(--muted)">Monthly wine discounts. Select matched items to save.</div>
+        <button class="btn btn-primary btn-sm" onclick="applySelected('discount','wine')">Apply Selected →</button>
+      </div>
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;overflow:hidden;overflow-x:auto">
+        <table style="width:100%;border-collapse:collapse;min-width:800px">
+          <thead><tr style="background:var(--surface2);border-bottom:1px solid var(--border)">
+            <th style="padding:8px 12px;width:32px"><input type="checkbox" id="wd-select-all" onchange="selectAllWD(this)"></th>
+            <th style="padding:8px 12px;text-align:left;font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">ABS Code</th>
+            <th style="padding:8px 12px;text-align:left;font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">Description</th>
+            <th style="padding:8px 12px;text-align:left;font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">Our Name</th>
+            <th style="padding:8px 12px;text-align:right;font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">List</th>
+            <th style="padding:8px 12px;text-align:right;font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">Post-Off</th>
+            <th style="padding:8px 12px;text-align:right;font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">After</th>
+            <th style="padding:8px 12px;text-align:left;font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">Status</th>
+          </tr></thead>
+          <tbody id="nl-wd-tbody"><tr><td colspan="8" style="padding:30px;text-align:center;color:var(--muted)">Upload a PDF to see wine discounts</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- QTY DISCOUNTS TAB -->
+    <div class="scratch-panel" id="nl-tab-qty-discounts">
+      <div style="font-size:13px;color:var(--muted);margin-bottom:12px">Multi-case quantity discounts (Mix & Match groups). Reference only — not saved to items.</div>
+      <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
+        <input type="text" id="nl-qty-search" placeholder="Search..." oninput="renderQtyTable()" style="padding:7px 12px;border:1px solid var(--border);border-radius:5px;background:var(--surface);color:var(--text);font-size:13px;width:220px">
+        <select id="nl-qty-cat" onchange="renderQtyTable()" style="padding:7px 10px;border:1px solid var(--border);border-radius:5px;background:var(--surface);color:var(--text);font-size:13px">
+          <option value="all">All categories</option>
+          <option value="Wine">Wine</option>
+          <option value="Liquor">Liquor</option>
+        </select>
+        <label style="font-size:12px;color:var(--muted);display:flex;align-items:center;gap:6px">
+          <input type="checkbox" id="nl-qty-matched" onchange="renderQtyTable()"> Matched only
+        </label>
+      </div>
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;overflow:hidden;overflow-x:auto">
+        <table style="width:100%;border-collapse:collapse;min-width:700px">
+          <thead><tr style="background:var(--surface2);border-bottom:1px solid var(--border)">
+            <th style="padding:8px 12px;text-align:left;font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">Code</th>
+            <th style="padding:8px 12px;text-align:left;font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">Description</th>
+            <th style="padding:8px 12px;text-align:left;font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">Our Name</th>
+            <th style="padding:8px 12px;text-align:right;font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">Unit Cost</th>
+            <th style="padding:8px 12px;text-align:center;font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">1+</th>
+            <th style="padding:8px 12px;text-align:center;font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">3+</th>
+            <th style="padding:8px 12px;text-align:center;font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">5+</th>
+            <th style="padding:8px 12px;text-align:center;font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">10+</th>
+            <th style="padding:8px 12px;text-align:left;font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">Group</th>
+          </tr></thead>
+          <tbody id="nl-qty-tbody"><tr><td colspan="9" style="padding:30px;text-align:center;color:var(--muted)">Upload a PDF to see quantity discounts</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+
 <!-- SCRATCH TICKETS PAGE -->
 <div class="page" id="page-scratch">
   <div id="scratch-alert" style="margin-bottom:12px"></div>
@@ -2448,6 +2604,203 @@ nav = function(page, ...args) {
   _origNav(page, ...args);
   if (page === 'items') loadItemsIM(1);
 };
+
+
+// ═══════════════════════════════════════════════════════════════
+// ABS NEWSLETTER — Claude API PDF parsing
+// ═══════════════════════════════════════════════════════════════
+let NL = { beerDiscounts:[], wineDiscounts:[], qtyDiscounts:[], priceChanges:[], itemsMap:{} };
+
+function showNLTab(name, btn) {
+  document.querySelectorAll('#page-newsletter .scratch-tab').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('#page-newsletter .scratch-panel').forEach(p => p.classList.remove('active'));
+  const panel = g('nl-tab-' + name);
+  if (panel) panel.classList.add('active');
+  if (btn) btn.classList.add('active');
+  if (name === 'qty-discounts') renderQtyTable();
+}
+
+async function importNewsletterPDF(input) {
+  const file = input.files[0];
+  if (!file) return;
+  g('nl-loading').style.display = 'block';
+  g('nl-tabs').style.display = 'none';
+  g('nl-stats').style.display = 'none';
+  g('nl-sub').textContent = 'Reading ' + file.name + '...';
+  g('nl-progress').textContent = 'Step 1/5: Loading PDF...';
+  try {
+    const b64 = await new Promise((res, rej) => {
+      const reader = new FileReader();
+      reader.onload = () => res(reader.result.split(',')[1]);
+      reader.onerror = rej;
+      reader.readAsDataURL(file);
+    });
+    g('nl-progress').textContent = 'Step 2/5: Loading your inventory...';
+    const mapR = await fetch('/api/newsletter/items-map');
+    NL.itemsMap = await mapR.json();
+    const sections = [
+      { key: 'beerDiscounts', label: 'Beer discounts',     pages: '7-14'    },
+      { key: 'wineDiscounts', label: 'Wine discounts',     pages: '16-27'   },
+      { key: 'qtyDiscounts',  label: 'Quantity discounts', pages: '28-131'  },
+      { key: 'priceChanges',  label: 'Price changes',      pages: '132-150' },
+    ];
+    for (let i = 0; i < sections.length; i++) {
+      const sec = sections[i];
+      g('nl-progress').textContent = `Step ${i+3}/6: Extracting ${sec.label} (pages ${sec.pages})...`;
+      NL[sec.key] = await parseNLSection(b64, sec.key, sec.pages);
+      NL[sec.key] = NL[sec.key].map(item => {
+        const ours = NL.itemsMap[item.abs_code];
+        return { ...item, matched: !!ours, our_id: ours?.id, our_name: ours?.gg_name, our_cost: ours?.cost };
+      });
+    }
+    const matched = (arr) => arr.filter(i => i.matched).length;
+    g('nl-stat-beer').textContent = NL.beerDiscounts.length + ' (' + matched(NL.beerDiscounts) + ' matched)';
+    g('nl-stat-wine').textContent = NL.wineDiscounts.length + ' (' + matched(NL.wineDiscounts) + ' matched)';
+    g('nl-stat-qty').textContent  = NL.qtyDiscounts.length  + ' (' + matched(NL.qtyDiscounts)  + ' matched)';
+    g('nl-stat-pc').textContent   = NL.priceChanges.length  + ' (' + matched(NL.priceChanges)  + ' matched)';
+    renderPCTable(); renderBDTable(); renderWDTable(); renderQtyTable();
+    g('nl-loading').style.display = 'none';
+    g('nl-stats').style.display = 'block';
+    g('nl-tabs').style.display = 'block';
+    g('nl-sub').textContent = file.name + ' parsed successfully';
+  } catch(e) {
+    g('nl-loading').style.display = 'none';
+    g('nl-sub').textContent = 'Error: ' + e.message;
+    console.error(e);
+  }
+  input.value = '';
+}
+
+async function parseNLSection(b64, section, pages) {
+  const prompts = {
+    beerDiscounts: `Extract ALL beer case-one discount rows from pages ${pages}. Return ONLY a JSON array, no markdown, no explanation. Each item: {"abs_code":"string","description":"string","bpc":number,"disc_from":"YYYY-MM-DD","disc_to":"YYYY-MM-DD","list_price":number,"discount":number,"sale_price":number,"supplier":"string"}. Columns: Product Code, Description, Size, BPC, Date From, Date To, List Price, Discount, Sale Price, Supplier. Extract every row.`,
+    wineDiscounts: `Extract ALL wine case-one discount rows from pages ${pages}. Return ONLY a JSON array, no markdown. Each item: {"abs_code":"string","description":"string","bpc":number,"disc_from":"YYYY-MM-DD","disc_to":"YYYY-MM-DD","list_price":number,"discount":number,"sale_price":number,"supplier":"string"}. Columns: Product Code, Description, Size, BPC, Post-Off Discount Per Case, Current Wholesale Price, Wholesale Price After Post-Off, Vendor. discount=Post-Off, list_price=Current Wholesale, sale_price=Price After Post-Off. Date range is in the section header. Extract every row.`,
+    qtyDiscounts: `Extract ALL quantity discount rows from pages ${pages}. Return ONLY a JSON array, no markdown. Each item: {"abs_code":"string","description":"string","bpc":number,"unit_cost":number,"qty_tiers":{"1+":number,"3+":number,"5+":number,"10+":number},"group":"string","category":"Wine or Liquor","disc_from":"YYYY-MM-DD","disc_to":"YYYY-MM-DD"}. group=Price Category name. Only include qty_tiers keys with non-zero values. Product code may be on the line below the data — always match correctly. Extract every row.`,
+    priceChanges: `Extract ALL price change rows from pages ${pages}. Return ONLY a JSON array, no markdown. Each item: {"abs_code":"string","description":"string","price_change":number,"new_case_price":number,"new_bottle_price":number,"direction":"UP or DOWN","supplier":"string"}. price_change is the +/- amount. direction=UP if positive, DOWN if negative. Extract every row.`
+  };
+  const r = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      model: 'claude-sonnet-4-20250514', max_tokens: 8000,
+      messages: [{ role: 'user', content: [
+        { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: b64 } },
+        { type: 'text', text: prompts[section] }
+      ]}]
+    })
+  });
+  const d = await r.json();
+  if (d.error) throw new Error('Claude API: ' + d.error.message);
+  const text = (d.content?.[0]?.text || '[]').replace(/```json|```/g,'').trim();
+  try { return JSON.parse(text); } catch(e) { console.error('Parse error', section, text.substring(0,200)); return []; }
+}
+
+function matchBadge(item) {
+  return item.matched
+    ? `<span style="font-size:10px;padding:2px 7px;border-radius:3px;background:rgba(106,191,138,.1);color:#6abf8a">\u2713 ${(item.our_name||'matched').substring(0,22)}</span>`
+    : '<span style="font-size:10px;padding:2px 7px;border-radius:3px;background:rgba(100,100,100,.1);color:var(--muted)">unmatched</span>';
+}
+
+function renderPCTable() {
+  const tbody = g('nl-pc-tbody'), items = NL.priceChanges;
+  if (!items.length) { tbody.innerHTML = '<tr><td colspan="8" style="padding:20px;text-align:center;color:var(--muted)">No price changes found</td></tr>'; return; }
+  tbody.innerHTML = items.map((item,i) => {
+    const up = item.direction === 'UP';
+    const chg = (up?'+':'-') + '$' + Math.abs(item.price_change||0).toFixed(2);
+    return `<tr style="border-bottom:1px solid var(--border)${!item.matched?' opacity:.55':''}">
+      <td style="padding:8px 12px"><input type="checkbox" class="pc-check" data-idx="${i}" ${!item.matched?'disabled':''}></td>
+      <td style="padding:8px 12px;font-family:var(--mono);font-size:12px;color:var(--accent)">${item.abs_code}</td>
+      <td style="padding:8px 12px;font-size:12px;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${item.description}</td>
+      <td style="padding:8px 12px;font-size:12px;color:var(--muted)">${item.our_name||'\u2014'}</td>
+      <td style="padding:8px 12px;text-align:right;font-family:var(--mono);font-size:12px">${item.our_cost?'$'+item.our_cost.toFixed(2):'\u2014'}</td>
+      <td style="padding:8px 12px;text-align:right;font-family:var(--mono);font-size:12px;font-weight:600;color:${up?'#e05555':'#6abf8a'}">${chg}</td>
+      <td style="padding:8px 12px;text-align:right;font-family:var(--mono);font-size:12px;font-weight:600">$${parseFloat(item.new_case_price||0).toFixed(2)}</td>
+      <td style="padding:8px 12px">${matchBadge(item)}</td>
+    </tr>`;
+  }).join('');
+}
+
+function renderBDTable() {
+  const tbody = g('nl-bd-tbody'), items = NL.beerDiscounts;
+  if (!items.length) { tbody.innerHTML = '<tr><td colspan="9" style="padding:20px;text-align:center;color:var(--muted)">No beer discounts found</td></tr>'; return; }
+  tbody.innerHTML = items.map((item,i) => `<tr style="border-bottom:1px solid var(--border)${!item.matched?' opacity:.55':''}">
+    <td style="padding:8px 12px"><input type="checkbox" class="bd-check" data-idx="${i}" ${!item.matched?'disabled':''}></td>
+    <td style="padding:8px 12px;font-family:var(--mono);font-size:12px;color:var(--accent)">${item.abs_code}</td>
+    <td style="padding:8px 12px;font-size:12px;max-width:170px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${item.description}</td>
+    <td style="padding:8px 12px;font-size:12px;color:var(--muted)">${item.our_name||'\u2014'}</td>
+    <td style="padding:8px 12px;text-align:right;font-family:var(--mono);font-size:12px">$${parseFloat(item.list_price||0).toFixed(2)}</td>
+    <td style="padding:8px 12px;text-align:right;font-family:var(--mono);font-size:12px;font-weight:600;color:#6abf8a">-$${parseFloat(item.discount||0).toFixed(2)}</td>
+    <td style="padding:8px 12px;text-align:right;font-family:var(--mono);font-size:12px;font-weight:600;color:var(--accent)">$${parseFloat(item.sale_price||0).toFixed(2)}</td>
+    <td style="padding:8px 12px;font-size:11px;color:var(--muted)">${item.disc_from||''} \u2013 ${item.disc_to||''}</td>
+    <td style="padding:8px 12px">${matchBadge(item)}</td>
+  </tr>`).join('');
+}
+
+function renderWDTable() {
+  const tbody = g('nl-wd-tbody'), items = NL.wineDiscounts;
+  if (!items.length) { tbody.innerHTML = '<tr><td colspan="8" style="padding:20px;text-align:center;color:var(--muted)">No wine discounts found</td></tr>'; return; }
+  tbody.innerHTML = items.map((item,i) => `<tr style="border-bottom:1px solid var(--border)${!item.matched?' opacity:.55':''}">
+    <td style="padding:8px 12px"><input type="checkbox" class="wd-check" data-idx="${i}" ${!item.matched?'disabled':''}></td>
+    <td style="padding:8px 12px;font-family:var(--mono);font-size:12px;color:var(--accent)">${item.abs_code}</td>
+    <td style="padding:8px 12px;font-size:12px;max-width:170px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${item.description}</td>
+    <td style="padding:8px 12px;font-size:12px;color:var(--muted)">${item.our_name||'\u2014'}</td>
+    <td style="padding:8px 12px;text-align:right;font-family:var(--mono);font-size:12px">$${parseFloat(item.list_price||0).toFixed(2)}</td>
+    <td style="padding:8px 12px;text-align:right;font-family:var(--mono);font-size:12px;font-weight:600;color:#6abf8a">-$${parseFloat(item.discount||0).toFixed(2)}</td>
+    <td style="padding:8px 12px;text-align:right;font-family:var(--mono);font-size:12px;font-weight:600;color:var(--accent)">$${parseFloat(item.sale_price||0).toFixed(2)}</td>
+    <td style="padding:8px 12px">${matchBadge(item)}</td>
+  </tr>`).join('');
+}
+
+function renderQtyTable() {
+  const search = (g('nl-qty-search')?.value||'').toLowerCase();
+  const cat = g('nl-qty-cat')?.value||'all';
+  const matchedOnly = g('nl-qty-matched')?.checked;
+  const tbody = g('nl-qty-tbody');
+  let items = NL.qtyDiscounts||[];
+  if (cat !== 'all') items = items.filter(i => i.category===cat);
+  if (matchedOnly) items = items.filter(i => i.matched);
+  if (search) items = items.filter(i => (i.abs_code||'').includes(search)||(i.description||'').toLowerCase().includes(search)||(i.our_name||'').toLowerCase().includes(search));
+  if (!items.length) { tbody.innerHTML = '<tr><td colspan="9" style="padding:20px;text-align:center;color:var(--muted)">No items</td></tr>'; return; }
+  const tier = (item,k) => (item.qty_tiers||{})[k]
+    ? `<span style="color:#6abf8a;font-family:var(--mono);font-size:11px">-$${parseFloat(item.qty_tiers[k]).toFixed(2)}</span>`
+    : '<span style="color:var(--border2)">\u2014</span>';
+  tbody.innerHTML = items.slice(0,300).map(item => `<tr style="border-bottom:1px solid var(--border)${!item.matched?' opacity:.55':''}">
+    <td style="padding:8px 12px;font-family:var(--mono);font-size:12px;color:var(--accent)">${item.abs_code}</td>
+    <td style="padding:8px 12px;font-size:12px;max-width:170px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${item.description}</td>
+    <td style="padding:8px 12px;font-size:12px;color:var(--muted)">${item.our_name||'\u2014'}</td>
+    <td style="padding:8px 12px;text-align:right;font-family:var(--mono);font-size:12px">$${parseFloat(item.unit_cost||0).toFixed(2)}</td>
+    <td style="padding:8px 12px;text-align:center">${tier(item,'1+')}</td>
+    <td style="padding:8px 12px;text-align:center">${tier(item,'3+')}</td>
+    <td style="padding:8px 12px;text-align:center">${tier(item,'5+')}</td>
+    <td style="padding:8px 12px;text-align:center">${tier(item,'10+')}</td>
+    <td style="padding:8px 12px;font-size:11px;color:var(--muted);max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${item.group||'\u2014'}</td>
+  </tr>`).join('');
+}
+
+function selectAllPC(cb) { document.querySelectorAll('.pc-check:not(:disabled)').forEach(c => c.checked = cb.checked); }
+function selectAllBD(cb) { document.querySelectorAll('.bd-check:not(:disabled)').forEach(c => c.checked = cb.checked); }
+function selectAllWD(cb) { document.querySelectorAll('.wd-check:not(:disabled)').forEach(c => c.checked = cb.checked); }
+
+async function applySelected(type, subtype) {
+  const checkClass = type==='price_change'?'pc-check':(subtype==='beer'?'bd-check':'wd-check');
+  const checked = [...document.querySelectorAll('.'+checkClass+':checked')];
+  if (!checked.length) { showToast('No items selected', 'error'); return; }
+  const sourceArr = type==='price_change'?NL.priceChanges:(subtype==='beer'?NL.beerDiscounts:NL.wineDiscounts);
+  const updates = checked.map(cb => {
+    const item = sourceArr[parseInt(cb.dataset.idx)];
+    if (!item?.our_id) return null;
+    return type==='price_change'
+      ? { id:item.our_id, type:'price_change', abs_code:item.abs_code, gg_name:item.our_name, old_cost:item.our_cost, new_cost:item.new_case_price }
+      : { id:item.our_id, type:'discount', abs_code:item.abs_code, discount:item.discount, disc_from:item.disc_from, disc_to:item.disc_to };
+  }).filter(Boolean);
+  if (!updates.length) { showToast('No matched items to apply', 'error'); return; }
+  try {
+    const r = await apiPost('/api/newsletter/apply', { updates });
+    showToast('Applied ' + r.applied + ' updates', 'success');
+    checked.forEach(cb => cb.checked = false);
+  } catch(e) { showToast('Error: ' + e.message, 'error'); }
+}
+
 
 </script>
 </body>
