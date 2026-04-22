@@ -2682,7 +2682,7 @@ async function parseNLSection(b64, section, pages) {
     qtyDiscounts: `Extract ALL quantity discount rows from pages ${pages}. Return ONLY a JSON array, no markdown. Each item: {"abs_code":"string","description":"string","bpc":number,"unit_cost":number,"qty_tiers":{"1+":number,"3+":number,"5+":number,"10+":number},"group":"string","category":"Wine or Liquor","disc_from":"YYYY-MM-DD","disc_to":"YYYY-MM-DD"}. group=Price Category name. Only include qty_tiers keys with non-zero values. Product code may be on the line below the data — always match correctly. Extract every row.`,
     priceChanges: `Extract ALL price change rows from pages ${pages}. Return ONLY a JSON array, no markdown. Each item: {"abs_code":"string","description":"string","price_change":number,"new_case_price":number,"new_bottle_price":number,"direction":"UP or DOWN","supplier":"string"}. price_change is the +/- amount. direction=UP if positive, DOWN if negative. Extract every row.`
   };
-  const r = await fetch('https://api.anthropic.com/v1/messages', {
+  const r = await fetch('/api/claude/proxy', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
