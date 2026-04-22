@@ -951,7 +951,7 @@ td{padding:9px 14px;vertical-align:middle}
       <button class="scratch-tab active" onclick="showNLTab('price-changes',this)">⚠ Price Changes</button>
       <button class="scratch-tab" onclick="showNLTab('beer-discounts',this)">Beer Discounts</button>
       <button class="scratch-tab" onclick="showNLTab('wine-discounts',this)">Wine Discounts</button>
-      <button class="scratch-tab" onclick="showNLTab('qty-discounts',this)">Quantity Discounts</button>
+      <button class="scratch-tab" onclick="showNLTab('qty-discounts',this)">Wine Qty Discounts</button>
     </div>
 
     <!-- PRICE CHANGES TAB -->
@@ -1032,8 +1032,7 @@ td{padding:9px 14px;vertical-align:middle}
         <select id="nl-qty-cat" onchange="renderQtyTable()" style="padding:7px 10px;border:1px solid var(--border);border-radius:5px;background:var(--surface);color:var(--text);font-size:13px">
           <option value="all">All categories</option>
           <option value="Wine">Wine</option>
-          <option value="Liquor">Liquor</option>
-        </select>
+                  </select>
         <label style="font-size:12px;color:var(--muted);display:flex;align-items:center;gap:6px">
           <input type="checkbox" id="nl-qty-matched" onchange="renderQtyTable()"> Matched only
         </label>
@@ -2652,18 +2651,17 @@ async function importNewsletterPDF(input) {
     const PROMPTS = {
       beerDiscounts: 'Extract ALL beer case-one discount rows. Return ONLY a JSON array, no markdown. Each item: {"abs_code":"string","description":"string","bpc":number,"disc_from":"YYYY-MM-DD","disc_to":"YYYY-MM-DD","list_price":number,"discount":number,"sale_price":number,"supplier":"string"}. Columns: Product Code, Description, Size, BPC, Date From, Date To, List Price, Discount, Sale Price, Supplier. Extract every row.',
       wineDiscounts: 'Extract ALL wine case-one discount rows. Return ONLY a JSON array, no markdown. Each item: {"abs_code":"string","description":"string","bpc":number,"disc_from":"YYYY-MM-DD","disc_to":"YYYY-MM-DD","list_price":number,"discount":number,"sale_price":number,"supplier":"string"}. Columns: Product Code, Description, Size, BPC, Post-Off Discount Per Case, Current Wholesale Price, Wholesale Price After Post-Off, Vendor. discount=Post-Off, list_price=Current Wholesale, sale_price=Price After Post-Off. Extract every row.',
-      qtyDiscounts:  'Extract ALL quantity discount rows. Return ONLY a JSON array, no markdown. Each item: {"abs_code":"string","description":"string","bpc":number,"unit_cost":number,"qty_tiers":{"1+":number,"3+":number,"5+":number,"10+":number},"group":"string","category":"Wine or Liquor","disc_from":"YYYY-MM-DD","disc_to":"YYYY-MM-DD"}. group=Price Category name. Only include qty_tiers keys with non-zero values. Product code may be on a separate line — match correctly. Extract every row.',
+      qtyDiscounts:  'Extract ALL quantity discount rows. Return ONLY a JSON array, no markdown. Each item: {"abs_code":"string","description":"string","bpc":number,"unit_cost":number,"qty_tiers":{"1+":number,"3+":number,"5+":number,"10+":number},"group":"string","category":"Wine","disc_from":"YYYY-MM-DD","disc_to":"YYYY-MM-DD"}. group=Price Category name. Only include qty_tiers keys with non-zero values. Product code may be on a separate line — match correctly. Extract every row.',
       priceChanges:  'Extract ALL price change rows. Return ONLY a JSON array, no markdown. Each item: {"abs_code":"string","description":"string","price_change":number,"new_case_price":number,"new_bottle_price":number,"direction":"UP or DOWN","supplier":"string"}. price_change is the +/- amount. Extract every row.'
     };
 
     // Sections: beer, wine, qty (split into 3 chunks), price changes
     const chunks = [
-      { key: 'beerDiscounts', label: 'Beer discounts',        from: 7,   to: 14,  prompt: PROMPTS.beerDiscounts },
-      { key: 'wineDiscounts', label: 'Wine discounts',        from: 16,  to: 27,  prompt: PROMPTS.wineDiscounts },
-      { key: 'qtyDiscounts',  label: 'Qty discounts (1/3)',   from: 28,  to: 60,  prompt: PROMPTS.qtyDiscounts  },
-      { key: 'qtyDiscounts',  label: 'Qty discounts (2/3)',   from: 61,  to: 100, prompt: PROMPTS.qtyDiscounts  },
-      { key: 'qtyDiscounts',  label: 'Qty discounts (3/3)',   from: 101, to: 131, prompt: PROMPTS.qtyDiscounts  },
-      { key: 'priceChanges',  label: 'Price changes',         from: 132, to: 150, prompt: PROMPTS.priceChanges  },
+      { key: 'beerDiscounts', label: 'Beer discounts',           from: 7,   to: 14,  prompt: PROMPTS.beerDiscounts },
+      { key: 'wineDiscounts', label: 'Wine discounts',           from: 16,  to: 27,  prompt: PROMPTS.wineDiscounts },
+      { key: 'qtyDiscounts',  label: 'Wine qty discounts (1/2)', from: 28,  to: 55,  prompt: PROMPTS.qtyDiscounts  },
+      { key: 'qtyDiscounts',  label: 'Wine qty discounts (2/2)', from: 56,  to: 80,  prompt: PROMPTS.qtyDiscounts  },
+      { key: 'priceChanges',  label: 'Price changes',            from: 132, to: 150, prompt: PROMPTS.priceChanges  },
     ];
 
     // Reset results
@@ -2701,8 +2699,10 @@ async function importNewsletterPDF(input) {
     g('nl-sub').textContent = file.name + ' parsed successfully';
   } catch(e) {
     g('nl-loading').style.display = 'none';
-    g('nl-sub').textContent = 'Error: ' + e.message;
-    console.error(e);
+    const msg = e?.message || String(e);
+    g('nl-sub').textContent = 'Error: ' + msg;
+    g('nl-progress').textContent = msg;
+    console.error('Newsletter error:', e);
   }
   input.value = '';
 }
@@ -2713,11 +2713,8 @@ async function parseNLSection(b64, section, pageFrom, pageTo, prompt) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ pdfBase64: b64, section, pageFrom, pageTo, prompt })
   });
-  if (!r.ok) {
-    const err = await r.json();
-    throw new Error(err.error || 'Server error ' + r.status);
-  }
   const d = await r.json();
+  if (!r.ok || d.error) throw new Error(typeof d.error === 'string' ? d.error : JSON.stringify(d.error));
   return d.items || [];
 }
 
