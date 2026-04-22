@@ -2631,7 +2631,7 @@ async function importNewsletterPDF(input) {
   g('nl-tabs').style.display = 'none';
   g('nl-stats').style.display = 'none';
   g('nl-sub').textContent = 'Reading ' + file.name + '...';
-  g('nl-progress').textContent = 'Step 1/5: Loading PDF...';
+  g('nl-progress').textContent = 'Step 1/7: Loading PDF...';
   try {
     const b64 = await new Promise((res, rej) => {
       const reader = new FileReader();
@@ -2639,29 +2639,61 @@ async function importNewsletterPDF(input) {
       reader.onerror = rej;
       reader.readAsDataURL(file);
     });
-    g('nl-progress').textContent = 'Step 2/5: Loading your inventory...';
+
+    g('nl-progress').textContent = 'Step 2/7: Loading your inventory...';
     const mapR = await fetch('/api/newsletter/items-map');
     NL.itemsMap = await mapR.json();
-    const sections = [
-      { key: 'beerDiscounts', label: 'Beer discounts',     pages: '7-14'    },
-      { key: 'wineDiscounts', label: 'Wine discounts',     pages: '16-27'   },
-      { key: 'qtyDiscounts',  label: 'Quantity discounts', pages: '28-131'  },
-      { key: 'priceChanges',  label: 'Price changes',      pages: '132-150' },
+
+    const annotate = arr => arr.map(item => {
+      const ours = NL.itemsMap[item.abs_code];
+      return { ...item, matched: !!ours, our_id: ours?.id, our_name: ours?.gg_name, our_cost: ours?.cost };
+    });
+
+    const PROMPTS = {
+      beerDiscounts: 'Extract ALL beer case-one discount rows. Return ONLY a JSON array, no markdown. Each item: {"abs_code":"string","description":"string","bpc":number,"disc_from":"YYYY-MM-DD","disc_to":"YYYY-MM-DD","list_price":number,"discount":number,"sale_price":number,"supplier":"string"}. Columns: Product Code, Description, Size, BPC, Date From, Date To, List Price, Discount, Sale Price, Supplier. Extract every row.',
+      wineDiscounts: 'Extract ALL wine case-one discount rows. Return ONLY a JSON array, no markdown. Each item: {"abs_code":"string","description":"string","bpc":number,"disc_from":"YYYY-MM-DD","disc_to":"YYYY-MM-DD","list_price":number,"discount":number,"sale_price":number,"supplier":"string"}. Columns: Product Code, Description, Size, BPC, Post-Off Discount Per Case, Current Wholesale Price, Wholesale Price After Post-Off, Vendor. discount=Post-Off, list_price=Current Wholesale, sale_price=Price After Post-Off. Extract every row.',
+      qtyDiscounts:  'Extract ALL quantity discount rows. Return ONLY a JSON array, no markdown. Each item: {"abs_code":"string","description":"string","bpc":number,"unit_cost":number,"qty_tiers":{"1+":number,"3+":number,"5+":number,"10+":number},"group":"string","category":"Wine or Liquor","disc_from":"YYYY-MM-DD","disc_to":"YYYY-MM-DD"}. group=Price Category name. Only include qty_tiers keys with non-zero values. Product code may be on a separate line — match correctly. Extract every row.',
+      priceChanges:  'Extract ALL price change rows. Return ONLY a JSON array, no markdown. Each item: {"abs_code":"string","description":"string","price_change":number,"new_case_price":number,"new_bottle_price":number,"direction":"UP or DOWN","supplier":"string"}. price_change is the +/- amount. Extract every row.'
+    };
+
+    // Sections: beer, wine, qty (split into 3 chunks), price changes
+    const chunks = [
+      { key: 'beerDiscounts', label: 'Beer discounts',        from: 7,   to: 14,  prompt: PROMPTS.beerDiscounts },
+      { key: 'wineDiscounts', label: 'Wine discounts',        from: 16,  to: 27,  prompt: PROMPTS.wineDiscounts },
+      { key: 'qtyDiscounts',  label: 'Qty discounts (1/3)',   from: 28,  to: 60,  prompt: PROMPTS.qtyDiscounts  },
+      { key: 'qtyDiscounts',  label: 'Qty discounts (2/3)',   from: 61,  to: 100, prompt: PROMPTS.qtyDiscounts  },
+      { key: 'qtyDiscounts',  label: 'Qty discounts (3/3)',   from: 101, to: 131, prompt: PROMPTS.qtyDiscounts  },
+      { key: 'priceChanges',  label: 'Price changes',         from: 132, to: 150, prompt: PROMPTS.priceChanges  },
     ];
-    for (let i = 0; i < sections.length; i++) {
-      const sec = sections[i];
-      g('nl-progress').textContent = `Step ${i+3}/6: Extracting ${sec.label} (pages ${sec.pages})...`;
-      NL[sec.key] = await parseNLSection(b64, sec.key, sec.pages);
-      NL[sec.key] = NL[sec.key].map(item => {
-        const ours = NL.itemsMap[item.abs_code];
-        return { ...item, matched: !!ours, our_id: ours?.id, our_name: ours?.gg_name, our_cost: ours?.cost };
-      });
+
+    // Reset results
+    NL.beerDiscounts = []; NL.wineDiscounts = [];
+    NL.qtyDiscounts  = []; NL.priceChanges  = [];
+
+    for (let i = 0; i < chunks.length; i++) {
+      const chunk = chunks[i];
+      g('nl-progress').textContent = `Step ${i+2}/${chunks.length+1}: Extracting ${chunk.label}...`;
+      const items = await parseNLSection(b64, chunk.key, chunk.from, chunk.to, chunk.prompt);
+      NL[chunk.key] = NL[chunk.key].concat(items);
+      // Rate limit delay between calls — 62s window resets every minute
+      if (i < chunks.length - 1) {
+        g('nl-progress').textContent = `Waiting 15s before next section (rate limit)...`;
+        await sleep(15000);
+      }
     }
-    const matched = (arr) => arr.filter(i => i.matched).length;
+
+    // Cross-reference with our items
+    NL.beerDiscounts = annotate(NL.beerDiscounts);
+    NL.wineDiscounts = annotate(NL.wineDiscounts);
+    NL.qtyDiscounts  = annotate(NL.qtyDiscounts);
+    NL.priceChanges  = annotate(NL.priceChanges);
+
+    const matched = arr => arr.filter(i => i.matched).length;
     g('nl-stat-beer').textContent = NL.beerDiscounts.length + ' (' + matched(NL.beerDiscounts) + ' matched)';
     g('nl-stat-wine').textContent = NL.wineDiscounts.length + ' (' + matched(NL.wineDiscounts) + ' matched)';
     g('nl-stat-qty').textContent  = NL.qtyDiscounts.length  + ' (' + matched(NL.qtyDiscounts)  + ' matched)';
     g('nl-stat-pc').textContent   = NL.priceChanges.length  + ' (' + matched(NL.priceChanges)  + ' matched)';
+
     renderPCTable(); renderBDTable(); renderWDTable(); renderQtyTable();
     g('nl-loading').style.display = 'none';
     g('nl-stats').style.display = 'block';
@@ -2675,29 +2707,21 @@ async function importNewsletterPDF(input) {
   input.value = '';
 }
 
-async function parseNLSection(b64, section, pages) {
-  const prompts = {
-    beerDiscounts: `Extract ALL beer case-one discount rows from pages ${pages}. Return ONLY a JSON array, no markdown, no explanation. Each item: {"abs_code":"string","description":"string","bpc":number,"disc_from":"YYYY-MM-DD","disc_to":"YYYY-MM-DD","list_price":number,"discount":number,"sale_price":number,"supplier":"string"}. Columns: Product Code, Description, Size, BPC, Date From, Date To, List Price, Discount, Sale Price, Supplier. Extract every row.`,
-    wineDiscounts: `Extract ALL wine case-one discount rows from pages ${pages}. Return ONLY a JSON array, no markdown. Each item: {"abs_code":"string","description":"string","bpc":number,"disc_from":"YYYY-MM-DD","disc_to":"YYYY-MM-DD","list_price":number,"discount":number,"sale_price":number,"supplier":"string"}. Columns: Product Code, Description, Size, BPC, Post-Off Discount Per Case, Current Wholesale Price, Wholesale Price After Post-Off, Vendor. discount=Post-Off, list_price=Current Wholesale, sale_price=Price After Post-Off. Date range is in the section header. Extract every row.`,
-    qtyDiscounts: `Extract ALL quantity discount rows from pages ${pages}. Return ONLY a JSON array, no markdown. Each item: {"abs_code":"string","description":"string","bpc":number,"unit_cost":number,"qty_tiers":{"1+":number,"3+":number,"5+":number,"10+":number},"group":"string","category":"Wine or Liquor","disc_from":"YYYY-MM-DD","disc_to":"YYYY-MM-DD"}. group=Price Category name. Only include qty_tiers keys with non-zero values. Product code may be on the line below the data — always match correctly. Extract every row.`,
-    priceChanges: `Extract ALL price change rows from pages ${pages}. Return ONLY a JSON array, no markdown. Each item: {"abs_code":"string","description":"string","price_change":number,"new_case_price":number,"new_bottle_price":number,"direction":"UP or DOWN","supplier":"string"}. price_change is the +/- amount. direction=UP if positive, DOWN if negative. Extract every row.`
-  };
-  const r = await fetch('/api/claude/proxy', {
+async function parseNLSection(b64, section, pageFrom, pageTo, prompt) {
+  const r = await fetch('/api/newsletter/parse', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      model: 'claude-sonnet-4-20250514', max_tokens: 8000,
-      messages: [{ role: 'user', content: [
-        { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: b64 } },
-        { type: 'text', text: prompts[section] }
-      ]}]
-    })
+    body: JSON.stringify({ pdfBase64: b64, section, pageFrom, pageTo, prompt })
   });
+  if (!r.ok) {
+    const err = await r.json();
+    throw new Error(err.error || 'Server error ' + r.status);
+  }
   const d = await r.json();
-  if (d.error) throw new Error('Claude API: ' + d.error.message);
-  const text = (d.content?.[0]?.text || '[]').replace(/```json|```/g,'').trim();
-  try { return JSON.parse(text); } catch(e) { console.error('Parse error', section, text.substring(0,200)); return []; }
+  return d.items || [];
 }
+
+function sleep(ms) { return new Promise(res => setTimeout(res, ms)); }
 
 function matchBadge(item) {
   return item.matched
