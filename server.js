@@ -1570,6 +1570,72 @@ app.post('/api/items/sync-inventory', async (req, res) => {
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
+// ═══════════════════════════════════════════════════════════════
+// ABS NEWSLETTER — apply approved updates (parsing done client-side via Claude API)
+// ═══════════════════════════════════════════════════════════════
+
+// Apply approved newsletter updates to items
+app.post('/api/newsletter/apply', async (req, res) => {
+  try {
+    const { updates } = req.body;
+    if (!updates?.length) return res.status(400).json({ error: 'No updates provided' });
+
+    let applied = 0;
+    const now = new Date().toISOString();
+    for (const u of updates) {
+      const patch = { updated_at: now };
+      if (u.type === 'discount') {
+        patch.low_discount  = u.discount;
+        patch.high_discount = u.discount;
+        if (u.disc_from) patch.disc_from = u.disc_from;
+        if (u.disc_to)   patch.disc_to   = u.disc_to;
+      } else if (u.type === 'price_change') {
+        const oldCost = u.old_cost;
+        patch.cost = u.new_cost;
+        const itemR = await sbFetch(`${SUPABASE_URL}/rest/v1/items?id=eq.${u.id}&select=bpc,sell_price`, { headers: sbHeaders });
+        const item = (await itemR.json())[0];
+        if (item?.bpc && item?.sell_price) {
+          patch.cost_per_unit = u.new_cost / item.bpc;
+          patch.margin_pct    = (item.sell_price - patch.cost_per_unit) / item.sell_price;
+        }
+        // Log price history
+        if (oldCost && Math.abs(oldCost - u.new_cost) > 0.005) {
+          await sbFetch(`${SUPABASE_URL}/rest/v1/price_history`, {
+            method: 'POST', headers: sbHeaders,
+            body: JSON.stringify({
+              store_id: STORE_ID, item_id: parseInt(u.id),
+              abs_code: u.abs_code, gg_name: u.gg_name,
+              field_changed: 'cost', old_value: String(oldCost), new_value: String(u.new_cost),
+              change_pct: oldCost ? ((u.new_cost - oldCost) / oldCost * 100).toFixed(2) : null
+            })
+          });
+        }
+      }
+      await sbFetch(`${SUPABASE_URL}/rest/v1/items?id=eq.${u.id}`, {
+        method: 'PATCH', headers: sbHeaders, body: JSON.stringify(patch)
+      });
+      applied++;
+    }
+    res.json({ success: true, applied });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// Get our items for cross-referencing (used by newsletter UI)
+app.get('/api/newsletter/items-map', async (req, res) => {
+  try {
+    const r = await sbFetch(
+      `${SUPABASE_URL}/rest/v1/items?store_id=eq.${STORE_ID}&deleted_at=is.null&select=id,abs_code,gg_name,cost,low_discount,high_discount,category&limit=5000`,
+      { headers: sbHeaders }
+    );
+    const items = await r.json();
+    // Return as map keyed by abs_code
+    const map = {};
+    items.forEach(i => { if (i.abs_code) map[i.abs_code] = i; });
+    res.json(map);
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
