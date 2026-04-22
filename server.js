@@ -1653,9 +1653,69 @@ app.post('/api/claude/proxy', async (req, res) => {
       },
       body: JSON.stringify({ model, max_tokens, messages })
     });
+    if (!r.ok) {
+      const err = await r.json();
+      return res.status(r.status).json(err);
+    }
     const data = await r.json();
     res.json(data);
   } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// Newsletter PDF split + parse — server extracts page ranges, calls Claude per chunk
+app.post('/api/newsletter/parse', async (req, res) => {
+  if (!ANTHROPIC_KEY) return res.status(500).json({ error: 'ANTHROPIC_API_KEY not configured' });
+  const { pdfBase64, section, pageFrom, pageTo, prompt } = req.body;
+  if (!pdfBase64 || !section) return res.status(400).json({ error: 'Missing pdfBase64 or section' });
+
+  try {
+    // Extract page range using pdf-lib
+    const { PDFDocument } = await import('pdf-lib');
+    const srcBytes = Buffer.from(pdfBase64, 'base64');
+    const srcDoc = await PDFDocument.load(srcBytes);
+    const totalPages = srcDoc.getPageCount();
+    const from = Math.max(0, (pageFrom || 1) - 1);      // 0-indexed
+    const to   = Math.min(totalPages - 1, (pageTo || totalPages) - 1);
+
+    const newDoc = await PDFDocument.create();
+    const pageIdxs = [];
+    for (let i = from; i <= to; i++) pageIdxs.push(i);
+    const copied = await newDoc.copyPages(srcDoc, pageIdxs);
+    copied.forEach(p => newDoc.addPage(p));
+    const sliceBytes = await newDoc.save();
+    const sliceB64 = Buffer.from(sliceBytes).toString('base64');
+
+    // Call Claude with just the page slice
+    const r = await sbFetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': ANTHROPIC_KEY,
+        'anthropic-version': '2023-06-01'
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 8000,
+        messages: [{ role: 'user', content: [
+          { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: sliceB64 } },
+          { type: 'text', text: prompt }
+        ]}]
+      })
+    });
+
+    if (!r.ok) {
+      const err = await r.json();
+      return res.status(r.status).json(err);
+    }
+    const data = await r.json();
+    const text = (data.content?.[0]?.text || '[]').replace(/```json|```/g,'').trim();
+    let parsed = [];
+    try { parsed = JSON.parse(text); } catch(e) { parsed = []; }
+    res.json({ success: true, section, items: parsed, pages: pageIdxs.length });
+  } catch(e) {
+    console.error('Newsletter parse error:', e.message);
+    res.status(500).json({ error: e.message });
+  }
 });
 
 
