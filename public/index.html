@@ -568,52 +568,112 @@ td{padding:9px 14px;vertical-align:middle}
 
 <!-- ── ITEM MANAGER ── -->
 <div class="page" id="page-items">
-  <div class="page-header" style="display:flex;justify-content:space-between;align-items:flex-start">
-    <div><div class="page-title">Item Manager</div><div class="page-sub" id="items-count">Loading...</div></div>
-    <button class="btn btn-primary" onclick="nav('add-item')">+ Add new item</button>
+  <div class="page-header" style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:10px">
+    <div>
+      <div class="page-title">Item Manager</div>
+      <div class="page-sub" id="items-count">Loading...</div>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn btn-sm" onclick="matchSquareItems()" title="Link items to Square by UPC">⟳ Match Square</button>
+      <button class="btn btn-sm" onclick="syncInventoryFromSquare()">↓ Sync Inventory</button>
+      <button class="btn btn-primary btn-sm" onclick="nav('add-item')">+ Add item</button>
+    </div>
   </div>
-  <div class="filter-row">
-    <input type="text" id="item-search" placeholder="Search name, ABS code, UPC..." oninput="debounceSearch()">
-    <select id="item-cat" onchange="loadItems()">
-      <option value="">All categories</option>
-      <option value="Beer">Beer</option><option value="Wine">Wine</option>
-      <option value="Single Beer">Single Beer</option><option value="Custom Beer">Custom Beer</option>
-      <option value="Cigar">Cigar</option><option value="Tobacco">Tobacco</option>
-      <option value="Snacks">Snacks</option><option value="Drinks">Drinks</option>
+
+  <!-- FILTERS -->
+  <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;align-items:center">
+    <input type="text" id="item-search" placeholder="Search name, ABS code, UPC..." style="flex:1;min-width:200px;padding:7px 12px;border:1px solid var(--border);border-radius:5px;background:var(--surface);color:var(--text);font-size:13px" oninput="debounceItemSearch()">
+    <select id="item-cat-filter" onchange="loadItems(1)" style="padding:7px 10px;border:1px solid var(--border);border-radius:5px;background:var(--surface);color:var(--text);font-size:13px">
+      <option value="all">All categories</option>
+      <option value="Beer">Beer</option>
+      <option value="Wine">Wine</option>
+      <option value="Single Beer">Single Beer</option>
+      <option value="Custom Beer">Custom Beer</option>
+      <option value="Cigar">Cigar</option>
+      <option value="Tobacco">Tobacco</option>
+    </select>
+    <select id="item-status-filter" onchange="loadItems(1)" style="padding:7px 10px;border:1px solid var(--border);border-radius:5px;background:var(--surface);color:var(--text);font-size:13px">
+      <option value="Active">Active</option>
+      <option value="all">All statuses</option>
       <option value="On Hold">On Hold</option>
     </select>
-    <select id="item-status" onchange="loadItems()">
-      <option value="">All statuses</option>
-      <option value="Active">Active</option><option value="On Hold">On Hold</option>
-    </select>
   </div>
-  <div class="tbl-wrap">
-    <table>
-      <thead><tr>
-        <th onclick="sortItems('gg_name')">Item name</th>
-        <th onclick="sortItems('abs_code')">ABS code</th>
-        <th>Category</th>
-        <th onclick="sortItems('sell_price')">Sell price</th>
-        <th onclick="sortItems('cost')">Cost</th>
-        <th onclick="sortItems('margin_pct')">Margin</th>
-        <th onclick="sortItems('inventory')">Inventory</th>
-        <th>Vendor</th>
-        <th>Status</th>
-        <th></th>
-      </tr></thead>
-      <tbody id="items-tbody"><tr><td colspan="10"><div class="loading">Loading...</div></td></tr></tbody>
+
+  <!-- TABLE -->
+  <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;overflow:hidden;overflow-x:auto">
+    <table style="width:100%;border-collapse:collapse;min-width:900px">
+      <thead>
+        <tr style="background:var(--surface2);border-bottom:1px solid var(--border)">
+          <th style="padding:10px 12px;text-align:left;font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">Name</th>
+          <th style="padding:10px 12px;text-align:left;font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">ABS Code</th>
+          <th style="padding:10px 12px;text-align:left;font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">Category</th>
+          <th style="padding:10px 12px;text-align:right;font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">Cost</th>
+          <th style="padding:10px 12px;text-align:right;font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">Sell Price</th>
+          <th style="padding:10px 12px;text-align:right;font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">Margin</th>
+          <th style="padding:10px 12px;text-align:right;font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">Sq Inventory</th>
+          <th style="padding:10px 12px;text-align:left;font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">Discount</th>
+          <th style="padding:10px 12px;text-align:left;font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">Sq Link</th>
+          <th style="padding:10px 12px"></th>
+        </tr>
+      </thead>
+      <tbody id="items-tbody">
+        <tr><td colspan="10" style="padding:40px;text-align:center;color:var(--muted)">Loading...</td></tr>
+      </tbody>
     </table>
-    <div class="pagination">
-      <span id="items-pag-info">—</span>
-      <div style="display:flex;gap:8px">
-        <button class="btn btn-sm" id="btn-prev" onclick="itemsPage(-1)">← Prev</button>
-        <button class="btn btn-sm" id="btn-next" onclick="itemsPage(1)">Next →</button>
+  </div>
+
+  <!-- PAGINATION -->
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-top:12px;flex-wrap:wrap;gap:8px">
+    <div style="font-size:12px;color:var(--muted)" id="items-page-info"></div>
+    <div style="display:flex;gap:6px">
+      <button class="btn btn-sm" id="items-prev" onclick="loadItems(itemsPage-1)" disabled>← Prev</button>
+      <button class="btn btn-sm" id="items-next" onclick="loadItems(itemsPage+1)">Next →</button>
+    </div>
+  </div>
+
+  <!-- EDIT MODAL -->
+  <div class="modal-overlay" id="item-edit-modal">
+    <div class="modal" style="max-width:560px">
+      <div class="modal-header">
+        <div class="modal-title" id="item-edit-name">Edit Item</div>
+        <button class="modal-close" onclick="closeModal('item-edit-modal')">×</button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="ie-id">
+        <input type="hidden" id="ie-bpc">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px">
+          <div class="field"><label>ABS Code</label><input id="ie-abs" readonly style="opacity:.5"></div>
+          <div class="field"><label>Category</label><input id="ie-cat" readonly style="opacity:.5"></div>
+          <div class="field"><label>BPC (bottles per case)</label><input type="number" id="ie-bpc-edit" oninput="calcEditMarginIM()"></div>
+          <div class="field"><label>Sell Size</label><input id="ie-sell-size"></div>
+        </div>
+        <div style="background:var(--surface2);border-radius:6px;padding:14px;margin-bottom:14px">
+          <div style="font-size:11px;font-family:var(--mono);color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">Pricing (updates Square immediately)</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+            <div class="field"><label>ABS Cost (per case $)</label><input type="number" step="0.01" id="ie-cost" oninput="calcEditMarginIM()"></div>
+            <div class="field"><label>Sell Price ($)</label><input type="number" step="0.01" id="ie-sell-price" oninput="calcEditMarginIM()"></div>
+            <div class="field"><label>Low Discount ($)</label><input type="number" step="0.01" id="ie-low-dis"></div>
+            <div class="field"><label>High Discount ($)</label><input type="number" step="0.01" id="ie-high-dis"></div>
+          </div>
+          <div style="display:flex;gap:16px;margin-top:10px">
+            <div style="flex:1"><div style="font-size:11px;color:var(--muted)">Cost Per Unit</div><div style="font-family:var(--mono);font-size:14px;font-weight:600" id="ie-cpu">—</div></div>
+            <div style="flex:1"><div style="font-size:11px;color:var(--muted)">Margin</div><div style="font-family:var(--mono);font-size:14px;font-weight:600" id="ie-margin">—</div></div>
+            <div style="flex:1"><div style="font-size:11px;color:var(--muted)">Target Margin %</div><input type="number" step="0.1" id="ie-margin-target" style="width:80px;font-family:var(--mono);font-size:13px;padding:3px 6px;border:1px solid var(--border);border-radius:4px;background:var(--bg);color:var(--text)"></div>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <div class="field"><label>Square Inventory</label><input type="number" step="1" id="ie-sq-inv" placeholder="(live from Square)"></div>
+          <div class="field"><label>Status</label><select id="ie-status"><option value="Active">Active</option><option value="On Hold">On Hold</option></select></div>
+        </div>
+        <div style="font-size:11px;color:var(--muted);margin-top:4px" id="ie-sq-status"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn" onclick="closeModal('item-edit-modal')">Cancel</button>
+        <button class="btn btn-primary" onclick="saveItemEdit()">Save changes</button>
       </div>
     </div>
   </div>
-</div>
 
-<!-- ── ADD ITEM ── -->
 <div class="page" id="page-add-item">
   <div class="page-header"><div class="page-title">Add New Item</div><div class="page-sub">Add a new product from the county catalog</div></div>
   <div class="card">
@@ -2200,6 +2260,193 @@ async function loadScHistory() {
     </tr>`;
   }).join('');
 }
+
+
+// ═══════════════════════════════════════════════════════════════
+// ITEM MANAGER
+// ═══════════════════════════════════════════════════════════════
+let imPage = 1;
+const ITEMS_PER_PAGE = 50;
+let itemSearchTimer = null;
+let currentEditItem = null;
+
+function debounceItemSearch() {
+  clearTimeout(itemSearchTimer);
+  itemSearchTimer = setTimeout(() => loadItemsIM(1), 400);
+}
+
+async function loadItemsIM(page = 1) {
+  imPage = page;
+  const search  = g('item-search')?.value?.trim() || '';
+  const cat     = g('item-cat-filter')?.value || 'all';
+  const status  = g('item-status-filter')?.value || 'Active';
+  const tbody   = g('items-tbody');
+  tbody.innerHTML = '<tr><td colspan="10" style="padding:30px;text-align:center;color:var(--muted)">Loading...</td></tr>';
+
+  const offset = (page - 1) * ITEMS_PER_PAGE;
+  let url = `/api/items/full?limit=${ITEMS_PER_PAGE}&offset=${offset}`;
+  if (search) url += `&search=${encodeURIComponent(search)}`;
+  if (cat !== 'all') url += `&category=${encodeURIComponent(cat)}`;
+  if (status !== 'all') url += `&status=${encodeURIComponent(status)}`;
+
+  try {
+    const d = await apiGet(url);
+    const { items, total } = d;
+    g('items-count').textContent = `${total.toLocaleString()} items`;
+
+    if (!items.length) {
+      tbody.innerHTML = '<tr><td colspan="10" style="padding:30px;text-align:center;color:var(--muted)">No items found</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = items.map(item => {
+      const margin = item.margin_pct != null ? (item.margin_pct * 100).toFixed(1) + '%' : '—';
+      const marginColor = item.margin_pct == null ? 'var(--muted)' : item.margin_pct < 0.15 ? '#e05555' : item.margin_pct > 0.35 ? '#6abf8a' : 'var(--text)';
+      const sqInv = item.square_inventory != null ? item.square_inventory.toFixed(0) : '—';
+      const invColor = item.square_inventory == null ? 'var(--muted)' : item.square_inventory <= 0 ? '#e05555' : item.square_inventory < 6 ? '#e07820' : '#6abf8a';
+      const hasDiscount = item.low_discount || item.high_discount;
+      const linked = item.square_variation_id ? '<span style="color:#6abf8a;font-size:10px;font-family:var(--mono)">✓ linked</span>' : '<span style="color:#e05555;font-size:10px;font-family:var(--mono)">unlinked</span>';
+      const costPer = item.cost_per_unit ? '$' + item.cost_per_unit.toFixed(2) : '—';
+
+      return `<tr style="border-bottom:1px solid var(--border);cursor:pointer" onclick="openItemEdit(${JSON.stringify(JSON.stringify(item)).slice(1,-1)})">
+        <td style="padding:9px 12px;font-weight:500;max-width:220px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${item.gg_name||''}">${item.gg_name || '<span style="color:var(--muted)">—</span>'}</td>
+        <td style="padding:9px 12px;font-family:var(--mono);font-size:12px;color:var(--muted)">${item.abs_code||'—'}</td>
+        <td style="padding:9px 12px"><span style="font-size:11px;padding:2px 8px;border-radius:3px;background:var(--surface2);color:var(--muted)">${item.category||'—'}</span></td>
+        <td style="padding:9px 12px;text-align:right;font-family:var(--mono);font-size:12px">${item.cost ? '$'+item.cost.toFixed(2) : '—'}</td>
+        <td style="padding:9px 12px;text-align:right;font-family:var(--mono);font-size:12px;font-weight:600">${item.sell_price ? '$'+item.sell_price.toFixed(2) : '—'}</td>
+        <td style="padding:9px 12px;text-align:right;font-family:var(--mono);font-size:12px;color:${marginColor}">${margin}</td>
+        <td style="padding:9px 12px;text-align:right;font-family:var(--mono);font-size:12px;color:${invColor}">${sqInv}</td>
+        <td style="padding:9px 12px;font-size:11px;color:${hasDiscount?'#6abf8a':'var(--muted)'}">
+          ${hasDiscount ? '$'+parseFloat(item.low_discount||0).toFixed(2)+' – $'+parseFloat(item.high_discount||0).toFixed(2) : '—'}
+        </td>
+        <td style="padding:9px 12px">${linked}</td>
+        <td style="padding:9px 12px">
+          <button class="btn btn-sm" onclick="event.stopPropagation();openItemEdit(${JSON.stringify(JSON.stringify(item)).slice(1,-1)})">Edit</button>
+        </td>
+      </tr>`;
+    }).join('');
+
+    // Pagination
+    const totalPages = Math.ceil(total / ITEMS_PER_PAGE);
+    g('items-page-info').textContent = `Page ${page} of ${totalPages} (${total.toLocaleString()} items)`;
+    g('items-prev').disabled = page <= 1;
+    g('items-next').disabled = page >= totalPages;
+
+  } catch(e) {
+    tbody.innerHTML = `<tr><td colspan="10" style="padding:30px;text-align:center;color:#e05555">Error: ${e.message}</td></tr>`;
+  }
+}
+
+function openItemEdit(itemJson) {
+  const item = typeof itemJson === 'string' ? JSON.parse(itemJson) : itemJson;
+  currentEditItem = item;
+  g('item-edit-name').textContent = item.gg_name || 'Edit Item';
+  g('ie-id').value = item.id;
+  g('ie-abs').value = item.abs_code || '';
+  g('ie-cat').value = item.category || '';
+  g('ie-bpc').value = item.bpc || 1;
+  g('ie-bpc-edit').value = item.bpc || '';
+  g('ie-sell-size').value = item.sell_size || '';
+  g('ie-cost').value = item.cost || '';
+  g('ie-sell-price').value = item.sell_price || '';
+  g('ie-low-dis').value = item.low_discount || '';
+  g('ie-high-dis').value = item.high_discount || '';
+  g('ie-margin-target').value = item.margin_target_pct ? (item.margin_target_pct * 100).toFixed(1) : '';
+  g('ie-sq-inv').value = item.square_inventory != null ? item.square_inventory : '';
+  g('ie-status').value = item.status || 'Active';
+  g('ie-sq-status').textContent = item.square_variation_id ? '✓ Linked to Square — sell price update will push to Square immediately' : '⚠ Not linked to Square — run "Match Square" first to enable price sync';
+  g('ie-sq-status').style.color = item.square_variation_id ? '#6abf8a' : '#e07820';
+  calcEditMarginIM();
+  openModal('item-edit-modal');
+}
+
+function calcEditMarginIM() {
+  const cost = parseFloat(g('ie-cost')?.value) || 0;
+  const price = parseFloat(g('ie-sell-price')?.value) || 0;
+  const bpc = parseInt(g('ie-bpc-edit')?.value) || parseInt(g('ie-bpc')?.value) || 1;
+  const cpu = bpc > 0 && cost > 0 ? cost / bpc : 0;
+  const margin = price > 0 && cpu > 0 ? ((price - cpu) / price * 100) : 0;
+  if (g('ie-cpu')) g('ie-cpu').textContent = cpu > 0 ? '$' + cpu.toFixed(4) : '—';
+  if (g('ie-margin')) {
+    g('ie-margin').textContent = margin > 0 ? margin.toFixed(1) + '%' : '—';
+    g('ie-margin').style.color = margin < 15 ? '#e05555' : margin > 35 ? '#6abf8a' : 'var(--text)';
+  }
+}
+
+async function saveItemEdit() {
+  const id = g('ie-id').value;
+  const sellPrice = parseFloat(g('ie-sell-price').value);
+  const cost = parseFloat(g('ie-cost').value);
+  const bpc = parseInt(g('ie-bpc-edit').value) || currentEditItem?.bpc || 1;
+  const sqInv = g('ie-sq-inv').value;
+  const marginTarget = g('ie-margin-target').value;
+
+  const btn = document.querySelector('#item-edit-modal .btn-primary');
+  btn.disabled = true; btn.textContent = 'Saving...';
+
+  try {
+    const promises = [];
+
+    // Update cost/discounts
+    promises.push(apiPost(`/api/items/${id}/update-cost`, {
+      cost: cost || null,
+      bpc,
+      low_discount: parseFloat(g('ie-low-dis').value) || null,
+      high_discount: parseFloat(g('ie-high-dis').value) || null,
+      margin_target_pct: marginTarget ? parseFloat(marginTarget) / 100 : null
+    }));
+
+    // Update sell price (pushes to Square if linked)
+    if (sellPrice && sellPrice !== currentEditItem?.sell_price) {
+      promises.push(apiPost(`/api/items/${id}/update-price`, { sell_price: sellPrice }));
+    }
+
+    // Update inventory in Square if changed
+    if (sqInv !== '' && parseFloat(sqInv) !== currentEditItem?.square_inventory) {
+      promises.push(apiPost(`/api/items/${id}/update-inventory`, { quantity: parseFloat(sqInv) }));
+    }
+
+    // Update status/sell_size
+    promises.push(apiPatch(`/api/items/${id}`, { status: g('ie-status').value, sell_size: g('ie-sell-size').value, bpc }));
+
+    await Promise.all(promises);
+    closeModal('item-edit-modal');
+    showToast('Item saved', 'success');
+    loadItemsIM(imPage);
+  } catch(e) {
+    showToast('Error: ' + e.message, 'error');
+  }
+  btn.disabled = false; btn.textContent = 'Save changes';
+}
+
+async function matchSquareItems() {
+  const btn = event.target;
+  btn.disabled = true; btn.textContent = 'Matching...';
+  try {
+    const d = await apiPost('/api/items/match-square', {});
+    showToast(`Matched ${d.matched} items to Square (${d.unmatched} unmatched)`, 'success');
+    loadItemsIM(imPage);
+  } catch(e) { showToast('Error: ' + e.message, 'error'); }
+  btn.disabled = false; btn.textContent = '⟳ Match Square';
+}
+
+async function syncInventoryFromSquare() {
+  const btn = event.target;
+  btn.disabled = true; btn.textContent = 'Syncing...';
+  try {
+    const d = await apiPost('/api/items/sync-inventory', {});
+    showToast(`Synced inventory for ${d.updated} items from Square`, 'success');
+    loadItemsIM(imPage);
+  } catch(e) { showToast('Error: ' + e.message, 'error'); }
+  btn.disabled = false; btn.textContent = '↓ Sync Inventory';
+}
+
+// Load items when navigating to the page
+const _origNav = nav;
+nav = function(page, ...args) {
+  _origNav(page, ...args);
+  if (page === 'items') loadItemsIM(1);
+};
 
 </script>
 </body>
