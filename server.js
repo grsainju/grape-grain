@@ -1355,6 +1355,256 @@ function scheduleSyncs() {
   }, msUntilSync);
 }
 
+
+// ═══════════════════════════════════════════════════════════════
+// ITEM MANAGER ENDPOINTS
+// ═══════════════════════════════════════════════════════════════
+
+// Match items table to square_items by UPC, store Square IDs
+app.post('/api/items/match-square', async (req, res) => {
+  try {
+    // Get all items with UPC
+    let matched = 0, unmatched = 0;
+    let offset = 0;
+    while (true) {
+      const r = await sbFetch(`${SUPABASE_URL}/rest/v1/items?store_id=eq.${STORE_ID}&upc=not.is.null&select=id,upc,abs_code&limit=500&offset=${offset}`, { headers: sbHeaders });
+      const items = await r.json();
+      if (!items.length) break;
+
+      for (const item of items) {
+        // Match by UPC to square_items
+        const sqR = await sbFetch(`${SUPABASE_URL}/rest/v1/square_items?store_id=eq.${STORE_ID}&sku=eq.${encodeURIComponent(item.upc)}&limit=1&select=id,price_cents`, { headers: sbHeaders });
+        const sqItems = await sqR.json();
+        if (sqItems.length) {
+          await sbFetch(`${SUPABASE_URL}/rest/v1/items?id=eq.${item.id}`, {
+            method: 'PATCH', headers: sbHeaders,
+            body: JSON.stringify({ square_variation_id: sqItems[0].id, square_price_cents: sqItems[0].price_cents, square_synced_at: new Date().toISOString() })
+          });
+          matched++;
+        } else { unmatched++; }
+      }
+      if (items.length < 500) break;
+      offset += 500;
+    }
+    res.json({ success: true, matched, unmatched });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// Get items with Square data merged
+app.get('/api/items/full', async (req, res) => {
+  try {
+    const { category, status, search, limit = 100, offset = 0 } = req.query;
+    let q = `store_id=eq.${STORE_ID}&deleted_at=is.null&limit=${limit}&offset=${offset}&order=gg_name.asc`;
+    if (category && category !== 'all') q += `&category=eq.${encodeURIComponent(category)}`;
+    if (status && status !== 'all') q += `&status=eq.${encodeURIComponent(status)}`;
+    if (search) q += `&or=(gg_name.ilike.*${encodeURIComponent(search)}*,abs_code.ilike.*${encodeURIComponent(search)}*,upc.ilike.*${encodeURIComponent(search)}*)`;
+
+    const r = await sbFetch(`${SUPABASE_URL}/rest/v1/items?${q}&select=*`, { headers: { ...sbHeaders, 'Prefer': 'count=exact' } });
+    const items = await r.json();
+    const total = parseInt(r.headers?.get('content-range')?.split('/')[1] || 0);
+
+    // Pull live Square inventory for matched items in batch
+    const varIds = items.filter(i => i.square_variation_id).map(i => i.square_variation_id);
+    let inventoryMap = {};
+    if (varIds.length > 0) {
+      const invR = await sqFetch(`/inventory/counts?location_ids=${SQUARE_LOCATION}&catalog_object_ids=${varIds.join(',')}&limit=1000`);
+      const invData = await invR.json();
+      (invData.counts || []).forEach(c => {
+        if (c.state === 'IN_STOCK') inventoryMap[c.catalog_object_id] = parseFloat(c.quantity || 0);
+      });
+    }
+
+    const enriched = items.map(item => ({
+      ...item,
+      square_inventory: item.square_variation_id ? (inventoryMap[item.square_variation_id] ?? item.square_inventory ?? null) : null
+    }));
+
+    res.json({ items: enriched, total, limit: parseInt(limit), offset: parseInt(offset) });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// Update sell price in Square + Supabase
+app.post('/api/items/:id/update-price', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { sell_price } = req.body;
+    if (!sell_price || isNaN(sell_price)) return res.status(400).json({ error: 'Invalid price' });
+
+    // Get item
+    const r = await sbFetch(`${SUPABASE_URL}/rest/v1/items?id=eq.${id}&store_id=eq.${STORE_ID}&limit=1`, { headers: sbHeaders });
+    const items = await r.json();
+    if (!items.length) return res.status(404).json({ error: 'Item not found' });
+    const item = items[0];
+
+    const priceCents = Math.round(parseFloat(sell_price) * 100);
+    const oldPrice = item.sell_price;
+
+    // Update Square if we have a variation ID
+    if (item.square_variation_id) {
+      const sqR = await sqFetch(`/catalog/object/${item.square_variation_id}`);
+      const sqData = await sqR.json();
+      const obj = sqData.object;
+      if (obj) {
+        obj.item_variation_data.price_money = { amount: priceCents, currency: 'USD' };
+        const updateR = await sqFetch('/catalog/object', {
+          method: 'PUT',
+          body: JSON.stringify({ idempotency_key: `price-${id}-${Date.now()}`, object: obj })
+        });
+        if (!updateR.ok) {
+          const err = await updateR.json();
+          return res.status(400).json({ error: 'Square update failed: ' + (err.errors?.[0]?.detail || JSON.stringify(err)) });
+        }
+      }
+    }
+
+    // Calculate new margin
+    const cost = parseFloat(item.cost || 0);
+    const newPrice = parseFloat(sell_price);
+    const margin = cost > 0 && newPrice > 0 ? ((newPrice - cost/item.bpc) / newPrice) : null;
+
+    // Update Supabase
+    await sbFetch(`${SUPABASE_URL}/rest/v1/items?id=eq.${id}`, {
+      method: 'PATCH', headers: sbHeaders,
+      body: JSON.stringify({ sell_price: newPrice, square_price_cents: priceCents, margin_pct: margin, updated_at: new Date().toISOString() })
+    });
+
+    // Log price change if changed
+    if (oldPrice && Math.abs(oldPrice - newPrice) > 0.005) {
+      await sbFetch(`${SUPABASE_URL}/rest/v1/price_history`, {
+        method: 'POST', headers: sbHeaders,
+        body: JSON.stringify({ store_id: STORE_ID, item_id: parseInt(id), abs_code: item.abs_code, gg_name: item.gg_name, field_changed: 'sell_price', old_value: String(oldPrice), new_value: String(newPrice), change_pct: oldPrice ? ((newPrice - oldPrice) / oldPrice * 100).toFixed(2) : null })
+      });
+    }
+
+    res.json({ success: true, old_price: oldPrice, new_price: newPrice, square_updated: !!item.square_variation_id });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// Update cost/margin in Supabase (ABS cost, not sell price)
+app.post('/api/items/:id/update-cost', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { cost, low_discount, high_discount, margin_target_pct } = req.body;
+
+    const r = await sbFetch(`${SUPABASE_URL}/rest/v1/items?id=eq.${id}&store_id=eq.${STORE_ID}&limit=1`, { headers: sbHeaders });
+    const items = await r.json();
+    if (!items.length) return res.status(404).json({ error: 'Item not found' });
+    const item = items[0];
+
+    const newCost = parseFloat(cost || item.cost || 0);
+    const bpc = item.bpc || 1;
+    const sellPrice = parseFloat(item.sell_price || 0);
+    const costPerUnit = newCost > 0 && bpc > 0 ? newCost / bpc : null;
+    const margin = sellPrice > 0 && costPerUnit != null ? ((sellPrice - costPerUnit) / sellPrice) : null;
+    const oldCost = item.cost;
+
+    const updateData = {
+      cost: newCost || null,
+      cost_per_unit: costPerUnit,
+      margin_pct: margin,
+      updated_at: new Date().toISOString()
+    };
+    if (low_discount !== undefined)   updateData.low_discount    = parseFloat(low_discount)   || null;
+    if (high_discount !== undefined)  updateData.high_discount   = parseFloat(high_discount)  || null;
+    if (margin_target_pct !== undefined) updateData.margin_target_pct = parseFloat(margin_target_pct) || null;
+
+    await sbFetch(`${SUPABASE_URL}/rest/v1/items?id=eq.${id}`, {
+      method: 'PATCH', headers: sbHeaders, body: JSON.stringify(updateData)
+    });
+
+    // Log cost change
+    if (oldCost && Math.abs(oldCost - newCost) > 0.005) {
+      await sbFetch(`${SUPABASE_URL}/rest/v1/price_history`, {
+        method: 'POST', headers: sbHeaders,
+        body: JSON.stringify({ store_id: STORE_ID, item_id: parseInt(id), abs_code: item.abs_code, gg_name: item.gg_name, field_changed: 'cost', old_value: String(oldCost), new_value: String(newCost), change_pct: oldCost ? ((newCost - oldCost) / oldCost * 100).toFixed(2) : null })
+      });
+    }
+
+    res.json({ success: true, cost: newCost, cost_per_unit: costPerUnit, margin_pct: margin });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// Push inventory update to Square
+app.post('/api/items/:id/update-inventory', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { quantity, reason = 'RECOUNT' } = req.body;
+    if (quantity === undefined || isNaN(quantity)) return res.status(400).json({ error: 'Invalid quantity' });
+
+    const r = await sbFetch(`${SUPABASE_URL}/rest/v1/items?id=eq.${id}&store_id=eq.${STORE_ID}&limit=1`, { headers: sbHeaders });
+    const items = await r.json();
+    if (!items.length) return res.status(404).json({ error: 'Item not found' });
+    const item = items[0];
+
+    if (!item.square_variation_id) return res.status(400).json({ error: 'Item not linked to Square — run catalog sync first' });
+
+    // Push to Square inventory
+    const invR = await sqFetch('/inventory/changes/batch-create', {
+      method: 'POST',
+      body: JSON.stringify({
+        idempotency_key: `inv-${id}-${Date.now()}`,
+        changes: [{
+          type: 'PHYSICAL_COUNT',
+          physical_count: {
+            catalog_object_id: item.square_variation_id,
+            location_id: SQUARE_LOCATION,
+            quantity: String(parseFloat(quantity)),
+            state: 'IN_STOCK',
+            occurred_at: new Date().toISOString()
+          }
+        }]
+      })
+    });
+
+    if (!invR.ok) {
+      const err = await invR.json();
+      return res.status(400).json({ error: 'Square inventory update failed: ' + (err.errors?.[0]?.detail || JSON.stringify(err)) });
+    }
+
+    // Update Supabase
+    await sbFetch(`${SUPABASE_URL}/rest/v1/items?id=eq.${id}`, {
+      method: 'PATCH', headers: sbHeaders,
+      body: JSON.stringify({ square_inventory: parseFloat(quantity), inventory: parseFloat(quantity), updated_at: new Date().toISOString() })
+    });
+
+    res.json({ success: true, quantity: parseFloat(quantity), square_updated: true });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// Bulk inventory sync FROM Square (read current inventory for all matched items)
+app.post('/api/items/sync-inventory', async (req, res) => {
+  try {
+    // Get all items with square_variation_id
+    const r = await sbFetch(`${SUPABASE_URL}/rest/v1/items?store_id=eq.${STORE_ID}&square_variation_id=not.is.null&select=id,square_variation_id&limit=2000`, { headers: sbHeaders });
+    const items = await r.json();
+
+    // Batch fetch from Square in chunks of 100
+    const chunkSize = 100;
+    let updated = 0;
+    for (let i = 0; i < items.length; i += chunkSize) {
+      const chunk = items.slice(i, i + chunkSize);
+      const varIds = chunk.map(it => it.square_variation_id).join(',');
+      const invR = await sqFetch(`/inventory/counts?location_ids=${SQUARE_LOCATION}&catalog_object_ids=${varIds}`);
+      const invData = await invR.json();
+      const invMap = {};
+      (invData.counts || []).forEach(c => {
+        if (c.state === 'IN_STOCK') invMap[c.catalog_object_id] = parseFloat(c.quantity || 0);
+      });
+      // Update each item
+      for (const item of chunk) {
+        if (invMap[item.square_variation_id] !== undefined) {
+          await sbFetch(`${SUPABASE_URL}/rest/v1/items?id=eq.${item.id}`, {
+            method: 'PATCH', headers: sbHeaders,
+            body: JSON.stringify({ square_inventory: invMap[item.square_variation_id], square_synced_at: new Date().toISOString() })
+          });
+          updated++;
+        }
+      }
+    }
+    res.json({ success: true, updated, total: items.length });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`Grape & Grain running on port ${PORT}`);
