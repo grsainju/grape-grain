@@ -1312,50 +1312,6 @@ app.get('/api/sales/monthly/net', async (req, res) => {
 });
 
 // ── CATCH ALL ─────────────────────────────────────────────────────────────────
-app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'index.html'));
-});
-
-// ── NIGHTLY SYNC (called by cron or manually) ─────────────────────────────────
-async function runNightlySync() {
-  try {
-    // At 2am ET, sync yesterday (the just-completed business day)
-    const etNow = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/New_York' }));
-    const yesterday = new Date(etNow);
-    yesterday.setDate(etNow.getDate() - 1);
-    const dateStr = yesterday.toLocaleDateString('en-CA'); // YYYY-MM-DD
-    console.log(`Nightly sync: syncing ${dateStr}`);
-    const { default: fetch } = await import('node-fetch');
-    const r = await fetch(`http://localhost:${PORT}/api/square/sync`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ start: dateStr, end: dateStr })
-    });
-    const result = await r.json();
-    console.log('Nightly sync result:', result);
-  } catch (e) {
-    console.error('Nightly sync failed:', e.message);
-  }
-}
-
-// Schedule nightly sync at 2am ET (6am UTC during EDT, 7am UTC during EST)
-function scheduleSyncs() {
-  const now = new Date();
-  const nextSync = new Date();
-  // Use America/New_York — calculate next 2am ET
-  const etNow = new Date(now.toLocaleString('en-US', { timeZone: 'America/New_York' }));
-  const etTarget = new Date(etNow);
-  etTarget.setHours(2, 0, 0, 0);
-  if (etTarget <= etNow) etTarget.setDate(etTarget.getDate() + 1);
-  const msUntilSync = etTarget - etNow;
-  console.log(`Next nightly sync in ${Math.round(msUntilSync/1000/60)} minutes (2am ET)`);
-  setTimeout(() => {
-    runNightlySync();
-    setInterval(runNightlySync, 24 * 60 * 60 * 1000);
-  }, msUntilSync);
-}
-
-
 // ═══════════════════════════════════════════════════════════════
 // ITEM MANAGER ENDPOINTS
 // ═══════════════════════════════════════════════════════════════
@@ -1604,6 +1560,51 @@ app.post('/api/items/sync-inventory', async (req, res) => {
     res.json({ success: true, updated, total: items.length });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
+
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
+// ── NIGHTLY SYNC (called by cron or manually) ─────────────────────────────────
+async function runNightlySync() {
+  try {
+    // At 2am ET, sync yesterday (the just-completed business day)
+    const etNow = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/New_York' }));
+    const yesterday = new Date(etNow);
+    yesterday.setDate(etNow.getDate() - 1);
+    const dateStr = yesterday.toLocaleDateString('en-CA'); // YYYY-MM-DD
+    console.log(`Nightly sync: syncing ${dateStr}`);
+    const { default: fetch } = await import('node-fetch');
+    const r = await fetch(`http://localhost:${PORT}/api/square/sync`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ start: dateStr, end: dateStr })
+    });
+    const result = await r.json();
+    console.log('Nightly sync result:', result);
+  } catch (e) {
+    console.error('Nightly sync failed:', e.message);
+  }
+}
+
+// Schedule nightly sync at 2am ET (6am UTC during EDT, 7am UTC during EST)
+function scheduleSyncs() {
+  const now = new Date();
+  const nextSync = new Date();
+  // Use America/New_York — calculate next 2am ET
+  const etNow = new Date(now.toLocaleString('en-US', { timeZone: 'America/New_York' }));
+  const etTarget = new Date(etNow);
+  etTarget.setHours(2, 0, 0, 0);
+  if (etTarget <= etNow) etTarget.setDate(etTarget.getDate() + 1);
+  const msUntilSync = etTarget - etNow;
+  console.log(`Next nightly sync in ${Math.round(msUntilSync/1000/60)} minutes (2am ET)`);
+  setTimeout(() => {
+    runNightlySync();
+    setInterval(runNightlySync, 24 * 60 * 60 * 1000);
+  }, msUntilSync);
+}
+
+
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
