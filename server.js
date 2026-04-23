@@ -1369,28 +1369,6 @@ app.get('/api/items/full', async (req, res) => {
     const items = await r.json();
     const total = parseInt(r.headers?.get('content-range')?.split('/')[1] || 0);
 
-    // Fetch monthly sales summary for smart order calculation
-    const monthlySummaryR = await sbFetch(
-      `${SUPABASE_URL}/rest/v1/monthly_item_sales?store_id=eq.${STORE_ID}&month=gte.${start28.slice(0,7)}&select=item_name,qty_sold&limit=20000`,
-      { headers: sbHeaders }
-    );
-    const monthlyRows = await monthlySummaryR.json();
-    // Also get full 12mo for avg
-    const cutoffMonth = (() => { const d = new Date(); d.setMonth(d.getMonth()-12); return d.toISOString().slice(0,7); })();
-    const monthly12R = await sbFetch(
-      `${SUPABASE_URL}/rest/v1/monthly_item_sales?store_id=eq.${STORE_ID}&month=gte.${cutoffMonth}&select=item_name,qty_sold&limit=20000`,
-      { headers: sbHeaders }
-    );
-    const monthly12Rows = await monthly12R.json();
-
-    // Build name → {avg_monthly, total_12mo, months_with_sales}
-    const monthlySummary = {};
-    monthly12Rows.forEach(row => {
-      if (!monthlySummary[row.item_name]) monthlySummary[row.item_name] = { total: 0, months: new Set() };
-      monthlySummary[row.item_name].total += parseFloat(row.qty_sold || 0);
-      monthlySummary[row.item_name].months.add(row.month?.slice(0,7));
-    });
-
     // Pull live Square inventory — paginate through ALL counts
     let inventoryMap = {};
     let invCursor = null, invPage = 0;
@@ -1875,6 +1853,23 @@ app.get('/api/order-builder/sales', async (req, res) => {
 
     // Use Supabase inventory field (kept current by Item Manager sync)
     // Run "Sync Inventory" in Item Manager before generating orders for fresh counts
+
+    // Fetch 12-month monthly sales summary for smart order calculation
+    const cutoffMonth = (() => { const d = new Date(); d.setMonth(d.getMonth()-12); return d.toISOString().slice(0,7); })();
+    const monthly12R = await sbFetch(
+      `${SUPABASE_URL}/rest/v1/monthly_item_sales?store_id=eq.${STORE_ID}&month=gte.${cutoffMonth}&select=item_name,month,qty_sold&limit=20000`,
+      { headers: sbHeaders }
+    );
+    const monthly12Rows = await monthly12R.json();
+
+    // Build name → {total, months set} for avg calculation
+    const monthlySummary = {};
+    monthly12Rows.forEach(row => {
+      if (!monthlySummary[row.item_name]) monthlySummary[row.item_name] = { total: 0, months: new Set() };
+      monthlySummary[row.item_name].total += parseFloat(row.qty_sold || 0);
+      monthlySummary[row.item_name].months.add(row.month?.slice(0,7));
+    });
+    console.log(`[ORDER] Monthly history loaded: ${Object.keys(monthlySummary).length} items`);
 
     // Pull orders for 28 days (covers both ranges)
     const startTime = `${start28}T05:00:00Z`;
