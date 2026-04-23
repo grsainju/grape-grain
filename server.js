@@ -1369,13 +1369,15 @@ app.get('/api/items/full', async (req, res) => {
     const items = await r.json();
     const total = parseInt(r.headers?.get('content-range')?.split('/')[1] || 0);
 
-    // Pull live Square inventory for matched items in batch
-    const varIds = items.filter(i => i.square_variation_id).map(i => i.square_variation_id);
+    // Pull live Square inventory — paginate through ALL counts
     let inventoryMap = {};
-    if (varIds.length > 0) {
+    let invCursor = null, invPage = 0;
+    do {
+      const invBody = { location_ids: [SQUARE_LOCATION] };
+      if (invCursor) invBody.cursor = invCursor;
       const invR = await sqFetch('/inventory/counts/batch-retrieve', {
         method: 'POST',
-        body: JSON.stringify({ catalog_object_ids: varIds, location_ids: [SQUARE_LOCATION] })
+        body: JSON.stringify(invBody)
       });
       const invData = await invR.json();
       (invData.counts || []).forEach(cnt => {
@@ -1383,7 +1385,9 @@ app.get('/api/items/full', async (req, res) => {
         const qty = parseFloat(cnt.quantity || 0);
         if (cnt.state === 'IN_STOCK' || !inventoryMap[id]) inventoryMap[id] = qty;
       });
-    }
+      invCursor = invData.cursor;
+      invPage++;
+    } while (invCursor && invPage < 50);
 
     const enriched = items.map(item => ({
       ...item,
@@ -1846,6 +1850,33 @@ app.get('/api/order-builder/sales', async (req, res) => {
     // Build variation_id → item map
     const varMap = {};
     allItems.forEach(i => { if (i.square_variation_id) varMap[i.square_variation_id] = i; });
+
+    // Pull live Square inventory with pagination (same approach as Item Manager)
+    const liveInvMap = {};
+    let liveCursor = null, livePage = 0;
+    do {
+      const liveBody = { location_ids: [SQUARE_LOCATION] };
+      if (liveCursor) liveBody.cursor = liveCursor;
+      const liveR = await sqFetch('/inventory/counts/batch-retrieve', {
+        method: 'POST', body: JSON.stringify(liveBody)
+      });
+      const liveData = await liveR.json();
+      (liveData.counts || []).forEach(cnt => {
+        const id = cnt.catalog_object_id;
+        const qty = parseFloat(cnt.quantity || 0);
+        if (cnt.state === 'IN_STOCK' || !liveInvMap[id]) liveInvMap[id] = qty;
+      });
+      liveCursor = liveData.cursor;
+      livePage++;
+    } while (liveCursor && livePage < 50);
+
+    // Patch allItems with live inventory
+    allItems.forEach(i => {
+      if (i.square_variation_id && liveInvMap[i.square_variation_id] !== undefined) {
+        i.inventory = liveInvMap[i.square_variation_id];
+      }
+    });
+    console.log(`[ORDER] Live inventory: ${Object.keys(liveInvMap).length} counts fetched`);
 
     // Pull orders for 28 days (covers both ranges)
     const startTime = `${start28}T05:00:00Z`;
