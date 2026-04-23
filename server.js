@@ -1549,52 +1549,55 @@ app.post('/api/items/sync-inventory', async (req, res) => {
     const r = await sbFetch(`${SUPABASE_URL}/rest/v1/items?store_id=eq.${STORE_ID}&square_variation_id=not.is.null&select=id,square_variation_id&limit=2000`, { headers: sbHeaders });
     const items = await r.json();
 
-    // Use POST batch endpoint — more reliable than GET with long URL
-    const chunkSize = 100;
-    let updated = 0;
+    // Fetch all inventory counts from Square with pagination
     const now = new Date().toISOString();
+    let updated = 0;
 
-    for (let i = 0; i < items.length; i += chunkSize) {
-      const chunk = items.slice(i, i + chunkSize);
-      const varIds = chunk.map(it => it.square_variation_id);
+    // Build full var ID list
+    const allVarIds = items.map(it => it.square_variation_id);
 
-      // Use batch retrieve inventory counts (POST)
+    // Fetch ALL counts from Square using cursor pagination (no chunking needed)
+    const invMap = {};
+    let cursor = null;
+    let invPage = 0;
+    do {
+      const body = { location_ids: [SQUARE_LOCATION] };
+      if (cursor) body.cursor = cursor;
       const invR = await sqFetch('/inventory/counts/batch-retrieve', {
         method: 'POST',
-        body: JSON.stringify({
-          catalog_object_ids: varIds,
-          location_ids: [SQUARE_LOCATION]
-        })
+        body: JSON.stringify(body)
       });
       const invData = await invR.json();
-
-      // Build map — take IN_STOCK count
-      const invMap = {};
-      const countsReturned = invData.counts || [];
-      console.log(`[SYNC] Chunk ${i}-${i+chunkSize}: asked ${varIds.length} IDs, got ${countsReturned.length} counts`);
-      for (const count of countsReturned) {
+      const counts = invData.counts || [];
+      console.log(`[SYNC] Page ${invPage}: got ${counts.length} counts`);
+      for (const count of counts) {
         const id = count.catalog_object_id;
         const qty = parseFloat(count.quantity || 0);
         if (count.state === 'IN_STOCK' || !invMap[id]) {
           invMap[id] = qty;
         }
       }
+      cursor = invData.cursor;
+      invPage++;
+    } while (cursor && invPage < 50);
 
-      // Update Supabase for each item that got a count
+    console.log(`[SYNC] Total counts fetched: ${Object.keys(invMap).length}`);
+
+    // Update each matched item in Supabase
+    const chunkSize = 100;
+    for (let i = 0; i < items.length; i += chunkSize) {
+      const chunk = items.slice(i, i + chunkSize);
       const toUpdate = chunk.filter(it => invMap[it.square_variation_id] !== undefined);
       for (const item of toUpdate) {
-        const qty = invMap[item.square_variation_id];
-        const sqCount = qty !== undefined ? qty : null;
-        if (sqCount !== null) {
-          await sbFetch(`${SUPABASE_URL}/rest/v1/items?id=eq.${item.id}`, {
-            method: 'PATCH', headers: sbHeaders,
-            body: JSON.stringify({ square_inventory: sqCount, inventory: sqCount, square_synced_at: now })
-          });
-          updated++;
-        }
+        const sqCount = invMap[item.square_variation_id];
+        await sbFetch(`${SUPABASE_URL}/rest/v1/items?id=eq.${item.id}`, {
+          method: 'PATCH', headers: sbHeaders,
+          body: JSON.stringify({ square_inventory: sqCount, inventory: sqCount, square_synced_at: now })
+        });
+        updated++;
       }
     }
-    res.json({ success: true, updated, total: items.length });
+    res.json({ success: true, updated, total: items.length, squareCounts: Object.keys(invMap).length });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
