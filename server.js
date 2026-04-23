@@ -1790,6 +1790,200 @@ app.post('/api/newsletter/parse', async (req, res) => {
 ;
 
 
+// ═══════════════════════════════════════════════════════════════
+// ORDER BUILDER — pull item-level sales from Square Orders API
+// ═══════════════════════════════════════════════════════════════
+
+app.get('/api/order-builder/sales', async (req, res) => {
+  try {
+    const tz = 'America/New_York';
+    const today = new Date().toLocaleDateString('en-CA', { timeZone: tz });
+
+    // Date ranges: last 7 days and last 28 days
+    const d7  = new Date(); d7.setDate(d7.getDate() - 7);
+    const d28 = new Date(); d28.setDate(d28.getDate() - 28);
+    const start7  = d7.toLocaleDateString('en-CA',  { timeZone: tz });
+    const start28 = d28.toLocaleDateString('en-CA', { timeZone: tz });
+
+    // Pull all items with square_variation_id for matching
+    const itemsR = await sbFetch(
+      `${SUPABASE_URL}/rest/v1/items?store_id=eq.${STORE_ID}&status=eq.Active&deleted_at=is.null` +
+      `&select=id,abs_code,gg_name,category,bpc,sell_size,splitted,made_from_abs,cost,low_discount,high_discount,square_variation_id,square_inventory&limit=5000`,
+      { headers: sbHeaders }
+    );
+    const allItems = await itemsR.json();
+
+    // Build variation_id → item map
+    const varMap = {};
+    allItems.forEach(i => { if (i.square_variation_id) varMap[i.square_variation_id] = i; });
+
+    // Pull orders for 28 days (covers both ranges)
+    const startTime = `${start28}T05:00:00Z`;
+    const endTime   = `${today}T05:00:00Z`;
+    const endTime7  = `${start7}T05:00:00Z`;
+
+    // Aggregate sales by variation_id
+    const sales28 = {}; // variation_id → { qty, revenue }
+    const sales7  = {};
+
+    let cursor = null;
+    let pages = 0;
+    do {
+      const body = {
+        location_ids: [SQUARE_LOCATION],
+        query: {
+          filter: {
+            date_time_filter: { created_at: { start_at: startTime, end_at: new Date().toISOString().slice(0,19)+'Z' } },
+            state_filter: { states: ['COMPLETED'] }
+          }
+        },
+        limit: 500
+      };
+      if (cursor) body.cursor = cursor;
+
+      const r = await sqFetch('/orders/search', { method: 'POST', body: JSON.stringify(body) });
+      const data = await r.json();
+      if (data.errors) throw new Error(data.errors[0]?.detail);
+
+      for (const order of (data.orders || [])) {
+        const orderDate = order.created_at?.slice(0,10) || '';
+        const isLast7 = orderDate >= start7;
+
+        for (const item of (order.line_items || [])) {
+          const varId = item.catalog_object_id;
+          if (!varId) continue;
+          const qty = parseFloat(item.quantity || 0);
+          const rev = (item.gross_sales_money?.amount || 0) / 100;
+
+          if (!sales28[varId]) sales28[varId] = { qty: 0, revenue: 0 };
+          sales28[varId].qty     += qty;
+          sales28[varId].revenue += rev;
+
+          if (isLast7) {
+            if (!sales7[varId]) sales7[varId] = { qty: 0, revenue: 0 };
+            sales7[varId].qty     += qty;
+            sales7[varId].revenue += rev;
+          }
+        }
+      }
+
+      cursor = data.cursor;
+      pages++;
+    } while (cursor && pages < 20);
+
+    // Build result: merge sales into items
+    // Step 1: collect all matched items with sales
+    const itemSales = {};
+
+    // For each item that has a square_variation_id
+    allItems.forEach(item => {
+      if (!item.square_variation_id) return;
+      const s28 = sales28[item.square_variation_id] || { qty: 0, revenue: 0 };
+      const s7  = sales7[item.square_variation_id]  || { qty: 0, revenue: 0 };
+      if (s28.qty === 0 && s7.qty === 0) return; // skip items with no sales
+
+      itemSales[item.abs_code] = {
+        item,
+        sold_7d:  s7.qty,
+        sold_28d: s28.qty,
+        rev_7d:   s7.revenue,
+        rev_28d:  s28.revenue
+      };
+    });
+
+    // Step 2: roll custom pack sales into parent items
+    // "Made From X" items: their unit sales should be added to parent's case count
+    allItems.forEach(item => {
+      if (!item.splitted || !item.splitted.startsWith('Made From') || !item.made_from_abs) return;
+      const parentCode = item.made_from_abs;
+      const varId = item.square_variation_id;
+      if (!varId) return;
+
+      const s28 = sales28[varId] || { qty: 0 };
+      const s7  = sales7[varId]  || { qty: 0 };
+
+      // Get sell_size (units per custom pack, e.g. 6 for a 6-pack)
+      const sellSize = parseInt(item.sell_size || 1);
+      // Get parent BPC
+      const parentItem = allItems.find(i => i.abs_code === parentCode);
+      const parentBpc  = parentItem?.bpc || 1;
+
+      // Convert units sold to cases: (units_sold × sell_size) / parent_bpc
+      const units28 = s28.qty * sellSize;
+      const units7  = s7.qty  * sellSize;
+
+      if (!itemSales[parentCode]) {
+        itemSales[parentCode] = {
+          item: parentItem || { abs_code: parentCode, gg_name: parentCode, category: 'Beer', bpc: parentBpc },
+          sold_7d: 0, sold_28d: 0, rev_7d: 0, rev_28d: 0
+        };
+      }
+      // Add rollup units (will convert to cases later)
+      if (!itemSales[parentCode].rollup_units_7d)  itemSales[parentCode].rollup_units_7d  = 0;
+      if (!itemSales[parentCode].rollup_units_28d) itemSales[parentCode].rollup_units_28d = 0;
+      itemSales[parentCode].rollup_units_7d  += units7;
+      itemSales[parentCode].rollup_units_28d += units28;
+    });
+
+    // Step 3: build final rows with order suggestion
+    const rows = Object.values(itemSales).map(entry => {
+      const { item, sold_7d, sold_28d, rev_7d, rev_28d } = entry;
+      const bpc = item.bpc || 1;
+      const inv = parseFloat(item.square_inventory || 0);
+
+      // Convert unit sales to cases
+      const cases7d  = sold_7d  / bpc;
+      const cases28d = sold_28d / bpc;
+      const avg4wk   = cases28d; // 28 days = 4 weeks
+
+      // Rollup from custom packs (in units → cases)
+      const rollup7d  = ((entry.rollup_units_7d  || 0) / bpc);
+      const rollup28d = ((entry.rollup_units_28d || 0) / bpc);
+
+      const total7d  = cases7d  + rollup7d;
+      const total28d = cases28d + rollup28d;
+      const avg_weekly = total28d / 4;
+
+      // Suggested order: (avg_weekly × 2) - current_inventory_in_cases
+      const inv_cases = inv / bpc;
+      const suggested = Math.max(0, Math.ceil(avg_weekly * 2 - inv_cases));
+
+      return {
+        abs_code:    item.abs_code,
+        gg_name:     item.gg_name,
+        category:    item.category,
+        bpc:         bpc,
+        cost:        item.cost,
+        low_disc:    item.low_discount,
+        high_disc:   item.high_discount,
+        inv_units:   inv,
+        inv_cases:   parseFloat(inv_cases.toFixed(2)),
+        sold_7d:     parseFloat(total7d.toFixed(2)),
+        sold_28d:    parseFloat(total28d.toFixed(2)),
+        avg_weekly:  parseFloat(avg_weekly.toFixed(2)),
+        suggested:   suggested,
+        has_rollup:  !!(entry.rollup_units_28d)
+      };
+    });
+
+    // Sort: Beer first, then Wine, alphabetically within each
+    rows.sort((a,b) => {
+      if (a.category !== b.category) return a.category < b.category ? -1 : 1;
+      return (a.gg_name||'').localeCompare(b.gg_name||'');
+    });
+
+    res.json({
+      success: true,
+      rows,
+      meta: { start28, start7, today, pages, totalItems: allItems.length, matchedItems: Object.keys(varMap).length }
+    });
+
+  } catch(e) {
+    console.error('Order builder error:', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
