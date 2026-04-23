@@ -1927,25 +1927,30 @@ app.get('/api/order-builder/sales', async (req, res) => {
 
     // Step 3: build final rows with order suggestion
     const rows = Object.values(itemSales).map(entry => {
-      const { item, sold_7d, sold_28d, rev_7d, rev_28d } = entry;
-      const bpc = item.bpc || 1;
-      const inv = parseFloat(item.inventory ?? item.square_inventory ?? 0);
+      const { item, sold_7d, sold_28d } = entry;
+      const bpc      = item.bpc || 1;
+      const sellSize = parseInt(item.sell_size || 1);
 
-      // Convert unit sales to cases
-      const cases7d  = sold_7d  / bpc;
-      const cases28d = sold_28d / bpc;
-      const avg4wk   = cases28d; // 28 days = 4 weeks
+      // inventory field = number of sell-size packs on hand
+      // e.g. inv=4, sell_size=12 → 4 twelve-packs → 48 bottles → 2 cases of 24
+      const invPacks   = parseFloat(item.inventory ?? item.square_inventory ?? 0);
+      const invBottles = invPacks * sellSize;   // total individual bottles/cans
+      const inv_cases  = invBottles / bpc;      // cases
 
-      // Rollup from custom packs (in units → cases)
+      // Square sales are in sell-size units — convert to cases
+      // e.g. sold 8 six-packs → 8×6=48 bottles → 2 cases of 24
+      const cases7d  = (sold_7d  * sellSize) / bpc;
+      const cases28d = (sold_28d * sellSize) / bpc;
+
+      // Rollup from custom packs (already in bottles) → cases
       const rollup7d  = ((entry.rollup_units_7d  || 0) / bpc);
       const rollup28d = ((entry.rollup_units_28d || 0) / bpc);
 
-      const total7d  = cases7d  + rollup7d;
-      const total28d = cases28d + rollup28d;
+      const total7d    = cases7d  + rollup7d;
+      const total28d   = cases28d + rollup28d;
       const avg_weekly = total28d / 4;
 
       // Suggested order: (avg_weekly × 2) - current_inventory_in_cases
-      const inv_cases = inv / bpc;
       const suggested = Math.max(0, Math.ceil(avg_weekly * 2 - inv_cases));
 
       return {
@@ -1953,10 +1958,12 @@ app.get('/api/order-builder/sales', async (req, res) => {
         gg_name:     item.gg_name,
         category:    item.category,
         bpc:         bpc,
+        sell_size:   sellSize,
         cost:        item.cost,
         low_disc:    item.low_discount,
         high_disc:   item.high_discount,
-        inv_units:   inv,
+        inv_packs:   invPacks,
+        inv_bottles: parseFloat(invBottles.toFixed(1)),
         inv_cases:   parseFloat(inv_cases.toFixed(2)),
         sold_7d:     parseFloat(total7d.toFixed(2)),
         sold_28d:    parseFloat(total28d.toFixed(2)),
