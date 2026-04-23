@@ -1553,54 +1553,57 @@ app.post('/api/items/sync-inventory', async (req, res) => {
     const r = await sbFetch(`${SUPABASE_URL}/rest/v1/items?store_id=eq.${STORE_ID}&square_variation_id=not.is.null&select=id,square_variation_id&limit=2000`, { headers: sbHeaders });
     const items = await r.json();
 
-    // Fetch all inventory counts from Square with pagination
+    // Fetch inventory from Square by sending OUR specific variation IDs in chunks of 100
+    // This is reliable — we only ask for what we have, no pagination issues
     const now = new Date().toISOString();
     let updated = 0;
-
-    // Build full var ID list
-    const allVarIds = items.map(it => it.square_variation_id);
-
-    // Fetch ALL counts from Square using cursor pagination (no chunking needed)
     const invMap = {};
-    let cursor = null;
-    let invPage = 0;
-    do {
-      const body = { location_ids: [SQUARE_LOCATION] };
-      if (cursor) body.cursor = cursor;
-      const invR = await sqFetch('/inventory/counts/batch-retrieve', {
-        method: 'POST',
-        body: JSON.stringify(body)
-      });
-      const invData = await invR.json();
-      const counts = invData.counts || [];
-      console.log(`[SYNC] Page ${invPage}: got ${counts.length} counts`);
-      for (const count of counts) {
-        const id = count.catalog_object_id;
-        const qty = parseFloat(count.quantity || 0);
-        if (count.state === 'IN_STOCK' || !invMap[id]) {
-          invMap[id] = qty;
-        }
-      }
-      cursor = invData.cursor;
-      invPage++;
-    } while (cursor && invPage < 50);
-
-    console.log(`[SYNC] Total counts fetched: ${Object.keys(invMap).length}`);
-
-    // Update each matched item in Supabase
     const chunkSize = 100;
+
     for (let i = 0; i < items.length; i += chunkSize) {
       const chunk = items.slice(i, i + chunkSize);
-      const toUpdate = chunk.filter(it => invMap[it.square_variation_id] !== undefined);
-      for (const item of toUpdate) {
-        const sqCount = invMap[item.square_variation_id];
-        await sbFetch(`${SUPABASE_URL}/rest/v1/items?id=eq.${item.id}`, {
-          method: 'PATCH', headers: sbHeaders,
-          body: JSON.stringify({ square_inventory: sqCount, inventory: sqCount, square_synced_at: now })
+      const varIds = chunk.map(it => it.square_variation_id);
+
+      // Paginate through results for this chunk (usually 1 page for 100 IDs)
+      let cursor = null;
+      do {
+        const body = { catalog_object_ids: varIds, location_ids: [SQUARE_LOCATION] };
+        if (cursor) body.cursor = cursor;
+        const invR = await sqFetch('/inventory/counts/batch-retrieve', {
+          method: 'POST', body: JSON.stringify(body)
         });
-        updated++;
-      }
+        const invData = await invR.json();
+        for (const count of (invData.counts || [])) {
+          const id = count.catalog_object_id;
+          const qty = parseFloat(count.quantity || 0);
+          if (count.state === 'IN_STOCK' || !invMap[id]) invMap[id] = qty;
+        }
+        cursor = invData.cursor;
+      } while (cursor);
     }
+
+    console.log(`[SYNC] Got ${Object.keys(invMap).length} counts from Square for ${items.length} items`);
+
+    // Bulk update Supabase — upsert all at once using on_conflict
+    const toUpdate = items.filter(it => invMap[it.square_variation_id] !== undefined);
+    const upsertRows = toUpdate.map(it => ({
+      id: it.id,
+      square_inventory: invMap[it.square_variation_id],
+      inventory: invMap[it.square_variation_id],
+      square_synced_at: now
+    }));
+
+    // Upsert in batches of 500
+    for (let i = 0; i < upsertRows.length; i += 500) {
+      const batch = upsertRows.slice(i, i + 500);
+      await sbFetch(`${SUPABASE_URL}/rest/v1/items?on_conflict=id`, {
+        method: 'POST',
+        headers: { ...sbHeaders, 'Prefer': 'return=minimal,resolution=merge-duplicates' },
+        body: JSON.stringify(batch)
+      });
+      updated += batch.length;
+    }
+
     res.json({ success: true, updated, total: items.length, squareCounts: Object.keys(invMap).length });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
