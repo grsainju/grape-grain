@@ -1929,7 +1929,7 @@ app.get('/api/order-builder/sales', async (req, res) => {
     const rows = Object.values(itemSales).map(entry => {
       const { item, sold_7d, sold_28d, rev_7d, rev_28d } = entry;
       const bpc = item.bpc || 1;
-      const inv = parseFloat(item.square_inventory ?? item.inventory ?? 0);
+      const inv = parseFloat(item.inventory ?? item.square_inventory ?? 0);
 
       // Convert unit sales to cases
       const cases7d  = sold_7d  / bpc;
