@@ -1873,32 +1873,8 @@ app.get('/api/order-builder/sales', async (req, res) => {
     const varMap = {};
     allItems.forEach(i => { if (i.square_variation_id) varMap[i.square_variation_id] = i; });
 
-    // Pull live Square inventory with pagination (same approach as Item Manager)
-    const liveInvMap = {};
-    let liveCursor = null, livePage = 0;
-    do {
-      const liveBody = { location_ids: [SQUARE_LOCATION] };
-      if (liveCursor) liveBody.cursor = liveCursor;
-      const liveR = await sqFetch('/inventory/counts/batch-retrieve', {
-        method: 'POST', body: JSON.stringify(liveBody)
-      });
-      const liveData = await liveR.json();
-      (liveData.counts || []).forEach(cnt => {
-        const id = cnt.catalog_object_id;
-        const qty = parseFloat(cnt.quantity || 0);
-        if (cnt.state === 'IN_STOCK' || !liveInvMap[id]) liveInvMap[id] = qty;
-      });
-      liveCursor = liveData.cursor;
-      livePage++;
-    } while (liveCursor && livePage < 50);
-
-    // Patch allItems with live inventory
-    allItems.forEach(i => {
-      if (i.square_variation_id && liveInvMap[i.square_variation_id] !== undefined) {
-        i.inventory = liveInvMap[i.square_variation_id];
-      }
-    });
-    console.log(`[ORDER] Live inventory: ${Object.keys(liveInvMap).length} counts fetched`);
+    // Use Supabase inventory field (kept current by Item Manager sync)
+    // Run "Sync Inventory" in Item Manager before generating orders for fresh counts
 
     // Pull orders for 28 days (covers both ranges)
     const startTime = `${start28}T05:00:00Z`;
