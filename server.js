@@ -1563,18 +1563,18 @@ app.post('/api/items/sync-inventory', async (req, res) => {
         method: 'POST',
         body: JSON.stringify({
           catalog_object_ids: varIds,
-          location_ids: [SQUARE_LOCATION],
-          states: ['IN_STOCK', 'SOLD', 'RETURNED_BY_CUSTOMER', 'RESERVED_FOR_SALE', 'IN_TRANSIT_TO', 'UNLINKED_RETURN', 'COMPOSED', 'DECOMPOSED', 'WASTE', 'NONE']
+          location_ids: [SQUARE_LOCATION]
         })
       });
       const invData = await invR.json();
 
-      // Build map — take IN_STOCK count, fall back to any count
+      // Build map — take IN_STOCK count
       const invMap = {};
-      for (const count of (invData.counts || [])) {
+      const countsReturned = invData.counts || [];
+      console.log(`[SYNC] Chunk ${i}-${i+chunkSize}: asked ${varIds.length} IDs, got ${countsReturned.length} counts`);
+      for (const count of countsReturned) {
         const id = count.catalog_object_id;
         const qty = parseFloat(count.quantity || 0);
-        // Prefer IN_STOCK, but take any positive count
         if (count.state === 'IN_STOCK' || !invMap[id]) {
           invMap[id] = qty;
         }
