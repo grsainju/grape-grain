@@ -1662,44 +1662,79 @@ app.post('/api/claude/proxy', async (req, res) => {
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
-// Newsletter PDF split + parse — server extracts page ranges, calls Claude per chunk
+// Test pdftotext availability
+app.get('/api/test-pdftotext', (req, res) => {
+  const { execSync } = require('child_process');
+  try {
+    const v = execSync('pdftotext -v 2>&1', { encoding: 'utf8' });
+    res.json({ available: true, version: v.substring(0,100) });
+  } catch(e) {
+    res.json({ available: false, error: e.message });
+  }
+});
+
+// Newsletter PDF parse — extract text server-side, send text to Claude (not PDF image)
 app.post('/api/newsletter/parse', async (req, res) => {
   if (!ANTHROPIC_KEY) return res.status(500).json({ error: 'ANTHROPIC_API_KEY not configured' });
   const { pdfBase64, section, pageFrom, pageTo, prompt } = req.body;
   if (!pdfBase64 || !section) return res.status(400).json({ error: 'Missing pdfBase64 or section' });
 
+  const { execSync } = require('child_process');
+  const fsSync = require('fs');
+  const os = require('os');
+  const pathMod = require('path');
+  const tmpPdf = pathMod.join(os.tmpdir(), `nl_${Date.now()}.pdf`);
+
   try {
-    // Extract page range using pdf-lib
-    const { PDFDocument } = await import('pdf-lib');
-    const srcBytes = Buffer.from(pdfBase64, 'base64');
-    const srcDoc = await PDFDocument.load(srcBytes);
-    const totalPages = srcDoc.getPageCount();
-    const from = Math.max(0, (pageFrom || 1) - 1);      // 0-indexed
-    const to   = Math.min(totalPages - 1, (pageTo || totalPages) - 1);
+    // Write PDF to disk
+    fsSync.writeFileSync(tmpPdf, Buffer.from(pdfBase64, 'base64'));
 
-    const newDoc = await PDFDocument.create();
-    const pageIdxs = [];
-    for (let i = from; i <= to; i++) pageIdxs.push(i);
-    const copied = await newDoc.copyPages(srcDoc, pageIdxs);
-    copied.forEach(p => newDoc.addPage(p));
-    const sliceBytes = await newDoc.save();
-    const sliceB64 = Buffer.from(sliceBytes).toString('base64');
+    // Check if pdftotext is available
+    let pdfText = '';
+    try {
+      pdfText = execSync(
+        `pdftotext -layout -f ${pageFrom} -l ${pageTo} "${tmpPdf}" -`,
+        { encoding: 'utf8', timeout: 30000, maxBuffer: 10 * 1024 * 1024 }
+      );
+    } catch(e) {
+      // pdftotext not available — fall back to pdf-lib + send as PDF (smaller chunk)
+      const { PDFDocument } = await import('pdf-lib');
+      const srcDoc = await PDFDocument.load(Buffer.from(pdfBase64, 'base64'));
+      const newDoc = await PDFDocument.create();
+      const from = Math.max(0, pageFrom - 1);
+      const to = Math.min(srcDoc.getPageCount() - 1, pageTo - 1);
+      const copied = await newDoc.copyPages(srcDoc, Array.from({length: to-from+1}, (_,i) => from+i));
+      copied.forEach(p => newDoc.addPage(p));
+      const sliceB64 = Buffer.from(await newDoc.save()).toString('base64');
 
-    // Call Claude with just the page slice
+      const r = await sbFetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-api-key': ANTHROPIC_KEY, 'anthropic-version': '2023-06-01' },
+        body: JSON.stringify({
+          model: 'claude-sonnet-4-20250514', max_tokens: 8000,
+          messages: [{ role: 'user', content: [
+            { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: sliceB64 } },
+            { type: 'text', text: prompt }
+          ]}]
+        })
+      });
+      const data = await r.json();
+      if (data.error) return res.status(429).json(data.error);
+      const text = (data.content?.[0]?.text || '[]').replace(/```json|```/g,'').trim();
+      let parsed = []; try { parsed = JSON.parse(text); } catch(e) {}
+      return res.json({ success: true, section, items: parsed, method: 'pdf' });
+    }
+
+    // pdftotext worked — send extracted text to Claude (much cheaper, ~50x fewer tokens)
+    // Trim to reasonable size
+    const textChunk = pdfText.substring(0, 80000);
+
     const r = await sbFetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': ANTHROPIC_KEY,
-        'anthropic-version': '2023-06-01'
-      },
+      headers: { 'Content-Type': 'application/json', 'x-api-key': ANTHROPIC_KEY, 'anthropic-version': '2023-06-01' },
       body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 8000,
-        messages: [{ role: 'user', content: [
-          { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: sliceB64 } },
-          { type: 'text', text: prompt }
-        ]}]
+        model: 'claude-sonnet-4-20250514', max_tokens: 8000,
+        messages: [{ role: 'user', content: prompt + '\n\nHere is the extracted text from the PDF:\n\n' + textChunk }]
       })
     });
 
@@ -1708,13 +1743,16 @@ app.post('/api/newsletter/parse', async (req, res) => {
       return res.status(r.status).json(err);
     }
     const data = await r.json();
+    if (data.error) return res.status(429).json(data.error);
     const text = (data.content?.[0]?.text || '[]').replace(/```json|```/g,'').trim();
-    let parsed = [];
-    try { parsed = JSON.parse(text); } catch(e) { parsed = []; }
-    res.json({ success: true, section, items: parsed, pages: pageIdxs.length });
+    let parsed = []; try { parsed = JSON.parse(text); } catch(e2) { console.log('Parse error:', text.substring(0,200)); }
+    res.json({ success: true, section, items: parsed, method: 'text', chars: textChunk.length });
+
   } catch(e) {
     console.error('Newsletter parse error:', e.message);
     res.status(500).json({ error: e.message });
+  } finally {
+    try { fsSync.unlinkSync(tmpPdf); } catch(e) {}
   }
 });
 
