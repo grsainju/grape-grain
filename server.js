@@ -1373,10 +1373,15 @@ app.get('/api/items/full', async (req, res) => {
     const varIds = items.filter(i => i.square_variation_id).map(i => i.square_variation_id);
     let inventoryMap = {};
     if (varIds.length > 0) {
-      const invR = await sqFetch(`/inventory/counts?location_ids=${SQUARE_LOCATION}&catalog_object_ids=${varIds.join(',')}&limit=1000`);
+      const invR = await sqFetch('/inventory/counts/batch-retrieve', {
+        method: 'POST',
+        body: JSON.stringify({ catalog_object_ids: varIds, location_ids: [SQUARE_LOCATION] })
+      });
       const invData = await invR.json();
-      (invData.counts || []).forEach(c => {
-        if (c.state === 'IN_STOCK') inventoryMap[c.catalog_object_id] = parseFloat(c.quantity || 0);
+      (invData.counts || []).forEach(cnt => {
+        const id = cnt.catalog_object_id;
+        const qty = parseFloat(cnt.quantity || 0);
+        if (cnt.state === 'IN_STOCK' || !inventoryMap[id]) inventoryMap[id] = qty;
       });
     }
 
@@ -1544,24 +1549,46 @@ app.post('/api/items/sync-inventory', async (req, res) => {
     const r = await sbFetch(`${SUPABASE_URL}/rest/v1/items?store_id=eq.${STORE_ID}&square_variation_id=not.is.null&select=id,square_variation_id&limit=2000`, { headers: sbHeaders });
     const items = await r.json();
 
-    // Batch fetch from Square in chunks of 100
+    // Use POST batch endpoint — more reliable than GET with long URL
     const chunkSize = 100;
     let updated = 0;
+    const now = new Date().toISOString();
+
     for (let i = 0; i < items.length; i += chunkSize) {
       const chunk = items.slice(i, i + chunkSize);
-      const varIds = chunk.map(it => it.square_variation_id).join(',');
-      const invR = await sqFetch(`/inventory/counts?location_ids=${SQUARE_LOCATION}&catalog_object_ids=${varIds}`);
-      const invData = await invR.json();
-      const invMap = {};
-      (invData.counts || []).forEach(c => {
-        if (c.state === 'IN_STOCK') invMap[c.catalog_object_id] = parseFloat(c.quantity || 0);
+      const varIds = chunk.map(it => it.square_variation_id);
+
+      // Use batch retrieve inventory counts (POST)
+      const invR = await sqFetch('/inventory/counts/batch-retrieve', {
+        method: 'POST',
+        body: JSON.stringify({
+          catalog_object_ids: varIds,
+          location_ids: [SQUARE_LOCATION],
+          states: ['IN_STOCK', 'SOLD', 'RETURNED_BY_CUSTOMER', 'RESERVED_FOR_SALE', 'IN_TRANSIT_TO', 'UNLINKED_RETURN', 'COMPOSED', 'DECOMPOSED', 'WASTE', 'NONE']
+        })
       });
-      // Update each item
-      for (const item of chunk) {
-        if (invMap[item.square_variation_id] !== undefined) {
+      const invData = await invR.json();
+
+      // Build map — take IN_STOCK count, fall back to any count
+      const invMap = {};
+      for (const count of (invData.counts || [])) {
+        const id = count.catalog_object_id;
+        const qty = parseFloat(count.quantity || 0);
+        // Prefer IN_STOCK, but take any positive count
+        if (count.state === 'IN_STOCK' || !invMap[id]) {
+          invMap[id] = qty;
+        }
+      }
+
+      // Update Supabase for each item that got a count
+      const toUpdate = chunk.filter(it => invMap[it.square_variation_id] !== undefined);
+      for (const item of toUpdate) {
+        const qty = invMap[item.square_variation_id];
+        const sqCount = qty !== undefined ? qty : null;
+        if (sqCount !== null) {
           await sbFetch(`${SUPABASE_URL}/rest/v1/items?id=eq.${item.id}`, {
             method: 'PATCH', headers: sbHeaders,
-            body: JSON.stringify({ square_inventory: invMap[item.square_variation_id], square_synced_at: new Date().toISOString() })
+            body: JSON.stringify({ square_inventory: sqCount, inventory: sqCount, square_synced_at: now })
           });
           updated++;
         }
@@ -2007,8 +2034,14 @@ app.get('/api/debug/inventory', async (req, res) => {
     
     const varId = items[0].square_variation_id;
     
-    // Call Square inventory API directly
-    const invR = await sqFetch(`/inventory/counts?location_ids=${SQUARE_LOCATION}&catalog_object_ids=${varId}`);
+    // Call Square inventory API using POST batch endpoint
+    const invR = await sqFetch('/inventory/counts/batch-retrieve', {
+      method: 'POST',
+      body: JSON.stringify({
+        catalog_object_ids: [varId],
+        location_ids: [SQUARE_LOCATION]
+      })
+    });
     const invData = await invR.json();
     
     res.json({
