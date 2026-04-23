@@ -1932,16 +1932,15 @@ app.get('/api/order-builder/sales', async (req, res) => {
       pages++;
     } while (cursor && pages < 20);
 
-    // Build result: merge sales into items
-    // Step 1: collect all matched items with sales
+    // Build result: start with ALL active Beer/Wine items, merge in sales
     const itemSales = {};
+    const targetCats = new Set(['Beer','Wine','Single Beer','Custom Beer','Cigar','Tobacco']);
 
-    // For each item that has a square_variation_id
     allItems.forEach(item => {
-      if (!item.square_variation_id) return;
-      const s28 = sales28[item.square_variation_id] || { qty: 0, revenue: 0 };
-      const s7  = sales7[item.square_variation_id]  || { qty: 0, revenue: 0 };
-      if (s28.qty === 0 && s7.qty === 0) return; // skip items with no sales
+      if (!targetCats.has(item.category)) return;
+      const varId = item.square_variation_id;
+      const s28 = varId ? (sales28[varId] || { qty: 0, revenue: 0 }) : { qty: 0, revenue: 0 };
+      const s7  = varId ? (sales7[varId]  || { qty: 0, revenue: 0 }) : { qty: 0, revenue: 0 };
 
       itemSales[item.abs_code] = {
         item,
