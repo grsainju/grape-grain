@@ -1369,6 +1369,28 @@ app.get('/api/items/full', async (req, res) => {
     const items = await r.json();
     const total = parseInt(r.headers?.get('content-range')?.split('/')[1] || 0);
 
+    // Fetch monthly sales summary for smart order calculation
+    const monthlySummaryR = await sbFetch(
+      `${SUPABASE_URL}/rest/v1/monthly_item_sales?store_id=eq.${STORE_ID}&month=gte.${start28.slice(0,7)}&select=item_name,qty_sold&limit=20000`,
+      { headers: sbHeaders }
+    );
+    const monthlyRows = await monthlySummaryR.json();
+    // Also get full 12mo for avg
+    const cutoffMonth = (() => { const d = new Date(); d.setMonth(d.getMonth()-12); return d.toISOString().slice(0,7); })();
+    const monthly12R = await sbFetch(
+      `${SUPABASE_URL}/rest/v1/monthly_item_sales?store_id=eq.${STORE_ID}&month=gte.${cutoffMonth}&select=item_name,qty_sold&limit=20000`,
+      { headers: sbHeaders }
+    );
+    const monthly12Rows = await monthly12R.json();
+
+    // Build name → {avg_monthly, total_12mo, months_with_sales}
+    const monthlySummary = {};
+    monthly12Rows.forEach(row => {
+      if (!monthlySummary[row.item_name]) monthlySummary[row.item_name] = { total: 0, months: new Set() };
+      monthlySummary[row.item_name].total += parseFloat(row.qty_sold || 0);
+      monthlySummary[row.item_name].months.add(row.month?.slice(0,7));
+    });
+
     // Pull live Square inventory — paginate through ALL counts
     let inventoryMap = {};
     let invCursor = null, invPage = 0;
@@ -2010,26 +2032,54 @@ app.get('/api/order-builder/sales', async (req, res) => {
       const total28d   = cases28d + rollup28d;
       const avg_weekly = total28d / 4;
 
-      // Suggested order: (avg_weekly × 2) - current_inventory_in_cases
-      const suggested = Math.max(0, Math.ceil(avg_weekly * 2 - inv_cases));
+      // Monthly history for this item (matched by name)
+      const monthlyData = monthlySummary[item.gg_name] || { total: 0, months: new Set() };
+      const total_12mo   = monthlyData.total;
+      const months_count = monthlyData.months.size;
+      const avg_monthly  = parseFloat((total_12mo / Math.max(months_count, 1)).toFixed(2));
+      const avg_monthly_cases = avg_monthly / bpc;
+      const has_history  = total_12mo > 0;
+
+      // Smart order logic based on velocity
+      // velocity = avg cases per month
+      let suggested = 0;
+      if (!has_history) {
+        // No 12-month history — use recent 28-day sales only if selling
+        if (avg_weekly > 0) suggested = Math.max(0, Math.ceil(avg_weekly * 2 - inv_cases));
+      } else if (avg_monthly_cases >= 1) {
+        // HIGH velocity (≥1 case/month): maintain 2-week buffer = 0.5 cases
+        const target = avg_monthly_cases * 2; // 2 months stock
+        suggested = Math.max(0, Math.ceil(target - inv_cases));
+      } else if (avg_monthly_cases >= 0.25) {
+        // MED velocity (0.25-1 case/month): keep at least 1 case
+        suggested = inv_cases < 1 ? Math.ceil(1 - inv_cases) : 0;
+      } else {
+        // LOW velocity (<0.25 case/month, ~3 units/month for 12-pack): only order if out
+        suggested = inv_cases <= 0 ? 1 : 0;
+      }
 
       return {
-        abs_code:    item.abs_code,
-        gg_name:     item.gg_name,
-        category:    item.category,
-        bpc:         bpc,
-        sell_size:   sellSize,
-        cost:        item.cost,
-        low_disc:    item.low_discount,
-        high_disc:   item.high_discount,
-        inv_packs:   invPacks,
-        inv_bottles: parseFloat(invBottles.toFixed(1)),
-        inv_cases:   parseFloat(inv_cases.toFixed(2)),
-        sold_7d:     parseFloat(total7d.toFixed(2)),
-        sold_28d:    parseFloat(total28d.toFixed(2)),
-        avg_weekly:  parseFloat(avg_weekly.toFixed(2)),
-        suggested:   suggested,
-        has_rollup:  !!(entry.rollup_units_28d)
+        abs_code:       item.abs_code,
+        gg_name:        item.gg_name,
+        category:       item.category,
+        bpc:            bpc,
+        sell_size:      sellSize,
+        cost:           item.cost,
+        low_disc:       item.low_discount,
+        high_disc:      item.high_discount,
+        inv_packs:      invPacks,
+        inv_bottles:    parseFloat(invBottles.toFixed(1)),
+        inv_cases:      parseFloat(inv_cases.toFixed(2)),
+        sold_7d:        parseFloat(total7d.toFixed(2)),
+        sold_28d:       parseFloat(total28d.toFixed(2)),
+        avg_weekly:     parseFloat(avg_weekly.toFixed(2)),
+        avg_monthly:    avg_monthly,
+        avg_monthly_cs: parseFloat(avg_monthly_cases.toFixed(2)),
+        total_12mo:     total_12mo,
+        months_count:   months_count,
+        velocity:       !has_history ? 'NEW' : avg_monthly_cases >= 1 ? 'HIGH' : avg_monthly_cases >= 0.25 ? 'MED' : 'LOW',
+        suggested:      suggested,
+        has_rollup:     !!(entry.rollup_units_28d)
       };
     });
 
@@ -2084,6 +2134,73 @@ app.get('/api/debug/inventory', async (req, res) => {
     });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
+
+// ═══════════════════════════════════════════════════════════════
+// MONTHLY SALES HISTORY
+// ═══════════════════════════════════════════════════════════════
+
+// Import monthly sales from xlsx data (sent as JSON from browser)
+app.post('/api/monthly-sales/import', async (req, res) => {
+  try {
+    const { records } = req.body; // [{item_name, month, qty}]
+    if (!records?.length) return res.status(400).json({ error: 'No records' });
+
+    const rows = records.map(r => ({
+      store_id: STORE_ID,
+      item_name: r.item_name,
+      month: r.month,
+      qty_sold: parseFloat(r.qty) || 0
+    }));
+
+    // Upsert in batches of 500
+    const batchSize = 500;
+    for (let i = 0; i < rows.length; i += batchSize) {
+      const batch = rows.slice(i, i + batchSize);
+      await sbFetch(`${SUPABASE_URL}/rest/v1/monthly_item_sales?on_conflict=store_id,item_name,month`, {
+        method: 'POST',
+        headers: { ...sbHeaders, 'Prefer': 'return=minimal,resolution=merge-duplicates' },
+        body: JSON.stringify(batch)
+      });
+    }
+    res.json({ success: true, imported: rows.length });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// Get monthly sales summary per item for order builder
+app.get('/api/monthly-sales/summary', async (req, res) => {
+  try {
+    // Aggregate: total and avg per item over last 12 months
+    const cutoff = new Date();
+    cutoff.setMonth(cutoff.getMonth() - 12);
+    const cutoffMonth = cutoff.toISOString().slice(0,7); // 'YYYY-MM'
+
+    const r = await sbFetch(
+      `${SUPABASE_URL}/rest/v1/monthly_item_sales?store_id=eq.${STORE_ID}&month=gte.${cutoffMonth}&select=item_name,month,qty_sold&limit=20000`,
+      { headers: sbHeaders }
+    );
+    const rows = await r.json();
+
+    // Aggregate by item_name
+    const itemMap = {};
+    rows.forEach(row => {
+      if (!itemMap[row.item_name]) itemMap[row.item_name] = { total: 0, months: new Set() };
+      itemMap[row.item_name].total += parseFloat(row.qty_sold || 0);
+      itemMap[row.item_name].months.add(row.month);
+    });
+
+    const summary = {};
+    Object.entries(itemMap).forEach(([name, data]) => {
+      summary[name] = {
+        total_12mo: parseFloat(data.total.toFixed(2)),
+        months_with_sales: data.months.size,
+        avg_monthly: parseFloat((data.total / 12).toFixed(2))
+      };
+    });
+
+    res.json({ success: true, summary, itemCount: Object.keys(summary).length });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
 
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
