@@ -2673,10 +2673,10 @@ async function importNewsletterPDF(input) {
       g('nl-progress').textContent = `Step ${i+2}/${chunks.length+1}: Extracting ${chunk.label}...`;
       const items = await parseNLSection(b64, chunk.key, chunk.from, chunk.to, chunk.prompt);
       NL[chunk.key] = NL[chunk.key].concat(items);
-      // Rate limit delay between calls — 62s window resets every minute
+      // Short delay between calls to stay within rate limits
       if (i < chunks.length - 1) {
-        g('nl-progress').textContent = `Waiting 15s before next section (rate limit)...`;
-        await sleep(15000);
+        g('nl-progress').textContent = `Waiting before next section...`;
+        await sleep(5000);
       }
     }
 
