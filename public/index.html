@@ -760,6 +760,10 @@ td{padding:9px 14px;vertical-align:middle}
     </div>
     <div style="display:flex;gap:8px;flex-wrap:wrap">
       <button class="btn btn-primary" onclick="pullOrderSales()" id="ob-pull-btn">↓ Pull Sales from Square</button>
+      <label class="btn btn-sm" style="cursor:pointer" title="Upload Monthly_Sales.xlsx to enable 12-month trend analysis">
+        ↑ Import 12mo History
+        <input type="file" id="ob-monthly-input" accept=".xlsx,.csv" style="display:none" onchange="importMonthlySales(this)">
+      </label>
       <button class="btn btn-sm" onclick="exportOrderCSV('Beer')" id="ob-export-beer" disabled>Export Beer CSV</button>
       <button class="btn btn-sm" onclick="exportOrderCSV('Wine')" id="ob-export-wine" disabled>Export Wine CSV</button>
     </div>
@@ -817,6 +821,8 @@ td{padding:9px 14px;vertical-align:middle}
           <th style="padding:9px 12px;text-align:right;font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">7d Sold</th>
           <th style="padding:9px 12px;text-align:right;font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">28d Sold</th>
           <th style="padding:9px 12px;text-align:right;font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">Wk Avg</th>
+          <th style="padding:9px 12px;text-align:right;font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">Mo Avg</th>
+          <th style="padding:9px 12px;text-align:left;font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">Velocity</th>
           <th style="padding:9px 12px;text-align:right;font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">Discount</th>
           <th style="padding:9px 12px;text-align:right;font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;background:rgba(200,169,110,.08)">Suggested</th>
           <th style="padding:9px 12px;text-align:right;font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;background:rgba(91,155,213,.08)">Manager</th>
@@ -2895,6 +2901,13 @@ function renderOBTable() {
       <td style="padding:8px 12px;text-align:right;font-family:var(--mono);font-size:12px">${row.sold_7d.toFixed(1)}</td>
       <td style="padding:8px 12px;text-align:right;font-family:var(--mono);font-size:12px;color:var(--muted)">${row.sold_28d.toFixed(1)}</td>
       <td style="padding:8px 12px;text-align:right;font-family:var(--mono);font-size:12px;color:var(--accent)">${row.avg_weekly.toFixed(1)}</td>
+      <td style="padding:8px 12px;text-align:right;font-family:var(--mono);font-size:12px;color:var(--muted)">${row.avg_monthly ? row.avg_monthly.toFixed(1) : '—'}</td>
+      <td style="padding:8px 12px">
+        ${row.velocity === 'HIGH' ? '<span style="font-size:10px;padding:2px 7px;border-radius:3px;background:rgba(106,191,138,.1);color:#6abf8a;font-family:var(--mono)">HIGH</span>'
+        : row.velocity === 'MED'  ? '<span style="font-size:10px;padding:2px 7px;border-radius:3px;background:rgba(200,169,110,.1);color:#c8a96e;font-family:var(--mono)">MED</span>'
+        : row.velocity === 'LOW'  ? '<span style="font-size:10px;padding:2px 7px;border-radius:3px;background:rgba(100,100,100,.1);color:var(--muted);font-family:var(--mono)">LOW</span>'
+        : '<span style="font-size:10px;padding:2px 7px;border-radius:3px;background:rgba(91,155,213,.1);color:#5b9bd5;font-family:var(--mono)">NEW</span>'}
+      </td>
       <td style="padding:8px 12px;text-align:right;font-size:11px;color:#6abf8a">${disc}</td>
       <td style="padding:8px 12px;text-align:right;background:rgba(200,169,110,.06)">
         <span style="font-family:var(--mono);font-size:13px;font-weight:600;color:var(--accent)">${row.suggested}</span>
@@ -2964,6 +2977,56 @@ function exportOrderCSV(category) {
   a.click();
   URL.revokeObjectURL(url);
   showToast(`${category} order exported — ${rows.length} items, ${lines.length-1} lines`, 'success');
+}
+
+
+async function importMonthlySales(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const btn = input.parentElement;
+  const origText = btn.childNodes[0].textContent;
+  btn.childNodes[0].textContent = ' Importing...';
+
+  try {
+    // Parse xlsx using SheetJS
+    const { read, utils } = await import('https://cdn.sheetjs.com/xlsx-0.20.1/package/xlsx.mjs');
+    const ab = await file.arrayBuffer();
+    const wb = read(ab);
+    const ws = wb.Sheets[wb.SheetNames[0]];
+    const rows = utils.sheet_to_json(ws);
+
+    // Expected columns: Item Name, Sold Qty, Date
+    const records = rows.map(r => ({
+      item_name: r['Item Name'] || r['item_name'] || '',
+      month: new Date(r['Date'] || r['date']).toISOString().slice(0,7),
+      qty: parseFloat(r['Sold Qty'] || r['sold_qty'] || 0)
+    })).filter(r => r.item_name && r.month && !isNaN(r.qty));
+
+    // Send to server in batches
+    const batchSize = 2000;
+    let imported = 0;
+    for (let i = 0; i < records.length; i += batchSize) {
+      btn.childNodes[0].textContent = ` Importing ${i}/${records.length}...`;
+      const batch = records.slice(i, i + batchSize);
+      const r = await fetch('/api/monthly-sales/import', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ records: batch })
+      });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.error);
+      imported += d.imported;
+    }
+
+    showToast(`Imported ${imported} monthly sales records`, 'success');
+    // Refresh order builder if already loaded
+    if (OB_ROWS.length > 0) pullOrderSales();
+  } catch(e) {
+    showToast('Import error: ' + e.message, 'error');
+    console.error(e);
+  }
+  btn.childNodes[0].textContent = origText;
+  input.value = '';
 }
 
 </script>
