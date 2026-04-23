@@ -1808,7 +1808,7 @@ app.get('/api/order-builder/sales', async (req, res) => {
     // Pull all items with square_variation_id for matching
     const itemsR = await sbFetch(
       `${SUPABASE_URL}/rest/v1/items?store_id=eq.${STORE_ID}&status=eq.Active&deleted_at=is.null` +
-      `&select=id,abs_code,gg_name,category,bpc,sell_size,splitted,made_from_abs,cost,low_discount,high_discount,square_variation_id,square_inventory&limit=5000`,
+      `&select=id,abs_code,gg_name,category,bpc,sell_size,splitted,made_from_abs,cost,low_discount,high_discount,square_variation_id,square_inventory,inventory&limit=5000`,
       { headers: sbHeaders }
     );
     const allItems = await itemsR.json();
@@ -1929,7 +1929,7 @@ app.get('/api/order-builder/sales', async (req, res) => {
     const rows = Object.values(itemSales).map(entry => {
       const { item, sold_7d, sold_28d, rev_7d, rev_28d } = entry;
       const bpc = item.bpc || 1;
-      const inv = parseFloat(item.square_inventory || 0);
+      const inv = parseFloat(item.square_inventory ?? item.inventory ?? 0);
 
       // Convert unit sales to cases
       const cases7d  = sold_7d  / bpc;
