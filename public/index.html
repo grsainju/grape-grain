@@ -753,75 +753,84 @@ td{padding:9px 14px;vertical-align:middle}
 
 <!-- ── ORDER BUILDER ── -->
 <div class="page" id="page-order-builder">
-  <div class="page-header"><div class="page-title">Order Builder</div><div class="page-sub">Upload Square exports to auto-generate your county order</div></div>
-  <div class="alert alert-gold"><span>⏰</span> Beer deadline: <strong>Wednesday 11am</strong> &nbsp;|&nbsp; Wine deadline: <strong>Friday 11am</strong> &nbsp;|&nbsp; Beer delivery: Thursday &nbsp;|&nbsp; Wine delivery: Monday</div>
-  <div class="card">
-    <div class="card-title">Upload Square exports</div>
-    <div class="upload-grid">
-      <div class="upload-box" id="ob-inv-box" onclick="document.getElementById('ob-inv').click()">
-        <div class="upload-box-title">Current inventory</div><div class="upload-box-sub">Square → Reports → Inventory</div>
-        <div class="upload-box-status" id="ob-inv-st">Click to upload CSV</div>
-        <input type="file" id="ob-inv" accept=".csv" style="display:none" onchange="loadOrderFile('inv',this)">
-      </div>
-      <div class="upload-box" id="ob-mtd-box" onclick="document.getElementById('ob-mtd').click()">
-        <div class="upload-box-title">Month-to-date sales</div><div class="upload-box-sub">Square → Reports → Sales</div>
-        <div class="upload-box-status" id="ob-mtd-st">Click to upload CSV</div>
-        <input type="file" id="ob-mtd" accept=".csv" style="display:none" onchange="loadOrderFile('mtd',this)">
-      </div>
-      <div class="upload-box" id="ob-week-box" onclick="document.getElementById('ob-week').click()">
-        <div class="upload-box-title">Last 7 days sales</div><div class="upload-box-sub">Square → Reports → Sales (7d)</div>
-        <div class="upload-box-status" id="ob-week-st">Click to upload CSV</div>
-        <input type="file" id="ob-week" accept=".csv" style="display:none" onchange="loadOrderFile('week',this)">
-      </div>
-      <div class="upload-box" id="ob-ly-box" onclick="document.getElementById('ob-ly').click()">
-        <div class="upload-box-title">Last year same month</div><div class="upload-box-sub">Square → Reports → Sales (LY)</div>
-        <div class="upload-box-status" id="ob-ly-st">Click to upload CSV</div>
-        <input type="file" id="ob-ly" accept=".csv" style="display:none" onchange="loadOrderFile('ly',this)">
-      </div>
-      <div class="upload-box" id="ob-hol-box" onclick="document.getElementById('ob-hol').click()">
-        <div class="upload-box-title">Holiday sales <span style="font-size:10px;opacity:.6">optional</span></div><div class="upload-box-sub">Last year holiday week</div>
-        <div class="upload-box-status" id="ob-hol-st">Click to upload CSV</div>
-        <input type="file" id="ob-hol" accept=".csv" style="display:none" onchange="loadOrderFile('hol',this)">
-      </div>
+  <div class="page-header" style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:10px">
+    <div>
+      <div class="page-title">Order Builder</div>
+      <div class="page-sub" id="ob-sub">Pull live sales from Square to generate your weekly order</div>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn btn-primary" onclick="pullOrderSales()" id="ob-pull-btn">↓ Pull Sales from Square</button>
+      <button class="btn btn-sm" onclick="exportOrderCSV('Beer')" id="ob-export-beer" disabled>Export Beer CSV</button>
+      <button class="btn btn-sm" onclick="exportOrderCSV('Wine')" id="ob-export-wine" disabled>Export Wine CSV</button>
     </div>
   </div>
-  <div class="order-cfg">
-    <div class="field"><label>Order type</label>
-      <select id="ob-type" onchange="document.getElementById('ob-days').value=this.value==='Beer'?8:10">
-        <option value="Beer">Beer (Thu delivery)</option><option value="Wine">Wine (Mon delivery)</option>
-      </select>
-    </div>
-    <div class="field"><label>Days to cover</label><input type="number" id="ob-days" value="8" min="1" max="30"></div>
-    <div class="field"><label>Buffer %</label><input type="number" id="ob-buffer" value="20" min="0" max="100"></div>
-    <div class="field"><label>MTD days elapsed</label><input type="number" id="ob-mtd-days" value="12" min="1" max="31"></div>
-    <div class="field"><label>LY month days</label><input type="number" id="ob-ly-days" value="30" min="1" max="31"></div>
-    <div style="display:flex;align-items:center;gap:8px;padding-bottom:2px">
-      <input type="checkbox" id="ob-holiday" style="width:14px;height:14px">
-      <label for="ob-holiday" style="font-size:13px;color:var(--muted)">Use holiday data</label>
-    </div>
-    <button class="btn btn-primary" onclick="buildOrder()" id="btn-build">Build order →</button>
-  </div>
-  <div id="order-results" style="display:none">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
-      <div><div style="font-family:var(--font-display);font-size:20px" id="order-title">Order ready</div><div style="font-size:12px;color:var(--muted)" id="order-sub"></div></div>
-      <div style="display:flex;gap:10px">
-        <button class="btn btn-gold" onclick="saveOrder()">Save to history</button>
-        <button class="btn btn-green" onclick="exportOrderCSV()">Export county CSV</button>
-      </div>
-    </div>
-    <div class="metrics" style="grid-template-columns:repeat(4,1fr);margin-bottom:14px" id="order-metrics"></div>
-    <div class="filter-row">
-      <select id="ob-filter-cat" onchange="renderOrderTable()"><option value="">All categories</option><option value="Beer">Beer</option><option value="Wine">Wine</option><option value="Single Beer">Single Beer</option></select>
-      <select id="ob-filter-conf" onchange="renderOrderTable()"><option value="">All confidence</option><option value="High">High</option><option value="Medium">Medium</option><option value="Low">Low — review</option></select>
-    </div>
-    <div class="tbl-wrap">
-      <table><thead><tr><th>ABS Code</th><th>Item</th><th>Category</th><th>On hand</th><th>Daily rate</th><th>Suggested</th><th>Your qty</th><th>Confidence</th></tr></thead>
-      <tbody id="order-tbody"></tbody></table>
-    </div>
-  </div>
-</div>
 
-<!-- ── ORDER HISTORY ── -->
+  <!-- STATS -->
+  <div id="ob-stats" style="display:none;margin-bottom:16px">
+    <div style="display:flex;gap:10px;flex-wrap:wrap">
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:10px 16px;flex:1;min-width:120px">
+        <div style="font-family:var(--mono);font-size:18px;font-weight:600;color:var(--accent)" id="ob-stat-items">—</div>
+        <div style="font-size:10px;color:var(--muted);font-family:var(--mono);text-transform:uppercase;letter-spacing:.05em;margin-top:2px">Items with Sales</div>
+      </div>
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:10px 16px;flex:1;min-width:120px">
+        <div style="font-family:var(--mono);font-size:18px;font-weight:600;color:var(--accent)" id="ob-stat-beer">—</div>
+        <div style="font-size:10px;color:var(--muted);font-family:var(--mono);text-transform:uppercase;letter-spacing:.05em;margin-top:2px">Beer to Order</div>
+      </div>
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:10px 16px;flex:1;min-width:120px">
+        <div style="font-family:var(--mono);font-size:18px;font-weight:600;color:var(--accent)" id="ob-stat-wine">—</div>
+        <div style="font-size:10px;color:var(--muted);font-family:var(--mono);text-transform:uppercase;letter-spacing:.05em;margin-top:2px">Wine to Order</div>
+      </div>
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:10px 16px;flex:1;min-width:140px">
+        <div style="font-family:var(--mono);font-size:18px;font-weight:600;color:var(--accent)" id="ob-stat-cost">—</div>
+        <div style="font-size:10px;color:var(--muted);font-family:var(--mono);text-transform:uppercase;letter-spacing:.05em;margin-top:2px">Est. Order Cost</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- FILTERS -->
+  <div id="ob-filters" style="display:none;margin-bottom:12px;display:none">
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+      <select id="ob-cat-filter" onchange="renderOBTable()" style="padding:7px 10px;border:1px solid var(--border);border-radius:5px;background:var(--surface);color:var(--text);font-size:13px">
+        <option value="all">All categories</option>
+        <option value="Beer">Beer</option>
+        <option value="Wine">Wine</option>
+        <option value="Single Beer">Single Beer</option>
+        <option value="Custom Beer">Custom Beer</option>
+      </select>
+      <label style="font-size:12px;color:var(--muted);display:flex;align-items:center;gap:6px">
+        <input type="checkbox" id="ob-order-only" onchange="renderOBTable()" checked> Order only (suggested > 0)
+      </label>
+      <input type="text" id="ob-search" placeholder="Search item..." oninput="renderOBTable()" style="padding:7px 12px;border:1px solid var(--border);border-radius:5px;background:var(--surface);color:var(--text);font-size:13px;width:200px">
+    </div>
+  </div>
+
+  <!-- TABLE -->
+  <div id="ob-table-wrap" style="display:none;background:var(--surface);border:1px solid var(--border);border-radius:8px;overflow:hidden;overflow-x:auto">
+    <table style="width:100%;border-collapse:collapse;min-width:1000px">
+      <thead>
+        <tr style="background:var(--surface2);border-bottom:1px solid var(--border)">
+          <th style="padding:9px 12px;text-align:left;font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">ABS Code</th>
+          <th style="padding:9px 12px;text-align:left;font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">Item Name</th>
+          <th style="padding:9px 12px;text-align:left;font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">Cat</th>
+          <th style="padding:9px 12px;text-align:right;font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">BPC</th>
+          <th style="padding:9px 12px;text-align:right;font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">Inv</th>
+          <th style="padding:9px 12px;text-align:right;font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">7d Sold</th>
+          <th style="padding:9px 12px;text-align:right;font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">28d Sold</th>
+          <th style="padding:9px 12px;text-align:right;font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">Wk Avg</th>
+          <th style="padding:9px 12px;text-align:right;font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">Discount</th>
+          <th style="padding:9px 12px;text-align:right;font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;background:rgba(200,169,110,.08)">Suggested</th>
+          <th style="padding:9px 12px;text-align:right;font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;background:rgba(91,155,213,.08)">Manager</th>
+          <th style="padding:9px 12px;text-align:right;font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;background:rgba(106,191,138,.1)">Your Order</th>
+          <th style="padding:9px 12px;text-align:right;font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">Cost/Case</th>
+          <th style="padding:9px 12px;text-align:right;font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">Line Total</th>
+        </tr>
+      </thead>
+      <tbody id="ob-tbody">
+        <tr><td colspan="14" style="padding:40px;text-align:center;color:var(--muted)">Click "Pull Sales from Square" to load order data</td></tr>
+      </tbody>
+    </table>
+  </div>
+
 <div class="page" id="page-order-history">
   <div class="page-header"><div class="page-title">Order History</div><div class="page-sub">All submitted orders</div></div>
   <div class="tbl-wrap">
@@ -2797,6 +2806,164 @@ async function applySelected(type, subtype) {
   } catch(e) { showToast('Error: ' + e.message, 'error'); }
 }
 
+
+
+// ═══════════════════════════════════════════════════════════════
+// ORDER BUILDER
+// ═══════════════════════════════════════════════════════════════
+let OB_ROWS = [];
+let OB_ORDERS = {}; // abs_code → { manager: 0, yours: 0 }
+
+async function pullOrderSales() {
+  const btn = g('ob-pull-btn');
+  btn.disabled = true; btn.textContent = 'Pulling from Square...';
+  g('ob-sub').textContent = 'Pulling 28 days of item-level sales from Square...';
+  try {
+    const r = await fetch('/api/order-builder/sales');
+    if (!r.ok) throw new Error('Server error ' + r.status);
+    const d = await r.json();
+    if (d.error) throw new Error(d.error);
+
+    OB_ROWS = d.rows;
+    // Init order entries
+    OB_ROWS.forEach(row => {
+      if (!OB_ORDERS[row.abs_code]) OB_ORDERS[row.abs_code] = { manager: '', yours: row.suggested };
+    });
+
+    // Stats
+    const beerRows = OB_ROWS.filter(r => ['Beer','Single Beer','Custom Beer'].includes(r.category) && r.suggested > 0);
+    const wineRows = OB_ROWS.filter(r => r.category === 'Wine' && r.suggested > 0);
+    const totalCost = OB_ROWS.reduce((a,r) => {
+      const qty = OB_ORDERS[r.abs_code]?.yours || 0;
+      return a + qty * (r.cost || 0);
+    }, 0);
+
+    g('ob-stat-items').textContent = OB_ROWS.length;
+    g('ob-stat-beer').textContent = beerRows.reduce((a,r) => a + r.suggested, 0) + ' cs';
+    g('ob-stat-wine').textContent = wineRows.reduce((a,r) => a + r.suggested, 0) + ' cs';
+    g('ob-stat-cost').textContent = fmt(totalCost);
+
+    g('ob-stats').style.display = 'block';
+    g('ob-filters').style.display = 'block';
+    g('ob-table-wrap').style.display = 'block';
+    g('ob-export-beer').disabled = false;
+    g('ob-export-wine').disabled = false;
+    g('ob-sub').textContent = `${d.rows.length} items with sales · ${d.meta.start28} to ${d.meta.today} · ${d.meta.pages} API pages`;
+
+    renderOBTable();
+  } catch(e) {
+    g('ob-sub').textContent = 'Error: ' + e.message;
+  }
+  btn.disabled = false; btn.textContent = '↓ Pull Sales from Square';
+}
+
+function renderOBTable() {
+  const cat     = g('ob-cat-filter')?.value || 'all';
+  const orderOnly = g('ob-order-only')?.checked;
+  const search  = (g('ob-search')?.value || '').toLowerCase();
+  const tbody   = g('ob-tbody');
+
+  let rows = OB_ROWS;
+  if (cat !== 'all') rows = rows.filter(r => r.category === cat);
+  if (orderOnly) rows = rows.filter(r => (OB_ORDERS[r.abs_code]?.yours || 0) > 0);
+  if (search) rows = rows.filter(r =>
+    (r.abs_code||'').includes(search) || (r.gg_name||'').toLowerCase().includes(search)
+  );
+
+  if (!rows.length) {
+    tbody.innerHTML = '<tr><td colspan="14" style="padding:30px;text-align:center;color:var(--muted)">No items match filters</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = rows.map(row => {
+    const ord = OB_ORDERS[row.abs_code] || { manager: '', yours: row.suggested };
+    const yours = parseInt(ord.yours) || 0;
+    const lineTotal = yours * (row.cost || 0);
+    const disc = row.low_disc ? `$${parseFloat(row.low_disc).toFixed(2)}` : '—';
+    const catBg = row.category === 'Beer' ? 'rgba(200,169,110,.05)' : row.category === 'Wine' ? 'rgba(91,155,213,.05)' : '';
+    const invColor = row.inv_units <= 0 ? '#e05555' : row.inv_units < row.bpc ? '#e07820' : 'inherit';
+
+    return `<tr style="border-bottom:1px solid var(--border);background:${catBg}">
+      <td style="padding:8px 12px;font-family:var(--mono);font-size:12px;color:var(--muted)">${row.abs_code}</td>
+      <td style="padding:8px 12px;font-size:12px;max-width:200px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${row.gg_name}">
+        ${row.gg_name}${row.has_rollup ? ' <span style="font-size:10px;color:#6abf8a">+rollup</span>' : ''}
+      </td>
+      <td style="padding:8px 12px;font-size:11px;color:var(--muted)">${row.category}</td>
+      <td style="padding:8px 12px;text-align:right;font-family:var(--mono);font-size:12px;color:var(--muted)">${row.bpc}</td>
+      <td style="padding:8px 12px;text-align:right;font-family:var(--mono);font-size:12px;color:${invColor}">${row.inv_units.toFixed(0)}</td>
+      <td style="padding:8px 12px;text-align:right;font-family:var(--mono);font-size:12px">${row.sold_7d.toFixed(1)}</td>
+      <td style="padding:8px 12px;text-align:right;font-family:var(--mono);font-size:12px;color:var(--muted)">${row.sold_28d.toFixed(1)}</td>
+      <td style="padding:8px 12px;text-align:right;font-family:var(--mono);font-size:12px;color:var(--accent)">${row.avg_weekly.toFixed(1)}</td>
+      <td style="padding:8px 12px;text-align:right;font-size:11px;color:#6abf8a">${disc}</td>
+      <td style="padding:8px 12px;text-align:right;background:rgba(200,169,110,.06)">
+        <span style="font-family:var(--mono);font-size:13px;font-weight:600;color:var(--accent)">${row.suggested}</span>
+      </td>
+      <td style="padding:8px 12px;background:rgba(91,155,213,.06)">
+        <input type="number" min="0" value="${ord.manager||''}" placeholder="—"
+          style="width:52px;text-align:right;font-family:var(--mono);font-size:13px;background:transparent;border:1px solid var(--border);border-radius:4px;padding:3px 5px;color:var(--text)"
+          onchange="setOBOrder('${row.abs_code}','manager',this.value)">
+      </td>
+      <td style="padding:8px 12px;background:rgba(106,191,138,.08)">
+        <input type="number" min="0" value="${yours||''}" placeholder="0"
+          style="width:52px;text-align:right;font-family:var(--mono);font-size:13px;background:transparent;border:1px solid rgba(106,191,138,.4);border-radius:4px;padding:3px 5px;color:var(--text);font-weight:600"
+          onchange="setOBOrder('${row.abs_code}','yours',this.value)">
+      </td>
+      <td style="padding:8px 12px;text-align:right;font-family:var(--mono);font-size:12px;color:var(--muted)">${row.cost ? '$'+row.cost.toFixed(2) : '—'}</td>
+      <td style="padding:8px 12px;text-align:right;font-family:var(--mono);font-size:12px;font-weight:600;color:var(--accent)">${lineTotal > 0 ? fmt(lineTotal) : '—'}</td>
+    </tr>`;
+  }).join('');
+
+  updateOBStats();
+}
+
+function setOBOrder(absCode, field, val) {
+  if (!OB_ORDERS[absCode]) OB_ORDERS[absCode] = { manager: '', yours: 0 };
+  OB_ORDERS[absCode][field] = parseInt(val) || 0;
+  updateOBStats();
+}
+
+function updateOBStats() {
+  const beerRows = OB_ROWS.filter(r => ['Beer','Single Beer','Custom Beer'].includes(r.category));
+  const wineRows = OB_ROWS.filter(r => r.category === 'Wine');
+  const beerCs = beerRows.reduce((a,r) => a + (parseInt(OB_ORDERS[r.abs_code]?.yours)||0), 0);
+  const wineCs = wineRows.reduce((a,r) => a + (parseInt(OB_ORDERS[r.abs_code]?.yours)||0), 0);
+  const totalCost = OB_ROWS.reduce((a,r) => {
+    const qty = parseInt(OB_ORDERS[r.abs_code]?.yours) || 0;
+    return a + qty * (r.cost || 0);
+  }, 0);
+  if (g('ob-stat-beer')) g('ob-stat-beer').textContent = beerCs + ' cs';
+  if (g('ob-stat-wine')) g('ob-stat-wine').textContent = wineCs + ' cs';
+  if (g('ob-stat-cost')) g('ob-stat-cost').textContent = fmt(totalCost);
+}
+
+function exportOrderCSV(category) {
+  const catFilter = category === 'Beer'
+    ? r => ['Beer','Single Beer','Custom Beer'].includes(r.category)
+    : r => r.category === 'Wine';
+
+  const rows = OB_ROWS.filter(catFilter).filter(r => {
+    const qty = parseInt(OB_ORDERS[r.abs_code]?.yours) || 0;
+    return qty > 0;
+  });
+
+  if (!rows.length) { showToast('No ' + category + ' items to order', 'error'); return; }
+
+  const lines = ['INV_NUM,UOM,QTY'];
+  rows.forEach(r => {
+    const qty = parseInt(OB_ORDERS[r.abs_code]?.yours) || 0;
+    if (qty > 0) lines.push(`${r.abs_code},CS,${qty}`);
+  });
+
+  const blob = new Blob([lines.join('\n')], { type: 'text/csv' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const today = new Date().toLocaleDateString('en-CA');
+  a.href = url;
+  a.download = `GG_${category}_Order_${today}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast(`${category} order exported — ${rows.length} items, ${lines.length-1} lines`, 'success');
+}
 
 </script>
 </body>
