@@ -1662,21 +1662,9 @@ app.post('/api/claude/proxy', async (req, res) => {
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
-// Test pdftotext availability
-app.get('/api/test-pdftotext', (req, res) => {
-  const { execSync } = require('child_process');
-  try {
-    const v = execSync('pdftotext -v 2>&1', { encoding: 'utf8' });
-    res.json({ available: true, version: v.substring(0,100) });
-  } catch(e) {
-    res.json({ available: false, error: e.message });
-  }
-});
-
-// Newsletter PDF parse — extract text server-side, send text to Claude (not PDF image)
+// Newsletter PDF parse — pure pdftotext + regex, no Claude API needed
 app.post('/api/newsletter/parse', async (req, res) => {
-  if (!ANTHROPIC_KEY) return res.status(500).json({ error: 'ANTHROPIC_API_KEY not configured' });
-  const { pdfBase64, section, pageFrom, pageTo, prompt } = req.body;
+  const { pdfBase64, section } = req.body;
   if (!pdfBase64 || !section) return res.status(400).json({ error: 'Missing pdfBase64 or section' });
 
   const { execSync } = require('child_process');
@@ -1686,67 +1674,110 @@ app.post('/api/newsletter/parse', async (req, res) => {
   const tmpPdf = pathMod.join(os.tmpdir(), `nl_${Date.now()}.pdf`);
 
   try {
-    // Write PDF to disk
     fsSync.writeFileSync(tmpPdf, Buffer.from(pdfBase64, 'base64'));
 
-    // Check if pdftotext is available
-    let pdfText = '';
-    try {
-      pdfText = execSync(
-        `pdftotext -layout -f ${pageFrom} -l ${pageTo} "${tmpPdf}" -`,
-        { encoding: 'utf8', timeout: 30000, maxBuffer: 10 * 1024 * 1024 }
-      );
-    } catch(e) {
-      // pdftotext not available — fall back to pdf-lib + send as PDF (smaller chunk)
-      const { PDFDocument } = await import('pdf-lib');
-      const srcDoc = await PDFDocument.load(Buffer.from(pdfBase64, 'base64'));
-      const newDoc = await PDFDocument.create();
-      const from = Math.max(0, pageFrom - 1);
-      const to = Math.min(srcDoc.getPageCount() - 1, pageTo - 1);
-      const copied = await newDoc.copyPages(srcDoc, Array.from({length: to-from+1}, (_,i) => from+i));
-      copied.forEach(p => newDoc.addPage(p));
-      const sliceB64 = Buffer.from(await newDoc.save()).toString('base64');
+    // Page ranges per section
+    const ranges = {
+      beerDiscounts: [7,  14],
+      wineDiscounts: [16, 27],
+      qtyDiscounts:  [28, 80],
+      priceChanges:  [132, 150]
+    };
+    const [from, to] = ranges[section] || [1, 10];
 
-      const r = await sbFetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-api-key': ANTHROPIC_KEY, 'anthropic-version': '2023-06-01' },
-        body: JSON.stringify({
-          model: 'claude-sonnet-4-20250514', max_tokens: 8000,
-          messages: [{ role: 'user', content: [
-            { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: sliceB64 } },
-            { type: 'text', text: prompt }
-          ]}]
-        })
-      });
-      const data = await r.json();
-      if (data.error) return res.status(429).json(data.error);
-      const text = (data.content?.[0]?.text || '[]').replace(/```json|```/g,'').trim();
-      let parsed = []; try { parsed = JSON.parse(text); } catch(e) {}
-      return res.json({ success: true, section, items: parsed, method: 'pdf' });
+    const text = execSync(
+      `pdftotext -layout -f ${from} -l ${to} "${tmpPdf}" -`,
+      { encoding: 'utf8', timeout: 30000, maxBuffer: 10 * 1024 * 1024 }
+    );
+
+    let items = [];
+
+    if (section === 'beerDiscounts') {
+      // Pattern: code  description  size  bpc  date_from  date_to  list_price  discount  sale_price  supplier
+      const pat = /^(\d+)\s{2,}(.+?)\s{2,}[\d.]+Z\s+(\d+)\s+(\d{2}\/\d{2})\s+(\d{2}\/\d{2})\s+([\d.]+)\s+([\d.]+)\s+([\d.]+)\s+(.+)$/gm;
+      let m;
+      while ((m = pat.exec(text)) !== null) {
+        items.push({
+          abs_code: m[1], description: m[2].trim(), bpc: parseInt(m[3]),
+          disc_from: '2026-' + m[4].replace('/','-'),
+          disc_to:   '2026-' + m[5].replace('/','-'),
+          list_price: parseFloat(m[6]), discount: parseFloat(m[7]),
+          sale_price: parseFloat(m[8]), supplier: m[9].trim()
+        });
+      }
     }
 
-    // pdftotext worked — send extracted text to Claude (much cheaper, ~50x fewer tokens)
-    // Trim to reasonable size
-    const textChunk = pdfText.substring(0, 80000);
-
-    const r = await sbFetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-api-key': ANTHROPIC_KEY, 'anthropic-version': '2023-06-01' },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514', max_tokens: 8000,
-        messages: [{ role: 'user', content: prompt + '\n\nHere is the extracted text from the PDF:\n\n' + textChunk }]
-      })
-    });
-
-    if (!r.ok) {
-      const err = await r.json();
-      return res.status(r.status).json(err);
+    else if (section === 'wineDiscounts') {
+      // Pattern: code  description  size  bpc  discount  list_price  sale_price  vendor
+      const pat = /^(\d{4,})\s{2,}(.+?)\s{2,}\d+ML\s+(\d+)\s+([\d.]+)\s+([\d.]+)\s+([\d.]+)\s*(.*)$/gm;
+      let m;
+      while ((m = pat.exec(text)) !== null) {
+        const disc = parseFloat(m[4]);
+        const list = parseFloat(m[5]);
+        const sale = parseFloat(m[6]);
+        if (disc > 0 && list > 0 && sale > 0) {
+          items.push({
+            abs_code: m[1], description: m[2].trim(), bpc: parseInt(m[3]),
+            disc_from: '2026-04-01', disc_to: '2026-04-30',
+            discount: disc, list_price: list, sale_price: sale,
+            supplier: m[7].trim()
+          });
+        }
+      }
     }
-    const data = await r.json();
-    if (data.error) return res.status(429).json(data.error);
-    const text = (data.content?.[0]?.text || '[]').replace(/```json|```/g,'').trim();
-    let parsed = []; try { parsed = JSON.parse(text); } catch(e2) { console.log('Parse error:', text.substring(0,200)); }
-    res.json({ success: true, section, items: parsed, method: 'text', chars: textChunk.length });
+
+    else if (section === 'qtyDiscounts') {
+      const lines = text.split('\n');
+      const dataPat = /^\s*(\d{4,})?\s{2,}(.{8,}?)\s{3,}(\d+ML|[\d.]+Z|[\d.]+L)\s{2,}(.+?)\s{2,}(\d+)\s+\$([\d.]+)((?:\s+\$?[\d.]+)+)\s*$/;
+      const codePat = /^\s*(\d{5,})\s*$/;
+      let pendingCode = null, pendingItem = null, currentGroup = '';
+
+      for (const line of lines) {
+        const gm = line.match(/Price Category:\s*(.+)/);
+        if (gm) { currentGroup = gm[1].trim(); continue; }
+        const cm = line.match(codePat);
+        if (cm) {
+          pendingCode = cm[1];
+          if (pendingItem) { pendingItem.abs_code = pendingCode; items.push(pendingItem); pendingItem = null; pendingCode = null; }
+          continue;
+        }
+        const dm = line.match(dataPat);
+        if (dm) {
+          const tierVals = (dm[7].match(/[\d.]+/g) || []).map(Number).filter(v => v > 0);
+          const tierKeys = ['1+','3+','5+','10+','15+'];
+          const tiers = {};
+          tierVals.forEach((v,i) => { if (i < tierKeys.length) tiers[tierKeys[i]] = v; });
+          const item = {
+            abs_code: dm[1] || pendingCode || '',
+            description: dm[2].trim(), size: dm[3].trim(),
+            vendor: dm[4].trim(), bpc: parseInt(dm[5]),
+            unit_cost: parseFloat(dm[6]), qty_tiers: tiers,
+            group: currentGroup, category: 'Wine',
+            disc_from: '2026-04-01', disc_to: '2026-04-30'
+          };
+          if (!item.abs_code) pendingItem = item;
+          else { items.push(item); pendingCode = null; }
+        }
+      }
+      if (pendingItem && pendingItem.abs_code) items.push(pendingItem);
+    }
+
+    else if (section === 'priceChanges') {
+      const pat = /^(\d{4,})\s{2,}(.+?)\s{2,}(ST|SB|LQ|NK|NA)\s+([-\d.]+)\s+([\d.]+)\s+([\d.]+)\s*([\d.]*)\s*(.*)$/gm;
+      let m;
+      while ((m = pat.exec(text)) !== null) {
+        const change = parseFloat(m[4]);
+        items.push({
+          abs_code: m[1], description: m[2].trim(), tag: m[3],
+          price_change: change, new_case_price: parseFloat(m[5]),
+          new_bottle_price: parseFloat(m[6]),
+          direction: change > 0 ? 'UP' : 'DOWN',
+          supplier: m[8]?.trim() || ''
+        });
+      }
+    }
+
+    res.json({ success: true, section, items, count: items.length });
 
   } catch(e) {
     console.error('Newsletter parse error:', e.message);
@@ -1755,6 +1786,8 @@ app.post('/api/newsletter/parse', async (req, res) => {
     try { fsSync.unlinkSync(tmpPdf); } catch(e) {}
   }
 });
+
+;
 
 
 app.get('*', (req, res) => {
