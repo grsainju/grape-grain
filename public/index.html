@@ -2881,7 +2881,8 @@ function renderOBTable() {
     const lineTotal = yours * (row.cost || 0);
     const disc = row.low_disc ? `$${parseFloat(row.low_disc).toFixed(2)}` : '—';
     const catBg = row.category === 'Beer' ? 'rgba(200,169,110,.05)' : row.category === 'Wine' ? 'rgba(91,155,213,.05)' : '';
-    const invColor = row.inv_units <= 0 ? '#e05555' : row.inv_units < row.bpc ? '#e07820' : 'inherit';
+    const invColor = row.inv_cases <= 0 ? '#e05555' : row.inv_cases < 1 ? '#e07820' : 'inherit';
+    const invDisplay = row.inv_packs + (row.sell_size > 1 ? ' ×'+row.sell_size+'pk' : '');
 
     return `<tr style="border-bottom:1px solid var(--border);background:${catBg}">
       <td style="padding:8px 12px;font-family:var(--mono);font-size:12px;color:var(--muted)">${row.abs_code}</td>
@@ -2890,7 +2891,7 @@ function renderOBTable() {
       </td>
       <td style="padding:8px 12px;font-size:11px;color:var(--muted)">${row.category}</td>
       <td style="padding:8px 12px;text-align:right;font-family:var(--mono);font-size:12px;color:var(--muted)">${row.bpc}</td>
-      <td style="padding:8px 12px;text-align:right;font-family:var(--mono);font-size:12px;color:${invColor}">${row.inv_units.toFixed(0)}</td>
+      <td style="padding:8px 12px;text-align:right;font-family:var(--mono);font-size:12px;color:${invColor}" title="${row.inv_cases.toFixed(2)} cases">${invDisplay}</td>
       <td style="padding:8px 12px;text-align:right;font-family:var(--mono);font-size:12px">${row.sold_7d.toFixed(1)}</td>
       <td style="padding:8px 12px;text-align:right;font-family:var(--mono);font-size:12px;color:var(--muted)">${row.sold_28d.toFixed(1)}</td>
       <td style="padding:8px 12px;text-align:right;font-family:var(--mono);font-size:12px;color:var(--accent)">${row.avg_weekly.toFixed(1)}</td>
