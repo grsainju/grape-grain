@@ -1991,6 +1991,34 @@ app.get('/api/order-builder/sales', async (req, res) => {
   }
 });
 
+// Debug: test Square inventory for a specific item
+app.get('/api/debug/inventory', async (req, res) => {
+  try {
+    // Get Andre Peach Mimosa from items
+    const itemR = await sbFetch(
+      `${SUPABASE_URL}/rest/v1/items?store_id=eq.${STORE_ID}&gg_name=ilike.*Andre+Peach+Mimosa*&select=id,gg_name,square_variation_id,inventory&limit=3`,
+      { headers: sbHeaders }
+    );
+    const items = await itemR.json();
+    
+    if (!items.length || !items[0].square_variation_id) {
+      return res.json({ error: 'Item not found or not matched to Square', items });
+    }
+    
+    const varId = items[0].square_variation_id;
+    
+    // Call Square inventory API directly
+    const invR = await sqFetch(`/inventory/counts?location_ids=${SQUARE_LOCATION}&catalog_object_ids=${varId}`);
+    const invData = await invR.json();
+    
+    res.json({
+      item: items[0],
+      squareResponse: invData,
+      counts: invData.counts || []
+    });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
