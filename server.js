@@ -2014,23 +2014,19 @@ app.get('/api/order-builder/sales', async (req, res) => {
       const avg_monthly_cases = avg_monthly / bpc;
       const has_history  = total_12mo > 0;
 
-      // Smart order logic based on velocity
-      // velocity = avg cases per month
+      // Order logic: use last 7 days rate projected to 4 weeks, minus current inventory
+      // If no recent sales, fall back to 28-day avg
+      // If no sales at all in 12 months, don't suggest ordering
       let suggested = 0;
-      if (!has_history) {
-        // No 12-month history — use recent 28-day sales only if selling
-        if (avg_weekly > 0) suggested = Math.max(0, Math.ceil(avg_weekly * 2 - inv_cases));
-      } else if (avg_monthly_cases >= 1) {
-        // HIGH velocity (≥1 case/month): maintain 2-week buffer = 0.5 cases
-        const target = avg_monthly_cases * 2; // 2 months stock
+      const rate = total7d > 0 ? total7d : total28d / 4; // cases/week
+      if (rate > 0) {
+        const target = rate * 4; // 4 weeks of stock
         suggested = Math.max(0, Math.ceil(target - inv_cases));
-      } else if (avg_monthly_cases >= 0.25) {
-        // MED velocity (0.25-1 case/month): keep at least 1 case
-        suggested = inv_cases < 1 ? Math.ceil(1 - inv_cases) : 0;
-      } else {
-        // LOW velocity (<0.25 case/month, ~3 units/month for 12-pack): only order if out
-        suggested = inv_cases <= 0 ? 1 : 0;
+      } else if (!has_history) {
+        suggested = 0; // never sold — don't order
       }
+      // Never suggest more than 10 cases (sanity cap)
+      suggested = Math.min(suggested, 10);
 
       return {
         abs_code:       item.abs_code,
