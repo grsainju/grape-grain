@@ -1591,7 +1591,7 @@ app.post('/api/items/sync-inventory', async (req, res) => {
       await sbFetch(`${SUPABASE_URL}/rest/v1/items?id=eq.${item.id}`, {
         method: 'PATCH',
         headers: sbHeaders,
-        body: JSON.stringify({ square_inventory: qty, inventory: qty, square_synced_at: now })
+        body: JSON.stringify({ square_inventory: qty, square_synced_at: now })
       });
       updated++;
     }
@@ -1837,7 +1837,7 @@ app.get('/api/order-builder/sales', async (req, res) => {
     // Pull all items with square_variation_id for matching
     const itemsR = await sbFetch(
       `${SUPABASE_URL}/rest/v1/items?store_id=eq.${STORE_ID}&status=eq.Active&deleted_at=is.null` +
-      `&select=id,abs_code,gg_name,category,bpc,sell_size,splitted,made_from_abs,cost,low_discount,high_discount,square_variation_id,square_inventory,inventory&limit=5000`,
+      `&select=id,abs_code,gg_name,category,bpc,sell_size,splitted,made_from_abs,cost,low_discount,high_discount,square_variation_id,square_inventory&limit=5000`,
       { headers: sbHeaders }
     );
     const allItems = await itemsR.json();
@@ -1981,7 +1981,7 @@ app.get('/api/order-builder/sales', async (req, res) => {
 
       // inventory field = number of sell-size packs on hand
       // e.g. inv=4, sell_size=12 → 4 twelve-packs → 48 bottles → 2 cases of 24
-      const invPacks   = parseFloat(item.inventory ?? item.square_inventory ?? 0);
+      const invPacks   = parseFloat(item.square_inventory ?? 0);
       const invBottles = invPacks * sellSize;   // total individual bottles/cans
       const inv_cases  = invBottles / bpc;      // cases
 
