@@ -1584,24 +1584,16 @@ app.post('/api/items/sync-inventory', async (req, res) => {
 
     console.log(`[SYNC] Got ${Object.keys(invMap).length} counts from Square for ${items.length} items`);
 
-    // Bulk update Supabase — upsert all at once using on_conflict
+    // PATCH each matched item individually — reliable, no constraint issues
     const toUpdate = items.filter(it => invMap[it.square_variation_id] !== undefined);
-    const upsertRows = toUpdate.map(it => ({
-      id: it.id,
-      square_inventory: invMap[it.square_variation_id],
-      inventory: invMap[it.square_variation_id],
-      square_synced_at: now
-    }));
-
-    // Upsert in batches of 500
-    for (let i = 0; i < upsertRows.length; i += 500) {
-      const batch = upsertRows.slice(i, i + 500);
-      await sbFetch(`${SUPABASE_URL}/rest/v1/items?on_conflict=id`, {
-        method: 'POST',
-        headers: { ...sbHeaders, 'Prefer': 'return=minimal,resolution=merge-duplicates' },
-        body: JSON.stringify(batch)
+    for (const item of toUpdate) {
+      const qty = invMap[item.square_variation_id];
+      await sbFetch(`${SUPABASE_URL}/rest/v1/items?id=eq.${item.id}`, {
+        method: 'PATCH',
+        headers: sbHeaders,
+        body: JSON.stringify({ square_inventory: qty, inventory: qty, square_synced_at: now })
       });
-      updated += batch.length;
+      updated++;
     }
 
     res.json({ success: true, updated, total: items.length, squareCounts: Object.keys(invMap).length });
