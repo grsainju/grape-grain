@@ -1550,8 +1550,16 @@ app.post('/api/items/:id/update-inventory', async (req, res) => {
 app.post('/api/items/sync-inventory', async (req, res) => {
   try {
     // Get all items with square_variation_id
-    const r = await sbFetch(`${SUPABASE_URL}/rest/v1/items?store_id=eq.${STORE_ID}&square_variation_id=not.is.null&select=id,square_variation_id&limit=2000`, { headers: sbHeaders });
-    const items = await r.json();
+    // Fetch ALL matched items with pagination
+    let items = [], offset = 0;
+    while (true) {
+      const r = await sbFetch(`${SUPABASE_URL}/rest/v1/items?store_id=eq.${STORE_ID}&square_variation_id=not.is.null&select=id,square_variation_id&limit=1000&offset=${offset}`, { headers: sbHeaders });
+      const batch = await r.json();
+      if (!batch.length) break;
+      items.push(...batch);
+      if (batch.length < 1000) break;
+      offset += 1000;
+    }
 
     // Fetch inventory from Square by sending OUR specific variation IDs in chunks of 100
     // This is reliable — we only ask for what we have, no pagination issues
