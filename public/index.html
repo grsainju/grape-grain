@@ -822,7 +822,7 @@ td{padding:9px 14px;vertical-align:middle}
           <th style="padding:9px 12px;text-align:right;font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">28d Sold</th>
           <th style="padding:9px 12px;text-align:right;font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">Wk Avg</th>
           <th style="padding:9px 12px;text-align:right;font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">Mo Avg</th>
-          <th style="padding:9px 12px;text-align:left;font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">Velocity</th>
+          <th style="padding:9px 12px;text-align:right;font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">Days Left</th>
           <th style="padding:9px 12px;text-align:right;font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">Discount</th>
           <th style="padding:9px 12px;text-align:right;font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;background:rgba(200,169,110,.08)">Suggested</th>
           <th style="padding:9px 12px;text-align:right;font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;background:rgba(91,155,213,.08)">Manager</th>
@@ -2902,11 +2902,14 @@ function renderOBTable() {
       <td style="padding:8px 12px;text-align:right;font-family:var(--mono);font-size:12px;color:var(--muted)">${row.sold_28d.toFixed(1)}</td>
       <td style="padding:8px 12px;text-align:right;font-family:var(--mono);font-size:12px;color:var(--accent)">${row.avg_weekly.toFixed(1)}</td>
       <td style="padding:8px 12px;text-align:right;font-family:var(--mono);font-size:12px;color:var(--muted)">${row.avg_monthly ? row.avg_monthly.toFixed(1) : '—'}</td>
-      <td style="padding:8px 12px">
-        ${row.velocity === 'HIGH' ? '<span style="font-size:10px;padding:2px 7px;border-radius:3px;background:rgba(106,191,138,.1);color:#6abf8a;font-family:var(--mono)">HIGH</span>'
-        : row.velocity === 'MED'  ? '<span style="font-size:10px;padding:2px 7px;border-radius:3px;background:rgba(200,169,110,.1);color:#c8a96e;font-family:var(--mono)">MED</span>'
-        : row.velocity === 'LOW'  ? '<span style="font-size:10px;padding:2px 7px;border-radius:3px;background:rgba(100,100,100,.1);color:var(--muted);font-family:var(--mono)">LOW</span>'
-        : '<span style="font-size:10px;padding:2px 7px;border-radius:3px;background:rgba(91,155,213,.1);color:#5b9bd5;font-family:var(--mono)">NEW</span>'}
+      <td style="padding:8px 12px;text-align:right">
+        ${(() => {
+          const rate = row.sold_7d > 0 ? row.sold_7d : row.avg_weekly;
+          if (!rate) return '<span style="color:var(--muted);font-family:var(--mono);font-size:12px">—</span>';
+          const days = Math.round(row.inv_cases / rate * 7);
+          const col = days <= 7 ? '#e05555' : days <= 14 ? '#e07820' : '#6abf8a';
+          return '<span style="font-family:var(--mono);font-size:12px;color:'+col+'">'+days+'d</span>';
+        })()}
       </td>
       <td style="padding:8px 12px;text-align:right;font-size:11px;color:#6abf8a">${disc}</td>
       <td style="padding:8px 12px;text-align:right;background:rgba(200,169,110,.06)">
